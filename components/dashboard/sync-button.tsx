@@ -69,6 +69,7 @@ export function OwnerSyncButton({ playlists }: OwnerSyncButtonProps) {
               disabled={isPending}
               className="w-full h-11 rounded-xl border border-border/80 bg-card/80 pl-3.5 pr-8 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1 disabled:opacity-50 dark:border-[#1F2C34] dark:bg-[#0A0F12]/60 dark:text-[#E8EDF0] dark:focus:ring-[#25A8A2]"
             >
+              <option value="all">All 12 Course Playlists</option>
               <option value="">Default Playlist (from env)</option>
               {playlists.map((pl) => (
                 <option key={pl.id} value={pl.id}>

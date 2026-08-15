@@ -51,14 +51,35 @@ export async function syncNow(
 
   // 3. Call syncPlaylist directly on the server
   try {
+    if (playlistId === "all") {
+      const { KNOWN_PLAYLISTS } = await import("@/lib/youtube/playlists");
+      let totalSynced = 0;
+      for (const pl of KNOWN_PLAYLISTS) {
+        try {
+          const res = await syncPlaylist(pl.id);
+          totalSynced += res.synced || 0;
+        } catch {
+          // continue with other playlists
+        }
+      }
+      revalidatePath("/dashboard");
+      revalidatePath("/live-classes");
+      return {
+        success: true,
+        synced: totalSynced,
+        message: `Synced all 12 playlists (${totalSynced} total videos).`,
+      };
+    }
+
     const result = await syncPlaylist(targetPlaylist);
 
     revalidatePath("/dashboard");
+    revalidatePath("/live-classes");
 
     return {
       success: true,
       synced: result.synced,
-      message: `✓ Synced ${result.synced} video${result.synced !== 1 ? "s" : ""} from playlist ${result.playlistId}`,
+      message: `Synced ${result.synced} video${result.synced !== 1 ? "s" : ""} from playlist ${result.playlistId}`,
     };
   } catch (error: unknown) {
     const msg =
