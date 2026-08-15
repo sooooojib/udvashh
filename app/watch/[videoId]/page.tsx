@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { createClient } from "@/utils/supabase/server";
 import { VideoPlayer } from "@/components/watch/video-player";
+import { getPlaylistName } from "@/lib/youtube/playlists";
 
 interface WatchPageProps {
   params: Promise<{ videoId: string }>;
@@ -62,6 +63,8 @@ export default async function WatchPage({ params }: WatchPageProps) {
     .limit(1)
     .single();
 
+  const playlistName = getPlaylistName(video.playlist_id);
+
   return (
     <main className="flex-1 w-full max-w-5xl mx-auto px-4 py-6 sm:px-6 md:py-10">
       <VideoPlayer
@@ -71,6 +74,7 @@ export default async function WatchPage({ params }: WatchPageProps) {
         description={video.description}
         duration={video.duration}
         position={video.position}
+        playlistName={playlistName}
         initialWatched={isWatched}
         nextVideoId={nextVideo?.youtube_video_id ?? null}
       />

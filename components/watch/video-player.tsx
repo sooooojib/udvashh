@@ -39,6 +39,7 @@ interface VideoPlayerProps {
   description: string | null;
   duration: number;
   position: number;
+  playlistName?: string;
   initialWatched: boolean;
   nextVideoId: string | null;
 }
@@ -50,6 +51,7 @@ export function VideoPlayer({
   description,
   duration,
   position,
+  playlistName,
   initialWatched,
   nextVideoId,
 }: VideoPlayerProps) {
@@ -85,10 +87,18 @@ export function VideoPlayer({
           className="flex items-center gap-1.5 font-medium text-zinc-500 transition-colors hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
         >
           <ArrowLeft className="h-4 w-4" />
-          <span>Back to playlist</span>
+          <span>Dashboard</span>
         </Link>
+        {playlistName && (
+          <>
+            <span className="text-zinc-300 dark:text-zinc-700">/</span>
+            <span className="text-zinc-500 dark:text-zinc-400 font-medium truncate max-w-[200px] sm:max-w-none">
+              {playlistName}
+            </span>
+          </>
+        )}
         <span className="text-zinc-300 dark:text-zinc-700">/</span>
-        <span className="font-semibold text-zinc-800 dark:text-zinc-200">
+        <span className="font-semibold text-zinc-900 dark:text-zinc-100">
           Video {position + 1}
         </span>
       </div>
@@ -98,7 +108,7 @@ export function VideoPlayer({
         <h1 className="text-2xl font-extrabold tracking-tight text-zinc-900 dark:text-zinc-100 sm:text-3xl">
           {title}
         </h1>
-        <div className="flex flex-wrap items-center gap-4 text-xs sm:text-sm text-zinc-500 dark:text-zinc-400">
+        <div className="flex flex-wrap items-center gap-3 text-xs sm:text-sm text-zinc-500 dark:text-zinc-400">
           {duration > 0 && (
             <span className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200/80 bg-zinc-50/80 px-2.5 py-1 dark:border-zinc-800 dark:bg-zinc-900/60">
               <Clock className="h-3.5 w-3.5 text-zinc-400" />
