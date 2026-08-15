@@ -96,6 +96,14 @@ export async function signup(
     return { error: error.message };
   }
 
+  // If user already exists in auth.users, Supabase returns empty identities array
+  if (data?.user?.identities && data.user.identities.length === 0) {
+    return {
+      error:
+        "An account with this email already exists. Please try signing in, or use another email.",
+    };
+  }
+
   // Guaranteed direct insert into profiles via service role admin client
   if (data?.user) {
     const adminClient = createAdminClient();
