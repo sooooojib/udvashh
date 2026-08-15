@@ -14,12 +14,12 @@ export function WatchProgressBar({ total, watched }: WatchProgressBarProps) {
   return (
     <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-card/90 p-5 shadow-sm backdrop-blur-md transition-all dark:border-[#1F2C34] dark:bg-[#111820]/90">
       {/* SevenGrid Subtle Radial Glow in Dark Mode */}
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(37,168,162,0.08),transparent_65%)] dark:opacity-100 opacity-30" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(37,168,162,0.08),transparent_65%)] dark:opacity-100 opacity-0" />
 
       <div className="relative mb-3 flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           {watched === total && total > 0 ? (
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#25A8A2]/15 text-[#25A8A2]">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 dark:bg-[#25A8A2]/15 dark:text-[#25A8A2]">
               <CheckCircle2 className="h-4.5 w-4.5" />
             </div>
           ) : (
@@ -42,7 +42,7 @@ export function WatchProgressBar({ total, watched }: WatchProgressBarProps) {
         <span
           className={`font-mono text-2xl font-extrabold tabular-nums tracking-tight ${
             percent === 100
-              ? "text-[#25A8A2] drop-shadow-[0_0_8px_rgba(37,168,162,0.4)]"
+              ? "text-emerald-600 dark:text-[#25A8A2] dark:drop-shadow-[0_0_8px_rgba(37,168,162,0.4)]"
               : "text-foreground dark:text-[#E8EDF0]"
           }`}
         >
@@ -53,7 +53,7 @@ export function WatchProgressBar({ total, watched }: WatchProgressBarProps) {
       <div className="relative">
         <Progress
           value={percent}
-          className="h-2 rounded-full bg-muted/60 dark:bg-[#141E28] [&>div]:bg-[#25A8A2] [&>div]:transition-all [&>div]:duration-500 [&>div]:shadow-[0_0_10px_rgba(37,168,162,0.4)]"
+          className="h-2 rounded-full bg-muted/60 dark:bg-[#141E28] [&>div]:bg-emerald-600 dark:[&>div]:bg-[#25A8A2] [&>div]:transition-all [&>div]:duration-500 dark:[&>div]:shadow-[0_0_10px_rgba(37,168,162,0.4)]"
           aria-label={`${watched} of ${total} videos watched`}
         />
       </div>
