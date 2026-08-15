@@ -26,8 +26,8 @@ const YouTube = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="flex aspect-video w-full items-center justify-center rounded-2xl bg-zinc-100 dark:bg-zinc-900 animate-pulse">
-        <Play className="h-12 w-12 text-zinc-300 dark:text-zinc-700" />
+      <div className="flex aspect-video w-full items-center justify-center rounded-xl bg-muted/40 animate-pulse">
+        <Play className="h-10 w-10 text-muted-foreground/40" />
       </div>
     ),
   }
@@ -82,59 +82,59 @@ export function VideoPlayer({
   return (
     <div className="space-y-6">
       {/* Navigation Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm flex-wrap">
+      <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
         <Link
           href="/dashboard"
-          className="text-zinc-500 transition-colors hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+          className="transition-colors hover:text-foreground"
         >
           Dashboard
         </Link>
-        <span className="text-zinc-300 dark:text-zinc-700">/</span>
+        <span>/</span>
         <Link
           href="/live-classes"
-          className="flex items-center gap-1 font-medium text-zinc-600 transition-colors hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+          className="flex items-center gap-1 font-medium text-foreground/80 transition-colors hover:text-foreground"
         >
-          <Tv className="h-3.5 w-3.5 text-red-500" />
+          <Tv className="h-3 w-3 text-red-500" />
           <span>Live Classes</span>
         </Link>
         {playlistName && (
           <>
-            <span className="text-zinc-300 dark:text-zinc-700">/</span>
-            <span className="text-zinc-500 dark:text-zinc-400 font-medium truncate max-w-[200px] sm:max-w-none">
+            <span>/</span>
+            <span className="font-medium truncate max-w-[200px] sm:max-w-none text-foreground/80">
               {playlistName}
             </span>
           </>
         )}
-        <span className="text-zinc-300 dark:text-zinc-700">/</span>
-        <span className="font-semibold text-zinc-900 dark:text-zinc-100">
+        <span>/</span>
+        <span className="font-semibold text-foreground font-mono">
           Video {position + 1}
         </span>
       </div>
 
       {/* Video Title & Meta Bar */}
       <div className="space-y-2">
-        <h1 className="text-2xl font-extrabold tracking-tight text-zinc-900 dark:text-zinc-100 sm:text-3xl">
+        <h1 className="font-heading text-2xl font-extrabold tracking-tight text-foreground sm:text-3xl leading-tight">
           {title}
         </h1>
-        <div className="flex flex-wrap items-center gap-3 text-xs sm:text-sm text-zinc-500 dark:text-zinc-400">
+        <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
           {duration > 0 && (
-            <span className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200/80 bg-zinc-50/80 px-2.5 py-1 dark:border-zinc-800 dark:bg-zinc-900/60">
-              <Clock className="h-3.5 w-3.5 text-zinc-400" />
+            <span className="inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-card/80 px-2 py-0.5 font-mono">
+              <Clock className="h-3 w-3 text-muted-foreground" />
               <span>{formatDuration(duration)}</span>
             </span>
           )}
 
           <span
-            className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 font-medium transition-colors ${
+            className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 font-medium transition-colors ${
               optimisticWatched
-                ? "border-emerald-300/60 bg-emerald-50 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300"
-                : "border-zinc-200/80 bg-zinc-50/80 text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900/60 dark:text-zinc-400"
+                ? "border-emerald-500/30 bg-emerald-50 text-emerald-800 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300"
+                : "border-border/60 bg-card/80 text-muted-foreground"
             }`}
           >
             {optimisticWatched ? (
               <>
-                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
-                <span>Watched</span>
+                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                <span className="font-semibold">Watched</span>
               </>
             ) : (
               <>
@@ -147,7 +147,7 @@ export function VideoPlayer({
       </div>
 
       {/* YouTube Player Container */}
-      <div className="overflow-hidden rounded-2xl border border-zinc-200/80 bg-black shadow-2xl shadow-zinc-950/10 dark:border-zinc-800 dark:shadow-none">
+      <div className="overflow-hidden rounded-xl border border-border/60 bg-black shadow-lg">
         <div className="aspect-video w-full">
           <YouTube
             videoId={youtubeVideoId}
@@ -167,41 +167,41 @@ export function VideoPlayer({
       </div>
 
       {/* Controls Bar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-2xl border border-zinc-200/80 bg-white/60 p-3.5 backdrop-blur-sm dark:border-zinc-800 dark:bg-zinc-900/40">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-xl border border-border/60 bg-card/90 p-3 shadow-sm backdrop-blur-sm">
         <div className="flex items-center gap-3">
           {/* Watched Toggle Button */}
           <Button
             variant={optimisticWatched ? "outline" : "default"}
             onClick={handleToggle}
             disabled={isPending}
-            className="gap-2 font-semibold shadow-sm"
+            className="h-9 rounded-lg gap-2 font-semibold shadow-sm transition-all active:scale-95 text-xs"
           >
             {isPending ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : optimisticWatched ? (
-              <Check className="h-4 w-4 text-emerald-500 stroke-[3]" />
+              <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 stroke-[3]" />
             ) : (
-              <Circle className="h-4 w-4" />
+              <Circle className="h-3.5 w-3.5" />
             )}
             <span>{optimisticWatched ? "Unwatch" : "Mark as watched"}</span>
           </Button>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2">
           {/* Back to Live Classes button */}
-          <Button asChild variant="outline" className="gap-2">
+          <Button asChild variant="outline" size="sm" className="h-9 rounded-lg gap-1.5 text-xs">
             <Link href="/live-classes">
-              <ArrowLeft className="h-4 w-4" />
+              <ArrowLeft className="h-3.5 w-3.5" />
               <span>Live Classes</span>
             </Link>
           </Button>
 
           {/* Next Video button */}
           {nextVideoId && (
-            <Button asChild className="gap-2 font-semibold shadow-sm">
+            <Button asChild size="sm" className="h-9 rounded-lg gap-1.5 font-semibold shadow-sm text-xs">
               <Link href={`/watch/${nextVideoId}`}>
                 <span>Next video</span>
-                <SkipForward className="h-4 w-4" />
+                <SkipForward className="h-3.5 w-3.5" />
               </Link>
             </Button>
           )}
@@ -210,12 +210,12 @@ export function VideoPlayer({
 
       {/* Description Box */}
       {description && (
-        <div className="rounded-2xl border border-zinc-200/80 bg-white/60 p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/30">
-          <div className="mb-3 flex items-center gap-2 font-semibold text-zinc-900 dark:text-zinc-100">
-            <FileText className="h-4 w-4 text-zinc-500" />
+        <div className="rounded-xl border border-border/60 bg-card/90 p-5 shadow-sm backdrop-blur-sm">
+          <div className="mb-2.5 flex items-center gap-2 font-heading font-bold text-sm tracking-tight text-foreground">
+            <FileText className="h-4 w-4 text-muted-foreground" />
             <span>Description</span>
           </div>
-          <p className="whitespace-pre-line text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
+          <p className="whitespace-pre-line text-xs leading-relaxed text-muted-foreground">
             {description}
           </p>
         </div>

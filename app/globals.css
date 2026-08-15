@@ -16,7 +16,7 @@
     --secondary: 145 22% 93%;
     --secondary-foreground: 152 42% 16%;
     --muted: 145 18% 92%;
-    --muted-foreground: 150 14% 42%;
+    --muted-foreground: 150 14% 40%;
     --accent: 148 26% 91%;
     --accent-foreground: 152 45% 15%;
     --destructive: 0 84.2% 60.2%;
@@ -24,7 +24,7 @@
     --border: 145 16% 87.5%;
     --input: 145 16% 87.5%;
     --ring: 152 42% 25%;
-    --radius: 0.875rem;
+    --radius: 0.75rem;
   }
 
   .dark {
@@ -75,14 +75,23 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --font-heading: var(--font-heading), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-mono), ui-monospace, monospace;
 }
 
 body {
+  font-family: var(--font-sans);
   background-color: hsl(var(--background));
   color: hsl(var(--foreground));
-  font-feature-settings: "rlig" 1, "calt" 1;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11", "rlig" 1, "calt" 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+  letter-spacing: -0.025em;
 }
 
 html:not(.dark) body {

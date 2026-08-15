@@ -67,18 +67,18 @@ export default async function DashboardPage() {
 
       {/* Owner Sync Panel */}
       {isOwner && (
-        <Card className="overflow-hidden border-zinc-200/80 shadow-sm dark:border-zinc-800">
+        <Card className="overflow-hidden rounded-xl border border-border/60 bg-card/90 shadow-sm backdrop-blur-sm">
           <div className="h-1 w-full bg-gradient-to-r from-red-500 via-red-600 to-rose-500" />
           <CardHeader className="pb-3">
             <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-red-600 text-white shadow-sm">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-red-600 text-white shadow-sm">
                 <PlaySquare className="h-4 w-4" />
               </div>
               <div>
-                <CardTitle className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
+                <CardTitle className="font-heading text-sm font-bold tracking-tight text-foreground">
                   YouTube Quick Sync
                 </CardTitle>
-                <CardDescription className="text-xs">
+                <CardDescription className="text-xs text-muted-foreground">
                   Owner only — pull latest videos from YouTube
                 </CardDescription>
               </div>
@@ -91,44 +91,44 @@ export default async function DashboardPage() {
       )}
 
       {/* Hub Modules Grid */}
-      <div className="space-y-4">
-        <h2 className="text-lg font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
+      <div className="space-y-3.5">
+        <h2 className="font-heading text-base font-bold tracking-tight text-foreground">
           Course Sections
         </h2>
 
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {/* Module 1: Live Classes (ACTIVE) */}
           <Link
             href="/live-classes"
-            className="group relative flex flex-col justify-between overflow-hidden rounded-3xl border border-zinc-200/80 bg-white p-6 shadow-sm transition-all duration-300 hover:shadow-xl hover:-translate-y-1 dark:border-zinc-800 dark:bg-zinc-950"
+            className="group relative flex flex-col justify-between overflow-hidden rounded-xl border border-border/60 bg-card/90 p-5.5 shadow-sm backdrop-blur-sm transition-all duration-200 ease-in-out hover:scale-[1.01] hover:border-border hover:shadow-md"
           >
             {/* Top Badge */}
             <div className="flex items-center justify-between gap-2">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-600 text-white shadow-md transition-transform duration-300 group-hover:scale-105">
-                <Tv className="h-6 w-6" />
+              <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-red-600 text-white shadow-sm transition-transform duration-200 group-hover:scale-105">
+                <Tv className="h-5.5 w-5.5" />
               </div>
-              <span className="flex items-center gap-1.5 rounded-full bg-red-50 px-2.5 py-1 text-xs font-bold text-red-700 dark:bg-red-950/60 dark:text-red-400">
+              <span className="flex items-center gap-1.5 rounded-md bg-red-50 px-2 py-0.5 text-xs font-bold text-red-700 dark:bg-red-950/60 dark:text-red-400">
                 <span className="h-1.5 w-1.5 rounded-full bg-red-600 animate-pulse" />
                 Active
               </span>
             </div>
 
             {/* Content */}
-            <div className="my-5 space-y-2">
-              <h3 className="text-xl font-bold text-zinc-900 transition-colors group-hover:text-red-600 dark:text-zinc-100 dark:group-hover:text-red-400">
+            <div className="my-4 space-y-1.5">
+              <h3 className="font-heading text-lg font-bold tracking-tight text-foreground transition-colors group-hover:text-primary">
                 Live Classes
               </h3>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+              <p className="text-xs text-muted-foreground leading-relaxed">
                 Browse and watch recorded live classes across {KNOWN_PLAYLISTS.length} subjects with automated progress tracking.
               </p>
             </div>
 
             {/* Meta & Button */}
-            <div className="flex items-center justify-between border-t border-zinc-100 pt-4 dark:border-zinc-900">
-              <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">
+            <div className="flex items-center justify-between border-t border-border/40 pt-3 text-xs">
+              <span className="font-medium text-muted-foreground">
                 {totalVideos} videos • {KNOWN_PLAYLISTS.length} subjects
               </span>
-              <span className="flex items-center gap-1 text-xs font-bold text-red-600 dark:text-red-400 group-hover:translate-x-0.5 transition-transform">
+              <span className="flex items-center gap-1 font-bold text-primary transition-transform group-hover:translate-x-0.5">
                 <span>View Classes</span>
                 <ArrowRight className="h-3.5 w-3.5" />
               </span>
@@ -136,52 +136,52 @@ export default async function DashboardPage() {
           </Link>
 
           {/* Module 2: Lecture Notes & Materials (FUTURE) */}
-          <div className="relative flex flex-col justify-between overflow-hidden rounded-3xl border border-zinc-200/60 bg-zinc-50/50 p-6 opacity-75 dark:border-zinc-800/60 dark:bg-zinc-900/30">
+          <div className="relative flex flex-col justify-between overflow-hidden rounded-xl border border-border/40 bg-card/50 p-5.5 opacity-75 backdrop-blur-sm">
             <div className="flex items-center justify-between gap-2">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-zinc-200 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
-                <FileText className="h-6 w-6" />
+              <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                <FileText className="h-5.5 w-5.5" />
               </div>
-              <span className="rounded-full bg-zinc-200/70 px-2.5 py-1 text-[11px] font-semibold text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
+              <span className="rounded-md bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
                 Coming Soon
               </span>
             </div>
 
-            <div className="my-5 space-y-2">
-              <h3 className="text-xl font-bold text-zinc-800 dark:text-zinc-200">
+            <div className="my-4 space-y-1.5">
+              <h3 className="font-heading text-lg font-bold tracking-tight text-foreground/80">
                 Lecture Notes & PDFs
               </h3>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+              <p className="text-xs text-muted-foreground leading-relaxed">
                 Downloadable slide decks, lecture summaries, and reference study sheets.
               </p>
             </div>
 
-            <div className="flex items-center justify-between border-t border-zinc-200/50 pt-4 dark:border-zinc-800/50 text-xs text-zinc-400">
+            <div className="flex items-center justify-between border-t border-border/30 pt-3 text-xs text-muted-foreground">
               <span>Section ready</span>
               <span>Available soon</span>
             </div>
           </div>
 
           {/* Module 3: Model Tests & Exams (FUTURE) */}
-          <div className="relative flex flex-col justify-between overflow-hidden rounded-3xl border border-zinc-200/60 bg-zinc-50/50 p-6 opacity-75 dark:border-zinc-800/60 dark:bg-zinc-900/30">
+          <div className="relative flex flex-col justify-between overflow-hidden rounded-xl border border-border/40 bg-card/50 p-5.5 opacity-75 backdrop-blur-sm">
             <div className="flex items-center justify-between gap-2">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-zinc-200 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
-                <BookOpen className="h-6 w-6" />
+              <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                <BookOpen className="h-5.5 w-5.5" />
               </div>
-              <span className="rounded-full bg-zinc-200/70 px-2.5 py-1 text-[11px] font-semibold text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
+              <span className="rounded-md bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
                 Coming Soon
               </span>
             </div>
 
-            <div className="my-5 space-y-2">
-              <h3 className="text-xl font-bold text-zinc-800 dark:text-zinc-200">
+            <div className="my-4 space-y-1.5">
+              <h3 className="font-heading text-lg font-bold tracking-tight text-foreground/80">
                 Model Tests & Quizzes
               </h3>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+              <p className="text-xs text-muted-foreground leading-relaxed">
                 Subject-wise practice quizzes, timed mock tests, and instant score evaluation.
               </p>
             </div>
 
-            <div className="flex items-center justify-between border-t border-zinc-200/50 pt-4 dark:border-zinc-800/50 text-xs text-zinc-400">
+            <div className="flex items-center justify-between border-t border-border/30 pt-3 text-xs text-muted-foreground">
               <span>Section ready</span>
               <span>Available soon</span>
             </div>

@@ -98,13 +98,13 @@ export function PlaylistView({ videos, watchedVideoIds }: PlaylistViewProps) {
   return (
     <div className="space-y-6">
       {/* Top Filter Pills Bar */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-zinc-200/80 pb-4 dark:border-zinc-800">
+      <div className="flex flex-wrap items-center gap-1.5 border-b border-border/40 pb-4">
         <button
           onClick={() => handleFilterClick("all")}
-          className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
+          className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold tracking-tight transition-all duration-150 active:scale-95 ${
             filterPlaylistId === "all"
-              ? "bg-zinc-900 text-white shadow-sm dark:bg-zinc-100 dark:text-zinc-900"
-              : "border border-zinc-200/80 bg-white text-zinc-600 hover:bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900/50 dark:text-zinc-400 dark:hover:bg-zinc-800"
+              ? "bg-primary text-primary-foreground shadow-sm"
+              : "border border-border/60 bg-card/80 text-muted-foreground hover:bg-accent hover:text-foreground backdrop-blur-sm"
           }`}
         >
           <Layers className="h-3.5 w-3.5" />
@@ -123,19 +123,19 @@ export function PlaylistView({ videos, watchedVideoIds }: PlaylistViewProps) {
             <button
               key={group.id}
               onClick={() => handleFilterClick(group.id)}
-              className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
+              className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium tracking-tight transition-all duration-150 active:scale-95 ${
                 filterPlaylistId === group.id
-                  ? "bg-zinc-900 text-white shadow-sm dark:bg-zinc-100 dark:text-zinc-900"
-                  : "border border-zinc-200/80 bg-white text-zinc-600 hover:bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900/50 dark:text-zinc-400 dark:hover:bg-zinc-800"
+                  ? "bg-primary text-primary-foreground font-semibold shadow-sm"
+                  : "border border-border/60 bg-card/80 text-muted-foreground hover:bg-accent hover:text-foreground backdrop-blur-sm"
               }`}
             >
               {isComplete ? (
-                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
               ) : (
                 <BookOpen className="h-3.5 w-3.5 opacity-60" />
               )}
               <span className="max-w-[150px] truncate">{group.name}</span>
-              <span className="text-[10px] opacity-70 font-mono">
+              <span className="text-[10px] opacity-75 font-mono">
                 ({group.videos.length})
               </span>
             </button>
@@ -144,7 +144,7 @@ export function PlaylistView({ videos, watchedVideoIds }: PlaylistViewProps) {
       </div>
 
       {/* Playlist Collapsible Cards */}
-      <div className="space-y-4">
+      <div className="space-y-3.5">
         {displayedGroups.map((group) => {
           const isExpanded = !!expandedPlaylists[group.id];
 
@@ -162,39 +162,39 @@ export function PlaylistView({ videos, watchedVideoIds }: PlaylistViewProps) {
           return (
             <div
               key={group.id}
-              className="overflow-hidden rounded-2xl border border-zinc-200/80 bg-white shadow-sm transition-all duration-200 dark:border-zinc-800/80 dark:bg-zinc-950"
+              className="overflow-hidden rounded-xl border border-border/60 bg-card/90 shadow-sm backdrop-blur-sm transition-all duration-200 ease-in-out hover:border-border hover:shadow-md"
             >
               {/* Interactive Playlist Header Card */}
               <div
                 onClick={() => togglePlaylist(group.id)}
-                className="group flex cursor-pointer flex-col gap-4 p-5 transition-colors hover:bg-zinc-50/80 dark:hover:bg-zinc-900/40 sm:flex-row sm:items-center sm:justify-between select-none"
+                className="group flex cursor-pointer flex-col gap-3.5 p-4.5 transition-colors hover:bg-accent/40 sm:flex-row sm:items-center sm:justify-between select-none"
               >
                 {/* Left: Icon & Subject Title */}
                 <div className="flex items-center gap-3.5 min-w-0">
                   <div
-                    className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl shadow-sm transition-transform duration-200 group-hover:scale-105 ${
+                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg shadow-sm transition-transform duration-200 group-hover:scale-105 ${
                       isComplete
-                        ? "bg-emerald-500 text-white"
-                        : "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
+                        ? "bg-emerald-600 text-white"
+                        : "bg-primary text-primary-foreground"
                     }`}
                   >
                     {isComplete ? (
-                      <CheckCircle2 className="h-5 w-5" />
+                      <CheckCircle2 className="h-4.5 w-4.5" />
                     ) : (
-                      <Folder className="h-5 w-5" />
+                      <Folder className="h-4.5 w-4.5" />
                     )}
                   </div>
 
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <h2 className="text-base font-bold text-zinc-900 dark:text-zinc-100 truncate group-hover:text-zinc-700 dark:group-hover:text-zinc-200">
+                      <h2 className="font-heading text-base font-bold tracking-tight text-foreground truncate transition-colors">
                         {group.name}
                       </h2>
                     </div>
 
-                    <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-zinc-500 dark:text-zinc-400">
-                      <span className="inline-flex items-center gap-1 font-medium text-zinc-700 dark:text-zinc-300">
-                        <ListVideo className="h-3.5 w-3.5 text-zinc-400" />
+                    <div className="mt-0.5 flex flex-wrap items-center gap-2.5 text-xs text-muted-foreground leading-relaxed">
+                      <span className="inline-flex items-center gap-1 font-medium text-foreground/80">
+                        <ListVideo className="h-3.5 w-3.5 text-muted-foreground" />
                         {group.videos.length} videos
                       </span>
 
@@ -202,7 +202,7 @@ export function PlaylistView({ videos, watchedVideoIds }: PlaylistViewProps) {
                         <>
                           <span>•</span>
                           <span className="inline-flex items-center gap-1">
-                            <Clock className="h-3 w-3 text-zinc-400" />
+                            <Clock className="h-3 w-3 text-muted-foreground" />
                             {formatHoursMinutes(group.totalDuration)}
                           </span>
                         </>
@@ -220,50 +220,50 @@ export function PlaylistView({ videos, watchedVideoIds }: PlaylistViewProps) {
 
                 {/* Right: Progress Bar & Chevron Indicator */}
                 <div className="flex items-center gap-4 w-full sm:w-auto">
-                  <div className="flex items-center gap-3 flex-1 sm:w-48 sm:flex-initial">
+                  <div className="flex items-center gap-2.5 flex-1 sm:w-44 sm:flex-initial">
                     <Progress
                       value={groupPercent}
                       className={`h-2 flex-1 ${
                         isComplete
-                          ? "[&>div]:bg-emerald-500 dark:[&>div]:bg-emerald-400"
+                          ? "[&>div]:bg-emerald-600 dark:[&>div]:bg-emerald-400"
                           : ""
                       }`}
                     />
-                    <span className="text-xs font-bold tabular-nums text-zinc-700 dark:text-zinc-300 w-9 text-right">
+                    <span className="text-xs font-bold tabular-nums text-foreground/80 w-9 text-right font-mono">
                       {groupPercent}%
                     </span>
                   </div>
 
                   {/* Click to expand/collapse chevron button */}
                   <div
-                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-zinc-200 bg-zinc-50 transition-transform duration-300 dark:border-zinc-800 dark:bg-zinc-900 ${
+                    className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-border/60 bg-muted/30 transition-transform duration-200 ${
                       isExpanded
-                        ? "rotate-180 bg-zinc-100 dark:bg-zinc-800"
-                        : ""
+                        ? "rotate-180 bg-muted text-foreground"
+                        : "text-muted-foreground"
                     }`}
                   >
-                    <ChevronDown className="h-4 w-4 text-zinc-500 dark:text-zinc-400" />
+                    <ChevronDown className="h-3.5 w-3.5" />
                   </div>
                 </div>
               </div>
 
               {/* Expanded Content: Video Grid or Empty State */}
               {isExpanded && (
-                <div className="border-t border-zinc-100 bg-zinc-50/40 p-5 dark:border-zinc-900 dark:bg-zinc-900/20">
+                <div className="border-t border-border/40 bg-muted/15 p-4.5">
                   {group.videos.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-8 text-center">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-100 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500">
-                        <VideoOff className="h-5 w-5" />
+                    <div className="flex flex-col items-center justify-center py-7 text-center">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                        <VideoOff className="h-4.5 w-4.5" />
                       </div>
-                      <p className="mt-2 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                      <p className="mt-2 text-sm font-semibold tracking-tight text-foreground">
                         No videos in this playlist yet
                       </p>
-                      <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+                      <p className="mt-0.5 text-xs text-muted-foreground leading-relaxed">
                         Upload videos to this YouTube playlist, then click &ldquo;Sync Now&rdquo; to populate it.
                       </p>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                       {group.videos.map((video, idx) => (
                         <VideoCard
                           key={video.id}
