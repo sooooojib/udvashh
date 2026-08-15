@@ -84,7 +84,7 @@ export async function signup(
 
   const supabase = await createClient();
 
-  const { error } = await supabase.auth.signUp({
+  const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
@@ -94,6 +94,20 @@ export async function signup(
 
   if (error) {
     return { error: error.message };
+  }
+
+  // Guaranteed direct insert into profiles via service role admin client
+  if (data?.user) {
+    const adminClient = createAdminClient();
+    await adminClient.from("profiles").upsert(
+      {
+        id: data.user.id,
+        email: data.user.email,
+        full_name: fullName || "",
+        is_approved: false,
+      },
+      { onConflict: "id" }
+    );
   }
 
   // Sign out any auto-created session — they must wait for approval
