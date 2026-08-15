@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { BrandLogo } from "@/components/brand-logo";
 import { createClient } from "@/utils/supabase/server";
 import { logout } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
@@ -28,16 +28,9 @@ export async function Header() {
           )}
         </div>
 
-        {/* Center: Custom Typographic Brand Logo "অবনতি" + Mode Change Button */}
-        <div className="flex items-center justify-center gap-3">
-          <Link
-            href="/dashboard"
-            className="flex items-center transition-all duration-300 hover:opacity-90 hover:drop-shadow-[0_0_12px_rgba(37,168,162,0.35)]"
-          >
-            <span className="font-bengali text-2xl font-extrabold tracking-normal bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-600 dark:from-white dark:via-[#E8EDF0] dark:to-[#9AA7AE] bg-clip-text text-transparent select-none">
-              অবনতি
-            </span>
-          </Link>
+        {/* Center: Minimalist Geometric Brand Logo + Mode Change Button */}
+        <div className="flex items-center justify-center gap-4">
+          <BrandLogo />
           <ThemeToggle />
         </div>
 
