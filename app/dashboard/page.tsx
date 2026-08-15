@@ -59,19 +59,7 @@ export default async function DashboardPage() {
   const watchedCount = progressRows?.length ?? 0;
 
   return (
-    <main className="flex-1 p-4 sm:p-6 md:p-10 max-w-7xl mx-auto w-full space-y-10">
-      {/* Welcome Banner with brand title অবনতি */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-zinc-900 dark:text-zinc-100">
-            অবনতি
-          </h1>
-          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-            Welcome back! Select a section below to continue your preparation.
-          </p>
-        </div>
-      </div>
-
+    <main className="flex-1 p-4 sm:p-6 md:p-10 max-w-7xl mx-auto w-full space-y-8">
       {/* Overall Progress Bar */}
       {totalVideos > 0 && (
         <WatchProgressBar total={totalVideos} watched={watchedCount} />
