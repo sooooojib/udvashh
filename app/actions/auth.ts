@@ -65,7 +65,7 @@ export async function signup(
   prevState: AuthActionResult | null,
   formData: FormData
 ): Promise<AuthActionResult> {
-  const email = (formData.get("email") as string)?.trim();
+  const email = (formData.get("email") as string)?.trim().toLowerCase();
   const fullName = (formData.get("fullName") as string)?.trim();
   const password = formData.get("password") as string;
   const confirmPassword = formData.get("confirmPassword") as string;
@@ -82,31 +82,31 @@ export async function signup(
     return { error: "Passwords do not match." };
   }
 
-  const supabase = await createClient();
+  const adminClient = createAdminClient();
 
-  const { data, error } = await supabase.auth.signUp({
+  // Create user directly via admin API - bypasses all Supabase email rate limits and sends zero emails
+  const { data, error } = await adminClient.auth.admin.createUser({
     email,
     password,
-    options: {
-      data: { full_name: fullName || "" },
-    },
+    email_confirm: true,
+    user_metadata: { full_name: fullName || "" },
   });
 
   if (error) {
+    if (
+      error.message.toLowerCase().includes("already registered") ||
+      error.message.toLowerCase().includes("already exists")
+    ) {
+      return {
+        error:
+          "An account with this email already exists. Please sign in or use another email.",
+      };
+    }
     return { error: error.message };
   }
 
-  // If user already exists in auth.users, Supabase returns empty identities array
-  if (data?.user?.identities && data.user.identities.length === 0) {
-    return {
-      error:
-        "An account with this email already exists. Please try signing in, or use another email.",
-    };
-  }
-
-  // Guaranteed direct insert into profiles via service role admin client
+  // Guaranteed direct insert into profiles with is_approved = false
   if (data?.user) {
-    const adminClient = createAdminClient();
     await adminClient.from("profiles").upsert(
       {
         id: data.user.id,
@@ -118,12 +118,9 @@ export async function signup(
     );
   }
 
-  // Sign out any auto-created session — they must wait for approval
-  await supabase.auth.signOut();
-
   return {
     success:
-      "Request submitted! Your account is pending admin approval. You will be able to log in once the admin approves your request.",
+      "Your account was created successfully. Please wait for the administrator to approve your access.",
   };
 }
 
