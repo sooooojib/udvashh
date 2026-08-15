@@ -99,20 +99,24 @@ export async function signup(
   }
 
   const userId = data.user?.id;
+  console.log("[signup] New user created. userId:", userId, "email:", email);
 
   if (userId) {
     // ── Fetch the auto-generated approval_token from profiles ───────────────
     // Small delay to let the DB trigger fire
-    await new Promise((r) => setTimeout(r, 800));
+    await new Promise((r) => setTimeout(r, 1200));
 
     const adminClient = createAdminClient();
-    const { data: profile } = await adminClient
+    const { data: profile, error: profileError } = await adminClient
       .from("profiles")
       .select("approval_token")
       .eq("id", userId)
       .single();
 
+    console.log("[signup] Profile fetch result:", { profile, profileError });
+
     const approvalToken = profile?.approval_token;
+    console.log("[signup] approval_token:", approvalToken ? "EXISTS" : "NULL/MISSING");
 
     // ── Send admin notification email ───────────────────────────────────────
     if (approvalToken) {
@@ -122,20 +126,27 @@ export async function signup(
         .map((e) => e.trim())
         .filter(Boolean);
 
+      console.log("[signup] Sending admin email to:", adminEmails);
+
       try {
-        await sendAdminApprovalEmail({
+        const emailResult = await sendAdminApprovalEmail({
           adminEmails,
           userName: fullName || "",
           userEmail: email,
           approvalToken,
           userId,
         });
+        console.log("[signup] Admin email sent successfully:", emailResult);
       } catch (emailErr) {
-        // Non-fatal — user still gets pending message
         console.error("[signup] Failed to send admin email:", emailErr);
       }
+    } else {
+      console.error(
+        "[signup] No approval_token found — SQL migration may not have been run, or DB trigger did not fire."
+      );
     }
   }
+
 
   // Sign out any auto-created session so they can't bypass the approval gate
   await supabase.auth.signOut();
