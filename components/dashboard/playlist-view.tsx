@@ -4,7 +4,6 @@ import * as React from "react";
 import { VideoCard, type Video } from "@/components/dashboard/video-card";
 import { KNOWN_PLAYLISTS, getPlaylistName } from "@/lib/youtube/playlists";
 import { Progress } from "@/components/ui/progress";
-import { Button } from "@/components/ui/button";
 import { formatHoursMinutes } from "@/lib/utils/format";
 import {
   BookOpen,
@@ -14,7 +13,6 @@ import {
   Folder,
   Layers,
   ListVideo,
-  PlaySquare,
   VideoOff,
 } from "lucide-react";
 
@@ -82,16 +80,14 @@ export function PlaylistView({ videos, watchedVideoIds }: PlaylistViewProps) {
     }));
   };
 
-  const expandAll = () => {
-    const allExpanded: Record<string, boolean> = {};
-    groups.forEach((g) => {
-      allExpanded[g.id] = true;
-    });
-    setExpandedPlaylists(allExpanded);
-  };
-
-  const collapseAll = () => {
-    setExpandedPlaylists({});
+  const handleFilterClick = (id: string) => {
+    setFilterPlaylistId(id);
+    if (id === "all") {
+      setExpandedPlaylists({});
+    } else {
+      // Expand only the selected course
+      setExpandedPlaylists({ [id]: true });
+    }
   };
 
   const displayedGroups =
@@ -99,86 +95,58 @@ export function PlaylistView({ videos, watchedVideoIds }: PlaylistViewProps) {
       ? groups
       : groups.filter((g) => g.id === filterPlaylistId);
 
-  const areAllExpanded =
-    groups.length > 0 && groups.every((g) => expandedPlaylists[g.id]);
-
   return (
     <div className="space-y-6">
-      {/* Top Filter Bar & Controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-zinc-200/80 pb-4 dark:border-zinc-800">
-        {/* Filter Pills */}
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            onClick={() => setFilterPlaylistId("all")}
-            className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
-              filterPlaylistId === "all"
-                ? "bg-zinc-900 text-white shadow-sm dark:bg-zinc-100 dark:text-zinc-900"
-                : "border border-zinc-200/80 bg-white text-zinc-600 hover:bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900/50 dark:text-zinc-400 dark:hover:bg-zinc-800"
-            }`}
-          >
-            <Layers className="h-3.5 w-3.5" />
-            <span>All ({groups.length})</span>
-          </button>
+      {/* Top Filter Pills Bar */}
+      <div className="flex flex-wrap items-center gap-2 border-b border-zinc-200/80 pb-4 dark:border-zinc-800">
+        <button
+          onClick={() => handleFilterClick("all")}
+          className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
+            filterPlaylistId === "all"
+              ? "bg-zinc-900 text-white shadow-sm dark:bg-zinc-100 dark:text-zinc-900"
+              : "border border-zinc-200/80 bg-white text-zinc-600 hover:bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900/50 dark:text-zinc-400 dark:hover:bg-zinc-800"
+          }`}
+        >
+          <Layers className="h-3.5 w-3.5" />
+          <span>All ({groups.length})</span>
+        </button>
 
-          {groups.map((group) => {
-            const groupWatchedCount = group.videos.filter((v) =>
-              watchedSet.has(v.id)
-            ).length;
-            const isComplete =
-              group.videos.length > 0 &&
-              groupWatchedCount === group.videos.length;
+        {groups.map((group) => {
+          const groupWatchedCount = group.videos.filter((v) =>
+            watchedSet.has(v.id)
+          ).length;
+          const isComplete =
+            group.videos.length > 0 &&
+            groupWatchedCount === group.videos.length;
 
-            return (
-              <button
-                key={group.id}
-                onClick={() => {
-                  setFilterPlaylistId(group.id);
-                  // Automatically expand this playlist when selected
-                  setExpandedPlaylists((prev) => ({
-                    ...prev,
-                    [group.id]: true,
-                  }));
-                }}
-                className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
-                  filterPlaylistId === group.id
-                    ? "bg-zinc-900 text-white shadow-sm dark:bg-zinc-100 dark:text-zinc-900"
-                    : "border border-zinc-200/80 bg-white text-zinc-600 hover:bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900/50 dark:text-zinc-400 dark:hover:bg-zinc-800"
-                }`}
-              >
-                {isComplete ? (
-                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
-                ) : (
-                  <BookOpen className="h-3.5 w-3.5 opacity-60" />
-                )}
-                <span className="max-w-[150px] truncate">{group.name}</span>
-                <span className="text-[10px] opacity-70 font-mono">
-                  ({group.videos.length})
-                </span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Expand / Collapse All Toggle */}
-        <div className="flex items-center gap-2 self-end sm:self-auto">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={areAllExpanded ? collapseAll : expandAll}
-            className="text-xs text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 h-8 px-2.5"
-          >
-            {areAllExpanded ? "Collapse All" : "Expand All"}
-          </Button>
-        </div>
+          return (
+            <button
+              key={group.id}
+              onClick={() => handleFilterClick(group.id)}
+              className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
+                filterPlaylistId === group.id
+                  ? "bg-zinc-900 text-white shadow-sm dark:bg-zinc-100 dark:text-zinc-900"
+                  : "border border-zinc-200/80 bg-white text-zinc-600 hover:bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900/50 dark:text-zinc-400 dark:hover:bg-zinc-800"
+              }`}
+            >
+              {isComplete ? (
+                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+              ) : (
+                <BookOpen className="h-3.5 w-3.5 opacity-60" />
+              )}
+              <span className="max-w-[150px] truncate">{group.name}</span>
+              <span className="text-[10px] opacity-70 font-mono">
+                ({group.videos.length})
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       {/* Playlist Collapsible Cards */}
       <div className="space-y-4">
         {displayedGroups.map((group) => {
-          const isExpanded =
-            expandedPlaylists[group.id] ||
-            (filterPlaylistId === group.id &&
-              expandedPlaylists[group.id] !== false);
+          const isExpanded = !!expandedPlaylists[group.id];
 
           const groupWatchedCount = group.videos.filter((v) =>
             watchedSet.has(v.id)
