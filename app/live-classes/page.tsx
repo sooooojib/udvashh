@@ -60,12 +60,12 @@ export default async function LiveClassesPage() {
 
   return (
     <main className="flex-1 p-4 sm:p-6 md:p-10 max-w-7xl mx-auto w-full space-y-8">
-      {/* Clean Page Header */}
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-red-600 text-white shadow-sm">
-          <Tv className="h-5 w-5" />
+      {/* Clean Page Header with SevenGrid Accent */}
+      <div className="flex items-center gap-3.5">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#25A8A2]/15 text-[#25A8A2] ring-1 ring-[#25A8A2]/30 shadow-sm">
+          <Tv className="h-5.5 w-5.5" />
         </div>
-        <h1 className="font-heading text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
+        <h1 className="font-heading text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground dark:text-[#E8EDF0]">
           Live Classes
         </h1>
       </div>
@@ -77,18 +77,18 @@ export default async function LiveClassesPage() {
 
       {/* Owner Sync Panel */}
       {isOwner && (
-        <Card className="overflow-hidden rounded-xl border border-border/60 bg-card/90 shadow-sm backdrop-blur-sm">
-          <div className="h-1 w-full bg-gradient-to-r from-red-500 via-red-600 to-rose-500" />
+        <Card className="overflow-hidden rounded-2xl border border-border/60 bg-card/90 shadow-sm backdrop-blur-md dark:border-[#1F2C34] dark:bg-[#111820]">
+          <div className="h-1 w-full bg-gradient-to-r from-[#25A8A2] via-teal-500 to-emerald-500" />
           <CardHeader className="pb-3">
             <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-red-600 text-white shadow-sm">
-                <PlaySquare className="h-4 w-4" />
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#25A8A2] text-white shadow-[0_0_10px_rgba(37,168,162,0.4)]">
+                <PlaySquare className="h-4.5 w-4.5" />
               </div>
               <div>
-                <CardTitle className="font-heading text-sm font-bold tracking-tight text-foreground">
+                <CardTitle className="font-heading text-sm font-bold tracking-tight text-foreground dark:text-[#E8EDF0]">
                   YouTube Quick Sync
                 </CardTitle>
-                <CardDescription className="text-xs text-muted-foreground">
+                <CardDescription className="text-xs text-muted-foreground dark:text-[#9AA7AE]">
                   Owner only — pull latest videos from YouTube
                 </CardDescription>
               </div>
@@ -102,13 +102,13 @@ export default async function LiveClassesPage() {
 
       {/* Video Content Grouped by Playlist */}
       {videoList.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/60 bg-card/50 py-20 backdrop-blur-sm">
-          <VideoOff className="h-9 w-9 text-muted-foreground/50" />
-          <p className="mt-3 text-sm font-semibold tracking-tight text-foreground">
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border/60 bg-card/50 py-20 backdrop-blur-md dark:border-[#1F2C34] dark:bg-[#111820]/40">
+          <VideoOff className="h-9 w-9 text-muted-foreground/50 dark:text-[#5C6A72]" />
+          <p className="mt-3 text-sm font-semibold tracking-tight text-foreground dark:text-[#E8EDF0]">
             No videos found
           </p>
           {isOwner && (
-            <p className="mt-0.5 text-xs text-muted-foreground">
+            <p className="mt-0.5 text-xs text-muted-foreground dark:text-[#9AA7AE]">
               Use the Sync button above to pull videos from YouTube.
             </p>
           )}

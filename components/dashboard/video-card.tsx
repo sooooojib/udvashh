@@ -46,14 +46,14 @@ export function VideoCard({ video, initialWatched, index }: VideoCardProps) {
   return (
     <Card
       className={cn(
-        "group relative flex flex-col overflow-hidden rounded-xl border transition-all duration-200 ease-in-out hover:scale-[1.01] hover:shadow-md",
+        "group relative flex flex-col overflow-hidden rounded-2xl border transition-all duration-200 ease-in-out hover:scale-[1.01] hover:shadow-md",
         optimisticWatched
-          ? "border-emerald-500/30 bg-emerald-50/40 dark:border-emerald-900/40 dark:bg-emerald-950/20"
-          : "border-border/60 bg-card/90 backdrop-blur-sm dark:border-zinc-800/80 dark:bg-zinc-950/80"
+          ? "border-[#25A8A2]/30 bg-[#25A8A2]/5 dark:border-[#25A8A2]/40 dark:bg-[#25A8A2]/10 shadow-[0_0_15px_rgba(37,168,162,0.08)]"
+          : "border-border/60 bg-card/90 backdrop-blur-md dark:border-[#1F2C34] dark:bg-[#111820] dark:hover:border-[#25A8A2]/50 hover:border-primary/40"
       )}
     >
       {/* Thumbnail Container */}
-      <div className="relative aspect-video w-full overflow-hidden bg-muted/40 shrink-0">
+      <div className="relative aspect-video w-full overflow-hidden bg-muted/40 shrink-0 dark:bg-[#0A0F12]">
         {video.thumbnail_url ? (
           <Image
             src={video.thumbnail_url}
@@ -64,27 +64,27 @@ export function VideoCard({ video, initialWatched, index }: VideoCardProps) {
           />
         ) : (
           <div className="flex h-full items-center justify-center">
-            <Play className="h-8 w-8 text-muted-foreground/40" />
+            <Play className="h-8 w-8 text-muted-foreground/40 dark:text-[#5C6A72]" />
           </div>
         )}
 
         {/* Duration badge */}
         {video.duration > 0 && (
-          <div className="absolute bottom-2 right-2 flex items-center gap-1 rounded-md bg-black/80 px-1.5 py-0.5 text-[11px] font-mono font-medium text-white shadow-sm backdrop-blur-md">
+          <div className="absolute bottom-2 right-2 flex items-center gap-1 rounded-md bg-black/85 px-1.5 py-0.5 text-[11px] font-mono font-medium text-white shadow-sm backdrop-blur-md">
             <Clock className="h-2.5 w-2.5 text-zinc-300" />
             <span>{formatDuration(video.duration)}</span>
           </div>
         )}
 
         {/* Index/Position tag */}
-        <div className="absolute left-2 top-2 flex h-5 min-w-5 items-center justify-center rounded-md bg-black/75 px-1.5 text-[11px] font-bold text-white shadow-sm backdrop-blur-md font-mono">
+        <div className="absolute left-2 top-2 flex h-5 min-w-5 items-center justify-center rounded-md bg-black/80 px-1.5 text-[11px] font-bold text-white shadow-sm backdrop-blur-md font-mono">
           {index + 1}
         </div>
 
-        {/* Watched visual overlay */}
+        {/* Watched visual overlay with glowing SevenGrid cyan/teal */}
         {optimisticWatched && (
-          <div className="absolute inset-0 flex items-center justify-center bg-emerald-950/25 backdrop-blur-[1px] transition-all">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-600 text-white shadow-md ring-2 ring-emerald-500/20">
+          <div className="absolute inset-0 flex items-center justify-center bg-[#0A0F12]/40 backdrop-blur-[1px] transition-all">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#25A8A2] text-white shadow-[0_0_12px_rgba(37,168,162,0.6)]">
               <Check className="h-5 w-5 stroke-[3]" />
             </div>
           </div>
@@ -92,41 +92,41 @@ export function VideoCard({ video, initialWatched, index }: VideoCardProps) {
       </div>
 
       {/* Card Content */}
-      <CardContent className="flex flex-1 flex-col gap-2.5 p-4">
+      <CardContent className="flex flex-1 flex-col gap-2.5 p-4.5">
         {/* Title */}
         <h3
           className={cn(
             "font-heading text-sm font-bold leading-snug tracking-tight transition-colors",
             optimisticWatched
-              ? "text-muted-foreground"
-              : "text-foreground group-hover:text-primary transition-colors"
+              ? "text-muted-foreground dark:text-[#9AA7AE]"
+              : "text-foreground group-hover:text-primary dark:text-[#E8EDF0] dark:group-hover:text-[#25A8A2]"
           )}
         >
           {video.title}
         </h3>
 
-        {/* Full description without cut-off or line-clamp */}
+        {/* Full description without cut-off */}
         {video.description && (
-          <p className="whitespace-pre-line text-xs leading-relaxed text-muted-foreground">
+          <p className="whitespace-pre-line text-xs leading-relaxed text-muted-foreground dark:text-[#9AA7AE]">
             {video.description}
           </p>
         )}
 
         {/* Card Footer: Checkbox + Action Button */}
-        <div className="mt-auto flex items-center justify-between gap-3 border-t border-border/40 pt-3">
-          <label className="flex cursor-pointer items-center gap-2 text-xs font-medium text-muted-foreground select-none transition-colors hover:text-foreground">
+        <div className="mt-auto flex items-center justify-between gap-3 border-t border-border/40 dark:border-[#1F2C34] pt-3.5">
+          <label className="flex cursor-pointer items-center gap-2 text-xs font-medium text-muted-foreground select-none transition-colors hover:text-foreground dark:text-[#9AA7AE] dark:hover:text-[#E8EDF0]">
             <Checkbox
               checked={optimisticWatched}
               onCheckedChange={handleToggle}
               id={`watched-${video.id}`}
-              className="rounded-md"
+              className="rounded-md border-border dark:border-[#1F2C34] data-[state=checked]:bg-[#25A8A2] data-[state=checked]:border-[#25A8A2]"
               aria-label={`Mark "${video.title}" as ${optimisticWatched ? "unwatched" : "watched"}`}
             />
             <span className="flex items-center gap-1 text-xs">
               {optimisticWatched ? (
                 <>
-                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                  <span className="font-semibold text-emerald-700 dark:text-emerald-300">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-[#25A8A2]" />
+                  <span className="font-semibold text-[#25A8A2]">
                     Watched
                   </span>
                 </>
@@ -139,7 +139,7 @@ export function VideoCard({ video, initialWatched, index }: VideoCardProps) {
           <Button
             asChild
             size="sm"
-            className="h-8 rounded-lg px-3 text-xs font-semibold shadow-sm transition-all duration-150 active:scale-95"
+            className="h-8 rounded-xl px-3.5 text-xs font-semibold shadow-sm transition-all duration-150 active:scale-95 bg-primary text-primary-foreground hover:opacity-90 dark:bg-[#25A8A2] dark:text-white dark:hover:bg-[#20928D] dark:shadow-[0_0_10px_rgba(37,168,162,0.3)]"
           >
             <Link href={`/watch/${video.youtube_video_id}`}>
               <Play className="h-3 w-3 fill-current" />

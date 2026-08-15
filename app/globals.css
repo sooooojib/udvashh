@@ -28,26 +28,26 @@
   }
 
   .dark {
-    /* Dark Theme */
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 240 10% 4.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 240 10% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 240 5.9% 10%;
-    --secondary: 240 3.7% 15.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
-    --accent: 240 3.7% 15.9%;
-    --accent-foreground: 0 0% 98%;
+    /* SevenGrid Atmospheric Dark Aesthetic */
+    --background: 204 29% 5.5%;          /* #0A0F12 deep atmospheric midnight tone */
+    --foreground: 202 17% 93%;           /* #E8EDF0 soft silvery white text */
+    --card: 213 30% 9.6%;               /* #111820 dark navy-zinc surface */
+    --card-foreground: 202 17% 93%;      /* #E8EDF0 */
+    --popover: 213 30% 9.6%;            /* #111820 */
+    --popover-foreground: 202 17% 93%;
+    --primary: 177 64% 40.2%;           /* #25A8A2 luminous muted cyan/teal */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 212 33% 11.8%;         /* #141E28 elevated dark surface */
+    --secondary-foreground: 202 17% 93%;
+    --muted: 212 33% 11.8%;             /* #141E28 */
+    --muted-foreground: 201 12% 64.5%;   /* #9AA7AE */
+    --accent: 177 64% 40.2%;            /* #25A8A2 */
+    --accent-foreground: 0 0% 100%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 240 4.9% 83.9%;
+    --border: 204 26% 16.5%;            /* #1F2C34 1px subtle dark border */
+    --input: 204 26% 16.5%;             /* #1F2C34 */
+    --ring: 177 64% 40.2%;              /* #25A8A2 */
   }
 }
 
@@ -99,5 +99,13 @@ html:not(.dark) body {
     radial-gradient(1000px 500px at 50% -50px, rgba(220, 240, 230, 0.22), transparent 70%),
     radial-gradient(800px 400px at 90% 90%, rgba(225, 242, 232, 0.15), transparent 60%),
     hsl(140, 10%, 98.6%);
+  background-attachment: fixed;
+}
+
+html.dark body {
+  background:
+    radial-gradient(1200px 600px at 50% -120px, rgba(37, 168, 162, 0.08), transparent 70%),
+    radial-gradient(900px 500px at 90% 90%, rgba(20, 30, 40, 0.5), transparent 60%),
+    #0a0f12;
   background-attachment: fixed;
 }

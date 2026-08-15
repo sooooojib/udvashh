@@ -16,14 +16,14 @@ export async function Header() {
   }
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border/80 bg-background/80 backdrop-blur-md dark:border-zinc-800/80 dark:bg-zinc-950/80 transition-colors duration-200">
+    <header className="sticky top-0 z-50 w-full border-b border-border/80 bg-background/80 backdrop-blur-md dark:border-[#1F2C34]/80 dark:bg-[#0A0F12]/80 transition-colors duration-200">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        {/* Left side: Spacer for perfect centering */}
+        {/* Left side: User badge for perfect centering balance */}
         <div className="flex-1 flex items-center justify-start">
           {user && (
-            <div className="hidden sm:flex items-center gap-2 rounded-full border border-border/80 bg-card/80 px-3 py-1.5 text-xs font-medium text-foreground/80 dark:border-zinc-800 dark:bg-zinc-900/60 dark:text-zinc-300">
-              <User className="h-3.5 w-3.5 text-muted-foreground dark:text-zinc-400" />
-              <span className="max-w-[150px] truncate">{user.email}</span>
+            <div className="hidden sm:flex items-center gap-2 rounded-xl border border-border/80 bg-card/80 px-3 py-1.5 text-xs font-medium text-foreground/80 dark:border-[#1F2C34] dark:bg-[#111820] dark:text-[#E8EDF0]">
+              <User className="h-3.5 w-3.5 text-muted-foreground dark:text-[#9AA7AE]" />
+              <span className="max-w-[150px] truncate font-mono text-[11px]">{user.email}</span>
             </div>
           )}
         </div>
@@ -34,14 +34,14 @@ export async function Header() {
             href="/dashboard"
             className="flex items-center transition-opacity hover:opacity-90"
           >
-            <span className="text-2xl font-black tracking-tight text-foreground dark:text-zinc-100">
+            <span className="font-heading text-2xl font-black tracking-tight text-foreground dark:text-[#E8EDF0]">
               অবনতি
             </span>
           </Link>
           <ThemeToggle />
         </div>
 
-        {/* Right side: Logout button if logged in */}
+        {/* Right side: Logout button */}
         <div className="flex-1 flex items-center justify-end">
           {user && (
             <form action={logout}>
@@ -49,7 +49,7 @@ export async function Header() {
                 variant="outline"
                 size="sm"
                 type="submit"
-                className="gap-1.5 text-xs text-foreground/80 hover:text-red-600 hover:border-red-200 dark:text-zinc-300 dark:hover:text-red-400 h-8"
+                className="gap-1.5 text-xs text-foreground/80 hover:text-red-600 hover:border-red-200 dark:border-[#1F2C34] dark:bg-[#111820] dark:text-[#9AA7AE] dark:hover:text-red-400 dark:hover:border-red-500/30 h-8.5 rounded-xl"
               >
                 <LogOut className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">Log out</span>
