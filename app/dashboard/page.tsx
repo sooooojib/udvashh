@@ -24,8 +24,13 @@ export default async function DashboardPage() {
   if (!user) redirect("/login?redirectTo=/dashboard");
 
   const adminEmail = process.env.ADMIN_EMAIL;
+  const allowedAdmins = adminEmail
+    ? adminEmail.split(",").map((e) => e.trim().toLowerCase())
+    : [];
+
   const isOwner =
-    !adminEmail || user.email?.toLowerCase() === adminEmail.toLowerCase();
+    allowedAdmins.length === 0 ||
+    allowedAdmins.includes(user.email?.toLowerCase() || "");
 
   // Fetch all videos ordered by position
   const { data: videos } = await supabase

@@ -23,13 +23,20 @@ export async function syncNow(
     return { success: false, message: "Unauthorized. Please sign in." };
   }
 
-  // 2. Verify caller is the owner
+  // 2. Verify caller is an owner (supports comma-separated admin emails)
   const adminEmail = process.env.ADMIN_EMAIL;
-  if (adminEmail && user.email?.toLowerCase() !== adminEmail.toLowerCase()) {
-    return {
-      success: false,
-      message: "Forbidden. Only the project owner can trigger a manual sync.",
-    };
+  if (adminEmail) {
+    const allowedEmails = adminEmail
+      .split(",")
+      .map((e) => e.trim().toLowerCase());
+    const userEmail = user.email?.toLowerCase() || "";
+
+    if (!allowedEmails.includes(userEmail)) {
+      return {
+        success: false,
+        message: "Forbidden. Only the project owner can trigger a manual sync.",
+      };
+    }
   }
 
   const targetPlaylist = playlistId || process.env.YT_PLAYLIST_ID || "";
@@ -42,7 +49,7 @@ export async function syncNow(
     };
   }
 
-  // 3. Call syncPlaylist directly on the server — no HTTP round-trip needed
+  // 3. Call syncPlaylist directly on the server
   try {
     const result = await syncPlaylist(targetPlaylist);
 
