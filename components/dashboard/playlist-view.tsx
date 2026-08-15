@@ -14,7 +14,8 @@ import {
   Folder,
   Layers,
   ListVideo,
-  Play,
+  PlaySquare,
+  VideoOff,
 } from "lucide-react";
 
 interface PlaylistGroup {
@@ -37,16 +38,16 @@ export function PlaylistView({ videos, watchedVideoIds }: PlaylistViewProps) {
 
   const watchedSet = new Set(watchedVideoIds);
 
-  // Group and sort videos by playlist
+  // Group and sort videos by playlist, ensuring all known playlists are always included
   const groups = React.useMemo(() => {
     const map = new Map<string, Video[]>();
 
-    // Pre-populate known playlists in fixed order
+    // Pre-populate all 12 known playlists in fixed order
     KNOWN_PLAYLISTS.forEach((pl) => {
       map.set(pl.id, []);
     });
 
-    // Bucket videos
+    // Bucket videos into their playlist
     videos.forEach((video) => {
       const pid = video.playlist_id || "uncategorized";
       if (!map.has(pid)) {
@@ -58,16 +59,17 @@ export function PlaylistView({ videos, watchedVideoIds }: PlaylistViewProps) {
     const result: PlaylistGroup[] = [];
 
     map.forEach((vids, pid) => {
-      if (vids.length > 0) {
-        vids.sort((a, b) => a.position - b.position);
-        const totalDuration = vids.reduce((acc, v) => acc + (v.duration || 0), 0);
-        result.push({
-          id: pid,
-          name: getPlaylistName(pid),
-          videos: vids,
-          totalDuration,
-        });
-      }
+      vids.sort((a, b) => a.position - b.position);
+      const totalDuration = vids.reduce(
+        (acc, v) => acc + (v.duration || 0),
+        0
+      );
+      result.push({
+        id: pid,
+        name: getPlaylistName(pid),
+        videos: vids,
+        totalDuration,
+      });
     });
 
     return result;
@@ -131,8 +133,11 @@ export function PlaylistView({ videos, watchedVideoIds }: PlaylistViewProps) {
                 key={group.id}
                 onClick={() => {
                   setFilterPlaylistId(group.id);
-                  // Automatically expand this playlist when selected via pill
-                  setExpandedPlaylists((prev) => ({ ...prev, [group.id]: true }));
+                  // Automatically expand this playlist when selected
+                  setExpandedPlaylists((prev) => ({
+                    ...prev,
+                    [group.id]: true,
+                  }));
                 }}
                 className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
                   filterPlaylistId === group.id
@@ -145,7 +150,7 @@ export function PlaylistView({ videos, watchedVideoIds }: PlaylistViewProps) {
                 ) : (
                   <BookOpen className="h-3.5 w-3.5 opacity-60" />
                 )}
-                <span className="max-w-[140px] truncate">{group.name}</span>
+                <span className="max-w-[150px] truncate">{group.name}</span>
                 <span className="text-[10px] opacity-70 font-mono">
                   ({group.videos.length})
                 </span>
@@ -172,7 +177,8 @@ export function PlaylistView({ videos, watchedVideoIds }: PlaylistViewProps) {
         {displayedGroups.map((group) => {
           const isExpanded =
             expandedPlaylists[group.id] ||
-            (filterPlaylistId === group.id && expandedPlaylists[group.id] !== false);
+            (filterPlaylistId === group.id &&
+              expandedPlaylists[group.id] !== false);
 
           const groupWatchedCount = group.videos.filter((v) =>
             watchedSet.has(v.id)
@@ -236,7 +242,9 @@ export function PlaylistView({ videos, watchedVideoIds }: PlaylistViewProps) {
 
                       <span>•</span>
                       <span>
-                        {groupWatchedCount} of {group.videos.length} watched
+                        {group.videos.length > 0
+                          ? `${groupWatchedCount} of ${group.videos.length} watched`
+                          : "No videos uploaded yet"}
                       </span>
                     </div>
                   </div>
@@ -261,7 +269,9 @@ export function PlaylistView({ videos, watchedVideoIds }: PlaylistViewProps) {
                   {/* Click to expand/collapse chevron button */}
                   <div
                     className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-zinc-200 bg-zinc-50 transition-transform duration-300 dark:border-zinc-800 dark:bg-zinc-900 ${
-                      isExpanded ? "rotate-180 bg-zinc-100 dark:bg-zinc-800" : ""
+                      isExpanded
+                        ? "rotate-180 bg-zinc-100 dark:bg-zinc-800"
+                        : ""
                     }`}
                   >
                     <ChevronDown className="h-4 w-4 text-zinc-500 dark:text-zinc-400" />
@@ -269,19 +279,33 @@ export function PlaylistView({ videos, watchedVideoIds }: PlaylistViewProps) {
                 </div>
               </div>
 
-              {/* Expanded Content: Video Grid */}
+              {/* Expanded Content: Video Grid or Empty State */}
               {isExpanded && (
                 <div className="border-t border-zinc-100 bg-zinc-50/40 p-5 dark:border-zinc-900 dark:bg-zinc-900/20">
-                  <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                    {group.videos.map((video, idx) => (
-                      <VideoCard
-                        key={video.id}
-                        video={video}
-                        initialWatched={watchedSet.has(video.id)}
-                        index={idx}
-                      />
-                    ))}
-                  </div>
+                  {group.videos.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-8 text-center">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-100 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500">
+                        <VideoOff className="h-5 w-5" />
+                      </div>
+                      <p className="mt-2 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                        No videos in this playlist yet
+                      </p>
+                      <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+                        Upload videos to this YouTube playlist, then click &ldquo;Sync Now&rdquo; to populate it.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                      {group.videos.map((video, idx) => (
+                        <VideoCard
+                          key={video.id}
+                          video={video}
+                          initialWatched={watchedSet.has(video.id)}
+                          index={idx}
+                        />
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
