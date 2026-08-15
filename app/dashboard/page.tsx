@@ -57,6 +57,7 @@ export default async function DashboardPage() {
 
   const totalVideos = videos?.length ?? 0;
   const watchedCount = progressRows?.length ?? 0;
+  const livePercent = totalVideos > 0 ? Math.round((watchedCount / totalVideos) * 100) : 0;
 
   return (
     <main className="flex-1 p-4 sm:p-6 md:p-10 max-w-7xl mx-auto w-full space-y-8">
@@ -113,20 +114,45 @@ export default async function DashboardPage() {
               </span>
             </div>
 
-            {/* Content */}
-            <div className="my-4 space-y-1.5">
+            {/* Title */}
+            <div className="mt-4">
               <h3 className="font-heading text-lg font-bold tracking-tight text-foreground transition-colors group-hover:text-primary dark:text-[#E8EDF0] dark:group-hover:text-[#25A8A2]">
                 Live Classes
               </h3>
-              <p className="text-xs text-muted-foreground leading-relaxed dark:text-[#9AA7AE]">
-                Browse and watch recorded live classes across {KNOWN_PLAYLISTS.length} subjects with automated progress tracking.
-              </p>
+            </div>
+
+            {/* Module Live Stats Grid */}
+            <div className="my-4 grid grid-cols-3 gap-2 rounded-xl border border-border/40 bg-muted/20 p-2.5 dark:border-[#1F2C34] dark:bg-[#0A0F12]/60">
+              <div>
+                <span className="block text-[10px] font-medium text-muted-foreground uppercase tracking-wider dark:text-[#5C6A72]">
+                  Total
+                </span>
+                <span className="font-mono text-sm font-bold text-foreground dark:text-[#E8EDF0]">
+                  {totalVideos} <span className="text-[10px] font-normal text-muted-foreground">classes</span>
+                </span>
+              </div>
+              <div className="border-l border-border/40 pl-2.5 dark:border-[#1F2C34]">
+                <span className="block text-[10px] font-medium text-muted-foreground uppercase tracking-wider dark:text-[#5C6A72]">
+                  Completed
+                </span>
+                <span className="font-mono text-sm font-bold text-emerald-600 dark:text-[#25A8A2]">
+                  {watchedCount} <span className="text-[10px] font-normal text-muted-foreground">done</span>
+                </span>
+              </div>
+              <div className="border-l border-border/40 pl-2.5 dark:border-[#1F2C34]">
+                <span className="block text-[10px] font-medium text-muted-foreground uppercase tracking-wider dark:text-[#5C6A72]">
+                  Progress
+                </span>
+                <span className="font-mono text-sm font-bold text-foreground dark:text-[#E8EDF0]">
+                  {livePercent}%
+                </span>
+              </div>
             </div>
 
             {/* Meta & Button */}
             <div className="flex items-center justify-between border-t border-border/40 dark:border-[#1F2C34] pt-3 text-xs">
               <span className="font-medium text-muted-foreground font-mono text-[11px] dark:text-[#9AA7AE]">
-                {totalVideos} videos • {KNOWN_PLAYLISTS.length} subjects
+                {KNOWN_PLAYLISTS.length} subjects
               </span>
               <span className="flex items-center gap-1 font-bold text-primary dark:text-[#25A8A2] transition-transform group-hover:translate-x-0.5">
                 <span>View Classes</span>
@@ -146,13 +172,38 @@ export default async function DashboardPage() {
               </span>
             </div>
 
-            <div className="my-4 space-y-1.5">
+            <div className="mt-4">
               <h3 className="font-heading text-lg font-bold tracking-tight text-foreground/80 dark:text-[#E8EDF0]/80">
                 Lecture Notes & PDFs
               </h3>
-              <p className="text-xs text-muted-foreground leading-relaxed dark:text-[#9AA7AE]">
-                Downloadable slide decks, lecture summaries, and reference study sheets.
-              </p>
+            </div>
+
+            {/* Stats Row */}
+            <div className="my-4 grid grid-cols-3 gap-2 rounded-xl border border-border/40 bg-muted/15 p-2.5 dark:border-[#1F2C34]/60 dark:bg-[#0A0F12]/30">
+              <div>
+                <span className="block text-[10px] font-medium text-muted-foreground uppercase tracking-wider dark:text-[#5C6A72]">
+                  Total
+                </span>
+                <span className="font-mono text-sm font-bold text-foreground/70 dark:text-[#E8EDF0]/70">
+                  0 <span className="text-[10px] font-normal text-muted-foreground">PDFs</span>
+                </span>
+              </div>
+              <div className="border-l border-border/40 pl-2.5 dark:border-[#1F2C34]/60">
+                <span className="block text-[10px] font-medium text-muted-foreground uppercase tracking-wider dark:text-[#5C6A72]">
+                  Saved
+                </span>
+                <span className="font-mono text-sm font-bold text-foreground/70 dark:text-[#E8EDF0]/70">
+                  0 <span className="text-[10px] font-normal text-muted-foreground">read</span>
+                </span>
+              </div>
+              <div className="border-l border-border/40 pl-2.5 dark:border-[#1F2C34]/60">
+                <span className="block text-[10px] font-medium text-muted-foreground uppercase tracking-wider dark:text-[#5C6A72]">
+                  Status
+                </span>
+                <span className="font-mono text-xs font-semibold text-muted-foreground">
+                  Ready
+                </span>
+              </div>
             </div>
 
             <div className="flex items-center justify-between border-t border-border/30 dark:border-[#1F2C34]/40 pt-3 text-xs text-muted-foreground dark:text-[#5C6A72]">
@@ -172,13 +223,38 @@ export default async function DashboardPage() {
               </span>
             </div>
 
-            <div className="my-4 space-y-1.5">
+            <div className="mt-4">
               <h3 className="font-heading text-lg font-bold tracking-tight text-foreground/80 dark:text-[#E8EDF0]/80">
                 Model Tests & Quizzes
               </h3>
-              <p className="text-xs text-muted-foreground leading-relaxed dark:text-[#9AA7AE]">
-                Subject-wise practice quizzes, timed mock tests, and instant score evaluation.
-              </p>
+            </div>
+
+            {/* Stats Row */}
+            <div className="my-4 grid grid-cols-3 gap-2 rounded-xl border border-border/40 bg-muted/15 p-2.5 dark:border-[#1F2C34]/60 dark:bg-[#0A0F12]/30">
+              <div>
+                <span className="block text-[10px] font-medium text-muted-foreground uppercase tracking-wider dark:text-[#5C6A72]">
+                  Total
+                </span>
+                <span className="font-mono text-sm font-bold text-foreground/70 dark:text-[#E8EDF0]/70">
+                  0 <span className="text-[10px] font-normal text-muted-foreground">tests</span>
+                </span>
+              </div>
+              <div className="border-l border-border/40 pl-2.5 dark:border-[#1F2C34]/60">
+                <span className="block text-[10px] font-medium text-muted-foreground uppercase tracking-wider dark:text-[#5C6A72]">
+                  Attended
+                </span>
+                <span className="font-mono text-sm font-bold text-foreground/70 dark:text-[#E8EDF0]/70">
+                  0 <span className="text-[10px] font-normal text-muted-foreground">done</span>
+                </span>
+              </div>
+              <div className="border-l border-border/40 pl-2.5 dark:border-[#1F2C34]/60">
+                <span className="block text-[10px] font-medium text-muted-foreground uppercase tracking-wider dark:text-[#5C6A72]">
+                  Status
+                </span>
+                <span className="font-mono text-xs font-semibold text-muted-foreground">
+                  Ready
+                </span>
+              </div>
             </div>
 
             <div className="flex items-center justify-between border-t border-border/30 dark:border-[#1F2C34]/40 pt-3 text-xs text-muted-foreground dark:text-[#5C6A72]">
