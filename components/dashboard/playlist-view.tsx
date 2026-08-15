@@ -248,7 +248,7 @@ export function PlaylistView({ videos, watchedVideoIds }: PlaylistViewProps) {
 
               {/* Expanded Content: Video Grid or Empty State */}
               {isExpanded && (
-                <div className="border-t border-border/40 bg-muted/15 p-5 dark:border-[#1F2C34]/70 dark:bg-[#0A0F12]/60">
+                <div className="border-t border-border/40 bg-muted/15 p-5 dark:border-[#1F2C34]/70 dark:bg-[#0A0F12]/60 animate-fade-in-up">
                   {group.videos.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-8 text-center">
                       <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted text-muted-foreground dark:bg-[#141E28] dark:text-[#5C6A72]">

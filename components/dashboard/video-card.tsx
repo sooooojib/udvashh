@@ -8,6 +8,7 @@ import { toggleWatched } from "@/app/actions/progress";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { toast } from "sonner";
 import { formatDuration } from "@/lib/utils/format";
 import { Check, CheckCircle2, Clock, Play } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -39,6 +40,15 @@ export function VideoCard({ video, initialWatched, index }: VideoCardProps) {
     const nextWatched = checked === true;
     startTransition(async () => {
       setOptimisticWatched(nextWatched);
+      if (nextWatched) {
+        toast.success("Marked as watched", {
+          description: video.title,
+        });
+      } else {
+        toast.info("Marked as unwatched", {
+          description: video.title,
+        });
+      }
       await toggleWatched(video.id, nextWatched);
     });
   };
@@ -46,7 +56,7 @@ export function VideoCard({ video, initialWatched, index }: VideoCardProps) {
   return (
     <Card
       className={cn(
-        "group relative flex flex-col overflow-hidden rounded-2xl border transition-all duration-200 ease-in-out hover:scale-[1.01] hover:shadow-md",
+        "group relative flex flex-col overflow-hidden rounded-2xl border transition-all duration-200 ease-out hover:scale-[1.015] hover:shadow-md transform-gpu will-change-transform",
         optimisticWatched
           ? "border-[#25A8A2]/30 bg-[#25A8A2]/5 dark:border-[#25A8A2]/40 dark:bg-[#25A8A2]/10 shadow-[0_0_15px_rgba(37,168,162,0.08)]"
           : "border-border/60 bg-card/90 backdrop-blur-md dark:border-[#1F2C34] dark:bg-[#111820] dark:hover:border-[#25A8A2]/50 hover:border-primary/40"
@@ -60,6 +70,8 @@ export function VideoCard({ video, initialWatched, index }: VideoCardProps) {
             alt={video.title}
             fill
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            loading={index < 4 ? "eager" : "lazy"}
+            decoding="async"
             className="object-cover transition-transform duration-300 ease-out group-hover:scale-105"
           />
         ) : (

@@ -66,7 +66,7 @@ export default async function WatchPage({ params }: WatchPageProps) {
   const playlistName = getPlaylistName(video.playlist_id);
 
   return (
-    <main className="flex-1 w-full max-w-5xl mx-auto px-4 py-6 sm:px-6 md:py-10">
+    <main className="flex-1 w-full max-w-5xl mx-auto px-4 py-6 sm:px-6 md:py-10 animate-fade-in-up">
       <VideoPlayer
         videoId={video.id}
         youtubeVideoId={video.youtube_video_id}

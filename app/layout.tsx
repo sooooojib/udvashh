@@ -3,6 +3,7 @@ import { Plus_Jakarta_Sans, Geist, JetBrains_Mono, Anek_Bangla } from "next/font
 import { Header } from "@/components/header";
 import { ThemeProvider } from "@/components/theme-provider";
 import { TopProgressBar } from "@/components/top-progress-bar";
+import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
 
 const jakarta = Plus_Jakarta_Sans({
@@ -58,6 +59,7 @@ export default function RootLayout({
           <TopProgressBar />
           <Header />
           <div className="flex-1 flex flex-col">{children}</div>
+          <Toaster />
         </ThemeProvider>
       </body>
     </html>

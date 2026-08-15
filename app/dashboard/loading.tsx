@@ -1,67 +1,56 @@
-import { Card, CardContent } from "@/components/ui/card";
-
-function SkeletonPulse({ className }: { className?: string }) {
-  return (
-    <div
-      className={`animate-pulse rounded-lg bg-zinc-200 dark:bg-zinc-800 ${className ?? ""}`}
-    />
-  );
-}
-
-function VideoCardSkeleton() {
-  return (
-    <Card className="overflow-hidden border-zinc-200/80 dark:border-zinc-800">
-      {/* Thumbnail */}
-      <SkeletonPulse className="aspect-video w-full rounded-none" />
-      <CardContent className="flex flex-col gap-3 p-4">
-        {/* Title */}
-        <SkeletonPulse className="h-4 w-full" />
-        <SkeletonPulse className="h-4 w-3/4" />
-        {/* Description lines */}
-        <div className="space-y-1.5 pt-1">
-          <SkeletonPulse className="h-3 w-full" />
-          <SkeletonPulse className="h-3 w-full" />
-          <SkeletonPulse className="h-3 w-2/3" />
-        </div>
-        {/* Footer */}
-        <div className="mt-auto flex items-center justify-between pt-2">
-          <SkeletonPulse className="h-5 w-28" />
-          <SkeletonPulse className="h-9 w-20 rounded-xl" />
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
 export default function DashboardLoading() {
   return (
-    <main className="flex-1 p-4 sm:p-6 md:p-10 max-w-7xl mx-auto w-full space-y-8">
-      {/* Header skeleton */}
-      <div className="space-y-2">
-        <SkeletonPulse className="h-9 w-48" />
-        <SkeletonPulse className="h-4 w-64" />
-      </div>
-
-      {/* Progress bar skeleton */}
-      <div className="rounded-2xl border border-zinc-200/80 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950/80">
-        <div className="mb-3 flex items-center justify-between">
+    <main className="flex-1 p-4 sm:p-6 md:p-10 max-w-7xl mx-auto w-full space-y-8 animate-fade-in-up">
+      {/* Overall Progress Bar Skeleton */}
+      <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-card/60 p-5 shadow-sm backdrop-blur-md dark:border-[#1F2C34] dark:bg-[#111820]/60">
+        <div className="mb-3 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <SkeletonPulse className="h-5 w-5 rounded-full" />
+            <div className="h-8 w-8 rounded-lg bg-muted/60 dark:bg-[#141E28] animate-pulse" />
             <div className="space-y-1.5">
-              <SkeletonPulse className="h-4 w-28" />
-              <SkeletonPulse className="h-3 w-40" />
+              <div className="h-4 w-28 rounded-md bg-muted/70 dark:bg-[#141E28] animate-pulse" />
+              <div className="h-3 w-36 rounded-md bg-muted/40 dark:bg-[#141E28]/60 animate-pulse" />
             </div>
           </div>
-          <SkeletonPulse className="h-8 w-14" />
+          <div className="h-7 w-14 rounded-md bg-muted/70 dark:bg-[#141E28] animate-pulse" />
         </div>
-        <SkeletonPulse className="h-2.5 w-full rounded-full" />
+        <div className="h-2 w-full rounded-full bg-muted/50 dark:bg-[#141E28] animate-pulse" />
       </div>
 
-      {/* Video grid skeleton */}
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {Array.from({ length: 8 }).map((_, i) => (
-          <VideoCardSkeleton key={i} />
-        ))}
+      {/* Course Sections Skeleton */}
+      <div className="space-y-3.5">
+        <div className="h-5 w-36 rounded-md bg-muted/70 dark:bg-[#141E28] animate-pulse" />
+
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3].map((i) => (
+            <div
+              key={i}
+              className="flex flex-col justify-between overflow-hidden rounded-2xl border border-border/60 bg-card/60 p-5.5 shadow-sm backdrop-blur-md dark:border-[#1F2C34] dark:bg-[#111820]/60"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <div className="h-11 w-11 rounded-xl bg-muted/60 dark:bg-[#141E28] animate-pulse" />
+                <div className="h-5 w-16 rounded-full bg-muted/40 dark:bg-[#141E28] animate-pulse" />
+              </div>
+
+              <div className="mt-4">
+                <div className="h-6 w-32 rounded-md bg-muted/70 dark:bg-[#141E28] animate-pulse" />
+              </div>
+
+              <div className="my-4 grid grid-cols-3 gap-2 rounded-xl border border-border/40 bg-muted/15 p-2.5 dark:border-[#1F2C34]/60 dark:bg-[#0A0F12]/30">
+                {[1, 2, 3].map((j) => (
+                  <div key={j} className="space-y-1">
+                    <div className="h-2.5 w-10 rounded bg-muted/50 dark:bg-[#141E28]/80 animate-pulse" />
+                    <div className="h-4 w-12 rounded bg-muted/70 dark:bg-[#141E28] animate-pulse" />
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex items-center justify-between border-t border-border/40 dark:border-[#1F2C34] pt-3">
+                <div className="h-3.5 w-20 rounded bg-muted/40 dark:bg-[#141E28] animate-pulse" />
+                <div className="h-3.5 w-24 rounded bg-muted/50 dark:bg-[#141E28] animate-pulse" />
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </main>
   );

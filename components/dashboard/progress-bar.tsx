@@ -30,7 +30,7 @@ export function WatchProgressBar({ total, watched }: WatchProgressBarProps) {
           <div>
             <p className="font-heading text-sm font-bold tracking-tight text-foreground dark:text-[#E8EDF0]">
               {watched === total && total > 0
-                ? "All videos watched! 🎉"
+                ? "All videos completed"
                 : "Your Progress"}
             </p>
             <p className="text-xs text-muted-foreground font-mono dark:text-[#9AA7AE]">

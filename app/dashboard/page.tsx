@@ -60,7 +60,7 @@ export default async function DashboardPage() {
   const livePercent = totalVideos > 0 ? Math.round((watchedCount / totalVideos) * 100) : 0;
 
   return (
-    <main className="flex-1 p-4 sm:p-6 md:p-10 max-w-7xl mx-auto w-full space-y-8">
+    <main className="flex-1 p-4 sm:p-6 md:p-10 max-w-7xl mx-auto w-full space-y-8 animate-fade-in-up">
       {/* Overall Progress Bar */}
       {totalVideos > 0 && (
         <WatchProgressBar total={totalVideos} watched={watchedCount} />

@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useOptimistic, useTransition } from "react";
 import { toggleWatched } from "@/app/actions/progress";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import { formatDuration } from "@/lib/utils/format";
 import {
   ArrowLeft,
@@ -26,8 +27,10 @@ const YouTube = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="flex aspect-video w-full items-center justify-center rounded-xl bg-muted/40 animate-pulse">
-        <Play className="h-10 w-10 text-muted-foreground/40" />
+      <div className="flex aspect-video w-full items-center justify-center rounded-xl bg-muted/20 dark:bg-[#0A0F12] animate-pulse">
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted/40 text-muted-foreground dark:bg-[#141E28] dark:text-[#5C6A72]">
+          <Play className="h-6 w-6 ml-0.5" />
+        </div>
       </div>
     ),
   }
@@ -65,6 +68,15 @@ export function VideoPlayer({
     const nextWatched = !optimisticWatched;
     startTransition(async () => {
       setOptimisticWatched(nextWatched);
+      if (nextWatched) {
+        toast.success("Marked as watched", {
+          description: title,
+        });
+      } else {
+        toast.info("Marked as unwatched", {
+          description: title,
+        });
+      }
       await toggleWatched(videoId, nextWatched);
     });
   };
@@ -74,6 +86,9 @@ export function VideoPlayer({
       setHasAutoMarked(true);
       startTransition(async () => {
         setOptimisticWatched(true);
+        toast.success("Video completed", {
+          description: "Progress saved automatically.",
+        });
         await toggleWatched(videoId, true);
       });
     }
@@ -147,7 +162,7 @@ export function VideoPlayer({
       </div>
 
       {/* YouTube Player Container */}
-      <div className="overflow-hidden rounded-xl border border-border/60 bg-black shadow-lg">
+      <div className="overflow-hidden rounded-2xl border border-border/60 bg-black shadow-xl dark:border-[#1F2C34]">
         <div className="aspect-video w-full">
           <YouTube
             videoId={youtubeVideoId}
@@ -167,29 +182,38 @@ export function VideoPlayer({
       </div>
 
       {/* Controls Bar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-xl border border-border/60 bg-card/90 p-3 shadow-sm backdrop-blur-sm">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-2xl border border-border/60 bg-card/90 p-3.5 shadow-sm backdrop-blur-md dark:border-[#1F2C34] dark:bg-[#111820]">
         <div className="flex items-center gap-3">
           {/* Watched Toggle Button */}
           <Button
             variant={optimisticWatched ? "outline" : "default"}
             onClick={handleToggle}
             disabled={isPending}
-            className="h-9 rounded-lg gap-2 font-semibold shadow-sm transition-all active:scale-95 text-xs"
+            className={`h-9 rounded-xl gap-2 font-semibold shadow-sm transition-all active:scale-95 text-xs ${
+              optimisticWatched
+                ? "border-[#25A8A2]/40 text-[#25A8A2] bg-[#25A8A2]/10 hover:bg-[#25A8A2]/20 dark:border-[#25A8A2]/40 dark:bg-[#25A8A2]/15 dark:text-[#25A8A2]"
+                : "bg-primary text-primary-foreground dark:bg-[#25A8A2] dark:text-white dark:hover:bg-[#20928D] dark:shadow-[0_0_10px_rgba(37,168,162,0.3)]"
+            }`}
           >
             {isPending ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : optimisticWatched ? (
-              <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 stroke-[3]" />
+              <Check className="h-3.5 w-3.5 stroke-[3]" />
             ) : (
               <Circle className="h-3.5 w-3.5" />
             )}
-            <span>{optimisticWatched ? "Unwatch" : "Mark as watched"}</span>
+            <span>{optimisticWatched ? "Marked as Watched" : "Mark as Watched"}</span>
           </Button>
         </div>
 
         <div className="flex items-center gap-2">
           {/* Back to Live Classes button */}
-          <Button asChild variant="outline" size="sm" className="h-9 rounded-lg gap-1.5 text-xs">
+          <Button
+            asChild
+            variant="outline"
+            size="sm"
+            className="h-9 rounded-xl gap-1.5 text-xs dark:border-[#1F2C34] dark:bg-[#141E28] dark:text-[#E8EDF0] dark:hover:bg-[#1F2C34]"
+          >
             <Link href="/live-classes">
               <ArrowLeft className="h-3.5 w-3.5" />
               <span>Live Classes</span>
@@ -198,7 +222,11 @@ export function VideoPlayer({
 
           {/* Next Video button */}
           {nextVideoId && (
-            <Button asChild size="sm" className="h-9 rounded-lg gap-1.5 font-semibold shadow-sm text-xs">
+            <Button
+              asChild
+              size="sm"
+              className="h-9 rounded-xl gap-1.5 font-semibold shadow-sm text-xs bg-primary text-primary-foreground dark:bg-[#25A8A2] dark:text-white dark:hover:bg-[#20928D]"
+            >
               <Link href={`/watch/${nextVideoId}`}>
                 <span>Next video</span>
                 <SkipForward className="h-3.5 w-3.5" />
@@ -210,12 +238,12 @@ export function VideoPlayer({
 
       {/* Description Box */}
       {description && (
-        <div className="rounded-xl border border-border/60 bg-card/90 p-5 shadow-sm backdrop-blur-sm">
-          <div className="mb-2.5 flex items-center gap-2 font-heading font-bold text-sm tracking-tight text-foreground">
-            <FileText className="h-4 w-4 text-muted-foreground" />
+        <div className="rounded-2xl border border-border/60 bg-card/90 p-5 shadow-sm backdrop-blur-md dark:border-[#1F2C34] dark:bg-[#111820]">
+          <div className="mb-2.5 flex items-center gap-2 font-heading font-bold text-sm tracking-tight text-foreground dark:text-[#E8EDF0]">
+            <FileText className="h-4 w-4 text-muted-foreground dark:text-[#25A8A2]" />
             <span>Description</span>
           </div>
-          <p className="whitespace-pre-line text-xs leading-relaxed text-muted-foreground">
+          <p className="whitespace-pre-line text-xs leading-relaxed text-muted-foreground dark:text-[#9AA7AE]">
             {description}
           </p>
         </div>

@@ -59,7 +59,7 @@ export default async function LiveClassesPage() {
   const watchedCount = watchedVideoIds.length;
 
   return (
-    <main className="flex-1 p-4 sm:p-6 md:p-10 max-w-7xl mx-auto w-full space-y-8">
+    <main className="flex-1 p-4 sm:p-6 md:p-10 max-w-7xl mx-auto w-full space-y-8 animate-fade-in-up">
       {/* Clean Page Header with SevenGrid Accent */}
       <div className="flex items-center gap-3.5">
         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#25A8A2]/15 text-[#25A8A2] ring-1 ring-[#25A8A2]/30 shadow-sm">
