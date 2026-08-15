@@ -78,6 +78,7 @@
   --font-heading: var(--font-heading), ui-sans-serif, system-ui, sans-serif;
   --font-sans: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-mono), ui-monospace, monospace;
+  --font-bengali: var(--font-bengali), ui-sans-serif, system-ui, sans-serif;
 }
 
 body {
@@ -92,6 +93,10 @@ body {
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-heading);
   letter-spacing: -0.025em;
+}
+
+.font-bengali {
+  font-family: var(--font-bengali);
 }
 
 html:not(.dark) body {

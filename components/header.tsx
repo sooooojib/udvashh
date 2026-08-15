@@ -28,15 +28,16 @@ export async function Header() {
           )}
         </div>
 
-        {/* Center: Brand name "অবনতি" + Mode Change Button */}
+        {/* Center: Custom Typographic Brand Logo "অবনতি" + Mode Change Button */}
         <div className="flex items-center justify-center gap-3">
           <Link
             href="/dashboard"
-            className="flex items-center transition-opacity hover:opacity-90"
+            className="group flex items-baseline transition-all duration-300 hover:opacity-90 hover:drop-shadow-[0_0_12px_rgba(37,168,162,0.35)]"
           >
-            <span className="font-heading text-2xl font-black tracking-tight text-foreground dark:text-[#E8EDF0]">
+            <span className="font-bengali text-2xl font-extrabold tracking-normal bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-600 dark:from-white dark:via-[#E8EDF0] dark:to-[#9AA7AE] bg-clip-text text-transparent select-none">
               অবনতি
             </span>
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#25A8A2] shadow-[0_0_8px_#25A8A2] ml-1 mb-0.5 group-hover:scale-125 transition-transform duration-300" />
           </Link>
           <ThemeToggle />
         </div>

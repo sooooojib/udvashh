@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans, Geist, JetBrains_Mono } from "next/font/google";
+import { Plus_Jakarta_Sans, Geist, JetBrains_Mono, Anek_Bangla } from "next/font/google";
 import { Header } from "@/components/header";
 import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
@@ -24,6 +24,13 @@ const jetbrainsMono = JetBrains_Mono({
   display: "swap",
 });
 
+const anekBangla = Anek_Bangla({
+  variable: "--font-bengali",
+  subsets: ["bengali", "latin"],
+  weight: ["600", "700", "800"],
+  display: "swap",
+});
+
 export const metadata: Metadata = {
   title: "অবনতি",
   description: "Modern learning platform with Supabase authentication and YouTube playlist progress tracking",
@@ -38,7 +45,7 @@ export default function RootLayout({
     <html
       lang="bn"
       suppressHydrationWarning
-      className={`${jakarta.variable} ${geistSans.variable} ${jetbrainsMono.variable} h-full antialiased`}
+      className={`${jakarta.variable} ${geistSans.variable} ${jetbrainsMono.variable} ${anekBangla.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col font-sans bg-background text-foreground transition-colors duration-200">
         <ThemeProvider
