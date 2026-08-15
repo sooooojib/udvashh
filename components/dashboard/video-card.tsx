@@ -96,7 +96,7 @@ export function VideoCard({ video, initialWatched, index }: VideoCardProps) {
         {/* Title */}
         <h3
           className={cn(
-            "font-heading line-clamp-2 text-sm font-bold leading-snug tracking-tight transition-colors",
+            "font-heading text-sm font-bold leading-snug tracking-tight transition-colors",
             optimisticWatched
               ? "text-muted-foreground"
               : "text-foreground group-hover:text-primary transition-colors"
@@ -105,9 +105,9 @@ export function VideoCard({ video, initialWatched, index }: VideoCardProps) {
           {video.title}
         </h3>
 
-        {/* Description with graceful line-breaks & relaxed leading */}
+        {/* Full description without cut-off or line-clamp */}
         {video.description && (
-          <p className="line-clamp-3 whitespace-pre-line text-xs leading-relaxed text-muted-foreground">
+          <p className="whitespace-pre-line text-xs leading-relaxed text-muted-foreground">
             {video.description}
           </p>
         )}
