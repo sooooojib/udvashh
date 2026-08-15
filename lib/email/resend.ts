@@ -1,6 +1,9 @@
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Lazy getter — only instantiated at runtime (inside function calls), never at build time
+function getResend() {
+  return new Resend(process.env.RESEND_API_KEY);
+}
 
 const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL || "https://udvashh.vercel.app";
@@ -109,7 +112,7 @@ export async function sendAdminApprovalEmail({
 </body>
 </html>`;
 
-  return resend.emails.send({
+  return getResend().emails.send({
     from: FROM_ADDRESS,
     to: adminEmails,
     subject: `[অবনতি] New signup — approve ${userEmail}`,
@@ -198,7 +201,7 @@ export async function sendUserApprovedEmail({
 </body>
 </html>`;
 
-  return resend.emails.send({
+  return getResend().emails.send({
     from: FROM_ADDRESS,
     to: [userEmail],
     subject: `[অবনতি] Your account has been approved — sign in now`,
