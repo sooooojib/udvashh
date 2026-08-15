@@ -20,7 +20,7 @@ export async function generateMetadata({
     .single();
 
   return {
-    title: video ? `${video.title} | Udvash` : "Watch | Udvash",
+    title: video ? `${video.title} | অবনতি` : "Watch | অবনতি",
   };
 }
 

@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Udvash - Learn & Grow",
+  title: "অবনতি",
   description: "Modern learning platform with Supabase authentication and YouTube playlist progress tracking",
 };
 
@@ -26,7 +26,7 @@ export default function RootLayout({
 }) {
   return (
     <html
-      lang="en"
+      lang="bn"
       suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >

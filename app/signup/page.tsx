@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { SignupForm } from "@/components/auth/signup-form";
 
 export const metadata: Metadata = {
-  title: "Create an Account | Udvash",
+  title: "Create an Account | অবনতি",
   description: "Sign up for a new account",
 };
 

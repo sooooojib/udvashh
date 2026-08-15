@@ -21,12 +21,11 @@ export async function Header() {
         <div className="flex items-center gap-6">
           <Link
             href="/"
-            className="flex items-center gap-2.5 text-lg font-bold tracking-tight text-zinc-900 transition-opacity hover:opacity-90 dark:text-zinc-100"
+            className="flex items-center transition-opacity hover:opacity-90"
           >
-            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-zinc-900 text-white shadow-sm dark:bg-zinc-100 dark:text-zinc-900 font-extrabold text-sm">
-              U
+            <span className="text-2xl font-black tracking-tight text-zinc-900 dark:text-zinc-100">
+              অবনতি
             </span>
-            <span className="font-semibold tracking-tight">Udvash</span>
           </Link>
 
           <nav className="hidden sm:flex items-center gap-4 text-sm font-medium text-zinc-600 dark:text-zinc-400">
