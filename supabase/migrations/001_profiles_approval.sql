@@ -40,7 +40,7 @@ BEGIN
     NEW.email,
     COALESCE(NEW.raw_user_meta_data->>'full_name', ''),
     false,
-    encode(gen_random_bytes(32), 'hex')
+    replace(gen_random_uuid()::text || gen_random_uuid()::text, '-', '')
   )
   ON CONFLICT (id) DO NOTHING;
   RETURN NEW;
