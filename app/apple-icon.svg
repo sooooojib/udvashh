@@ -1,0 +1,20 @@
+<svg width="180" height="180" viewBox="0 0 180 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Rounded Apple Touch Icon Background -->
+  <rect width="180" height="180" rx="40" fill="#0A0F12"/>
+  <rect x="1" y="1" width="178" height="178" rx="39" stroke="#1F2C34" stroke-width="2"/>
+
+  <!-- Scaled Geometric Two-Tier Logo Mark -->
+  <g fill="#E8EDF0" transform="translate(18, 18) scale(4.5)">
+    <!-- Tier 1 (Top) -->
+    <rect x="6.5" y="5.5" width="3.2" height="7.5" rx="0.8" />
+    <rect x="14.4" y="5.5" width="3.2" height="7.5" rx="0.8" />
+    <rect x="22.3" y="5.5" width="3.2" height="7.5" rx="0.8" />
+    <rect x="4.5" y="13" width="23" height="2.2" rx="0.8" />
+
+    <!-- Tier 2 (Bottom) -->
+    <rect x="6.5" y="17" width="3.2" height="7.5" rx="0.8" />
+    <rect x="14.4" y="17" width="3.2" height="7.5" rx="0.8" />
+    <rect x="22.3" y="17" width="3.2" height="7.5" rx="0.8" />
+    <rect x="4.5" y="24.5" width="23" height="2.2" rx="0.8" />
+  </g>
+</svg>

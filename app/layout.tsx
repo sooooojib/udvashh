@@ -36,6 +36,13 @@ const anekBangla = Anek_Bangla({
 export const metadata: Metadata = {
   title: "অবনতি",
   description: "Modern learning platform with Supabase authentication and YouTube playlist progress tracking",
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/favicon.svg", type: "image/svg+xml" },
+    ],
+    apple: "/apple-icon.svg",
+  },
 };
 
 export default function RootLayout({
