@@ -49,7 +49,7 @@ export async function login(
       await supabase.auth.signOut();
       return {
         error:
-          "Your account is pending admin approval. You will receive an email once your account has been approved.",
+          "Your account is pending admin approval. Once the administrator approves your account, you will be able to sign in.",
       };
     }
   }

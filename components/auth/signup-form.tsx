@@ -95,9 +95,9 @@ export function SignupForm() {
             {/* Info steps */}
             <div className="w-full space-y-2.5 text-left rounded-xl border border-border/60 bg-muted/30 p-4 dark:border-[#1F2C34] dark:bg-[#0A0F12]/40">
               {[
-                "The admin has been notified of your request.",
-                "Once approved, you will receive a confirmation email.",
-                "You can then sign in with your credentials.",
+                "Your account has been registered successfully.",
+                "The administrator will approve your account from the dashboard.",
+                "Once approved, you can sign in directly with your email and password.",
               ].map((step, i) => (
                 <div key={i} className="flex items-start gap-2.5">
                   <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-[#25A8A2]/15 text-[10px] font-bold text-[#25A8A2]">
