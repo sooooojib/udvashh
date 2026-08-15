@@ -144,8 +144,16 @@ export async function syncPlaylist(playlistId: string): Promise<SyncResult> {
     }
   }
 
-  // 3. Prepare video records for upsert
-  const videoRecords = validItems.map((item) => {
+  // 3. Sort items naturally by class number (e.g. 01, 02, 03) and prepare records for upsert
+  const { compareVideos } = await import("@/lib/utils/format");
+  validItems.sort((a, b) =>
+    compareVideos(
+      { title: a.snippet?.title, position: a.snippet?.position },
+      { title: b.snippet?.title, position: b.snippet?.position }
+    )
+  );
+
+  const videoRecords = validItems.map((item, idx) => {
     const videoId = (item.contentDetails?.videoId ||
       item.snippet?.resourceId?.videoId) as string;
     const title = item.snippet?.title || "Untitled";
@@ -155,7 +163,7 @@ export async function syncPlaylist(playlistId: string): Promise<SyncResult> {
       item.snippet?.thumbnails?.high?.url ||
       item.snippet?.thumbnails?.default?.url ||
       "";
-    const position = item.snippet?.position ?? 0;
+    const position = idx;
     const publishedAt =
       item.contentDetails?.videoPublishedAt ||
       item.snippet?.publishedAt ||

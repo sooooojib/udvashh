@@ -9,7 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { formatDuration } from "@/lib/utils/format";
+import { formatDuration, extractClassNumber } from "@/lib/utils/format";
 import { Check, CheckCircle2, Clock, Play } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -35,6 +35,7 @@ export function VideoCard({ video, initialWatched, index }: VideoCardProps) {
   const [optimisticWatched, setOptimisticWatched] =
     useOptimistic(initialWatched);
   const [, startTransition] = useTransition();
+  const classNumber = extractClassNumber(video.title) ?? (index + 1);
 
   const handleToggle = (checked: boolean | "indeterminate") => {
     const nextWatched = checked === true;
@@ -90,7 +91,7 @@ export function VideoCard({ video, initialWatched, index }: VideoCardProps) {
 
         {/* Index/Position tag */}
         <div className="absolute left-2 top-2 flex h-5 min-w-5 items-center justify-center rounded-md bg-black/80 px-1.5 text-[11px] font-bold text-white shadow-sm backdrop-blur-md font-mono">
-          {index + 1}
+          {classNumber}
         </div>
 
         {/* Watched visual overlay with glowing SevenGrid cyan/teal */}

@@ -53,15 +53,30 @@ export default async function WatchPage({ params }: WatchPageProps) {
 
   const isWatched = progress?.watched === true;
 
-  // Find the next video in the same playlist by position
-  const { data: nextVideo } = await supabase
+  // Find all videos in the same playlist and sort naturally by class number
+  const { data: playlistVideos } = await supabase
     .from("videos")
-    .select("youtube_video_id")
-    .eq("playlist_id", video.playlist_id)
-    .gt("position", video.position)
-    .order("position", { ascending: true })
-    .limit(1)
-    .single();
+    .select("youtube_video_id, title, position")
+    .eq("playlist_id", video.playlist_id);
+
+  let nextVideoId: string | null = null;
+  let videoPosition = video.position;
+
+  if (playlistVideos && playlistVideos.length > 0) {
+    const { compareVideos } = await import("@/lib/utils/format");
+    playlistVideos.sort(compareVideos);
+
+    const currentIndex = playlistVideos.findIndex(
+      (v) => v.youtube_video_id === video.youtube_video_id
+    );
+
+    if (currentIndex !== -1) {
+      videoPosition = currentIndex;
+      if (currentIndex + 1 < playlistVideos.length) {
+        nextVideoId = playlistVideos[currentIndex + 1].youtube_video_id;
+      }
+    }
+  }
 
   const playlistName = getPlaylistName(video.playlist_id);
 
@@ -73,10 +88,10 @@ export default async function WatchPage({ params }: WatchPageProps) {
         title={video.title}
         description={video.description}
         duration={video.duration}
-        position={video.position}
+        position={videoPosition}
         playlistName={playlistName}
         initialWatched={isWatched}
-        nextVideoId={nextVideo?.youtube_video_id ?? null}
+        nextVideoId={nextVideoId}
       />
     </main>
   );

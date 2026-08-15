@@ -4,7 +4,7 @@ import * as React from "react";
 import { VideoCard, type Video } from "@/components/dashboard/video-card";
 import { KNOWN_PLAYLISTS, getPlaylistName } from "@/lib/youtube/playlists";
 import { Progress } from "@/components/ui/progress";
-import { formatHoursMinutes } from "@/lib/utils/format";
+import { formatHoursMinutes, compareVideos } from "@/lib/utils/format";
 import {
   BookOpen,
   CheckCircle2,
@@ -57,7 +57,7 @@ export function PlaylistView({ videos, watchedVideoIds }: PlaylistViewProps) {
     const result: PlaylistGroup[] = [];
 
     map.forEach((vids, pid) => {
-      vids.sort((a, b) => a.position - b.position);
+      vids.sort(compareVideos);
       const totalDuration = vids.reduce(
         (acc, v) => acc + (v.duration || 0),
         0
