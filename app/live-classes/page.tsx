@@ -70,11 +70,6 @@ export default async function LiveClassesPage() {
         </h1>
       </div>
 
-      {/* Progress Bar */}
-      {videoList.length > 0 && (
-        <WatchProgressBar total={videoList.length} watched={watchedCount} />
-      )}
-
       {/* Owner Sync Panel */}
       {isOwner && (
         <Card className="overflow-hidden rounded-2xl border border-border/60 bg-card/90 shadow-sm backdrop-blur-md dark:border-[#1F2C34] dark:bg-[#111820]">
@@ -98,6 +93,11 @@ export default async function LiveClassesPage() {
             <OwnerSyncButton playlists={KNOWN_PLAYLISTS} />
           </CardContent>
         </Card>
+      )}
+
+      {/* Progress Bar */}
+      {videoList.length > 0 && (
+        <WatchProgressBar total={videoList.length} watched={watchedCount} />
       )}
 
       {/* Video Content Grouped by Playlist */}

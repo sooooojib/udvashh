@@ -61,11 +61,6 @@ export default async function DashboardPage() {
 
   return (
     <main className="flex-1 p-4 sm:p-6 md:p-10 max-w-7xl mx-auto w-full space-y-8 animate-fade-in-up">
-      {/* Overall Progress Bar */}
-      {totalVideos > 0 && (
-        <WatchProgressBar total={totalVideos} watched={watchedCount} />
-      )}
-
       {/* Owner Sync Panel */}
       {isOwner && (
         <Card className="overflow-hidden rounded-2xl border border-border/60 bg-card/90 shadow-sm backdrop-blur-md dark:border-[#1F2C34] dark:bg-[#111820]">
@@ -89,6 +84,11 @@ export default async function DashboardPage() {
             <OwnerSyncButton playlists={KNOWN_PLAYLISTS} />
           </CardContent>
         </Card>
+      )}
+
+      {/* Overall Progress Bar */}
+      {totalVideos > 0 && (
+        <WatchProgressBar total={totalVideos} watched={watchedCount} />
       )}
 
       {/* Hub Modules Grid */}
