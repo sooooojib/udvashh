@@ -60,27 +60,14 @@ export default async function LiveClassesPage() {
 
   return (
     <main className="flex-1 p-4 sm:p-6 md:p-10 max-w-7xl mx-auto w-full space-y-8">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center gap-3.5">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-red-600 text-white shadow-md">
-            <Tv className="h-6 w-6" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-3xl font-extrabold tracking-tight text-zinc-900 dark:text-zinc-100">
-                Live Classes
-              </h1>
-              <span className="flex items-center gap-1.5 rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-bold text-red-700 dark:bg-red-950/60 dark:text-red-400">
-                <span className="h-1.5 w-1.5 rounded-full bg-red-600 animate-pulse" />
-                Live Hub
-              </span>
-            </div>
-            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-              {videoList.length} videos organized across {KNOWN_PLAYLISTS.length} Live Class subjects
-            </p>
-          </div>
+      {/* Clean Page Header */}
+      <div className="flex items-center gap-3">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-red-600 text-white shadow-md">
+          <Tv className="h-5 w-5" />
         </div>
+        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-zinc-900 dark:text-zinc-100">
+          Live Classes
+        </h1>
       </div>
 
       {/* Progress Bar */}
