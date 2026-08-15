@@ -4,7 +4,6 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { createAdminClient } from "@/utils/supabase/admin";
-import { sendAdminApprovalEmail } from "@/lib/email/resend";
 
 export type AuthActionResult = {
   error?: string;
@@ -33,13 +32,13 @@ export async function login(
     return { error: error.message };
   }
 
-  // ── Approval gate: check profiles table ────────────────────────────────
-  const adminClient = createAdminClient();
+  // ── Approval gate: check profiles table ──────────────────────────────────
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   if (user) {
+    const adminClient = createAdminClient();
     const { data: profile } = await adminClient
       .from("profiles")
       .select("is_approved")
@@ -47,7 +46,6 @@ export async function login(
       .single();
 
     if (!profile || profile.is_approved === false) {
-      // Sign out the session immediately — they are not approved yet
       await supabase.auth.signOut();
       return {
         error:
@@ -55,7 +53,7 @@ export async function login(
       };
     }
   }
-  // ──────────────────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────────────────
 
   revalidatePath("/", "layout");
   redirect(redirectTo);
@@ -86,7 +84,7 @@ export async function signup(
 
   const supabase = await createClient();
 
-  const { data, error } = await supabase.auth.signUp({
+  const { error } = await supabase.auth.signUp({
     email,
     password,
     options: {
@@ -98,62 +96,12 @@ export async function signup(
     return { error: error.message };
   }
 
-  const userId = data.user?.id;
-  console.log("[signup] New user created. userId:", userId, "email:", email);
-
-  if (userId) {
-    // ── Fetch the auto-generated approval_token from profiles ───────────────
-    // Small delay to let the DB trigger fire
-    await new Promise((r) => setTimeout(r, 1200));
-
-    const adminClient = createAdminClient();
-    const { data: profile, error: profileError } = await adminClient
-      .from("profiles")
-      .select("approval_token")
-      .eq("id", userId)
-      .single();
-
-    console.log("[signup] Profile fetch result:", { profile, profileError });
-
-    const approvalToken = profile?.approval_token;
-    console.log("[signup] approval_token:", approvalToken ? "EXISTS" : "NULL/MISSING");
-
-    // ── Send admin notification email ───────────────────────────────────────
-    if (approvalToken) {
-      const adminEmailEnv = process.env.ADMIN_EMAIL || "";
-      const adminEmails = adminEmailEnv
-        .split(",")
-        .map((e) => e.trim())
-        .filter(Boolean);
-
-      console.log("[signup] Sending admin email to:", adminEmails);
-
-      try {
-        const emailResult = await sendAdminApprovalEmail({
-          adminEmails,
-          userName: fullName || "",
-          userEmail: email,
-          approvalToken,
-          userId,
-        });
-        console.log("[signup] Admin email sent successfully:", emailResult);
-      } catch (emailErr) {
-        console.error("[signup] Failed to send admin email:", emailErr);
-      }
-    } else {
-      console.error(
-        "[signup] No approval_token found — SQL migration may not have been run, or DB trigger did not fire."
-      );
-    }
-  }
-
-
-  // Sign out any auto-created session so they can't bypass the approval gate
+  // Sign out any auto-created session — they must wait for approval
   await supabase.auth.signOut();
 
   return {
     success:
-      "Request submitted! Your account is pending admin approval. You will receive an email once your request has been approved.",
+      "Request submitted! Your account is pending admin approval. You will be able to log in once the admin approves your request.",
   };
 }
 
