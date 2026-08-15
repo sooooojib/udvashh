@@ -28,14 +28,14 @@ export async function Header() {
           )}
         </div>
 
-        {/* Center: Minimalist Geometric Brand Logo + Mode Change Button */}
-        <div className="flex items-center justify-center gap-4">
+        {/* Center: Perfectly Centered Brand Logo */}
+        <div className="flex items-center justify-center">
           <BrandLogo />
-          <ThemeToggle />
         </div>
 
-        {/* Right side: Logout button */}
-        <div className="flex-1 flex items-center justify-end">
+        {/* Right side: Theme Mode Toggle + Logout button */}
+        <div className="flex-1 flex items-center justify-end gap-2.5">
+          <ThemeToggle />
           {user && (
             <form action={logout}>
               <Button
