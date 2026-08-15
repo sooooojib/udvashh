@@ -61,67 +61,37 @@ export function SignupForm() {
   // ── Pending Approval Success State ────────────────────────────────────────
   if (state?.success) {
     return (
-      <Card className="w-full max-w-md border-border/80 bg-card/90 shadow-xl backdrop-blur-sm dark:border-[#1F2C34] dark:bg-[#111820]">
-        <CardContent className="pt-8 pb-8 px-8">
+      <Card className="w-full max-w-md border-border/80 bg-card/90 shadow-xl backdrop-blur-sm dark:border-[#1F2C34] dark:bg-[#111820] animate-fade-in-up">
+        <CardContent className="pt-10 pb-8 px-8">
           <div className="flex flex-col items-center text-center space-y-5">
-            {/* Icon */}
-            <div className="relative">
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[#25A8A2]/15 ring-1 ring-[#25A8A2]/30 dark:bg-[#25A8A2]/10">
-                <ShieldCheck className="h-8 w-8 text-[#25A8A2]" />
-              </div>
-              <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-amber-500 shadow-md">
-                <Clock className="h-3 w-3 text-white" />
-              </span>
+            {/* Minimal Icon with glowing cyan/amber aura */}
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-500 ring-1 ring-amber-500/25 dark:bg-amber-500/10 dark:text-amber-400 dark:ring-amber-500/20 shadow-sm">
+              <Clock className="h-8 w-8" />
             </div>
 
-            {/* Heading */}
-            <div className="space-y-1.5">
+            {/* Clean Heading & Concise Subtitle */}
+            <div className="space-y-2">
               <h2 className="font-heading text-xl font-bold tracking-tight text-foreground dark:text-[#E8EDF0]">
-                Request Submitted!
+                Awaiting Admin Approval
               </h2>
-              <p className="text-sm text-muted-foreground dark:text-[#9AA7AE] leading-relaxed max-w-[300px]">
-                {state.success}
+              <p className="text-xs text-muted-foreground dark:text-[#9AA7AE] leading-relaxed max-w-[320px]">
+                Your account was created successfully. Please wait for the administrator to approve your access.
               </p>
             </div>
 
-            {/* Status badge */}
-            <div className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 dark:border-amber-500/20 dark:bg-amber-500/10">
-              <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
-              <span className="text-xs font-semibold text-amber-700 dark:text-amber-400">
-                Awaiting admin approval
-              </span>
-            </div>
-
-            {/* Info steps */}
-            <div className="w-full space-y-2.5 text-left rounded-xl border border-border/60 bg-muted/30 p-4 dark:border-[#1F2C34] dark:bg-[#0A0F12]/40">
-              {[
-                "Your account has been registered successfully.",
-                "The administrator will approve your account from the dashboard.",
-                "Once approved, you can sign in directly with your email and password.",
-              ].map((step, i) => (
-                <div key={i} className="flex items-start gap-2.5">
-                  <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-[#25A8A2]/15 text-[10px] font-bold text-[#25A8A2]">
-                    {i + 1}
-                  </span>
-                  <p className="text-xs text-muted-foreground dark:text-[#9AA7AE] leading-relaxed">
-                    {step}
-                  </p>
-                </div>
-              ))}
+            {/* Direct Back to Login Button */}
+            <div className="w-full pt-2">
+              <Button
+                asChild
+                className="w-full h-10 rounded-xl font-semibold shadow-sm bg-primary text-primary-foreground dark:bg-[#25A8A2] dark:text-white dark:hover:bg-[#20928D] transition-all active:scale-95 text-xs"
+              >
+                <Link href="/login">
+                  Go to Sign in
+                </Link>
+              </Button>
             </div>
           </div>
         </CardContent>
-        <CardFooter className="flex flex-col items-center justify-center border-t border-border/40 pt-5 pb-5 dark:border-[#1F2C34]">
-          <p className="text-center text-sm text-muted-foreground dark:text-[#9AA7AE]">
-            Already approved?{" "}
-            <Link
-              href="/login"
-              className="font-semibold text-foreground underline-offset-4 hover:underline dark:text-[#E8EDF0]"
-            >
-              Sign in
-            </Link>
-          </p>
-        </CardFooter>
       </Card>
     );
   }
