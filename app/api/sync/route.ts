@@ -1,36 +1,62 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { syncPlaylist } from "@/lib/youtube/sync";
+import { KNOWN_PLAYLISTS } from "@/lib/youtube/playlists";
 
 export async function GET(request: NextRequest) {
-  // 1. Authorization: Require Bearer <SYNC_SECRET>
+  const { searchParams } = new URL(request.url);
+
+  // 1. Authorization: Accept Bearer header OR ?secret query param
   const authHeader = request.headers.get("Authorization");
+  const querySecret = searchParams.get("secret");
   const syncSecret = process.env.SYNC_SECRET;
 
-  if (!syncSecret || !authHeader || authHeader !== `Bearer ${syncSecret}`) {
+  const isHeaderValid =
+    Boolean(syncSecret) &&
+    Boolean(authHeader) &&
+    authHeader === `Bearer ${syncSecret}`;
+  const isQueryValid = Boolean(syncSecret) && querySecret === syncSecret;
+
+  if (!isHeaderValid && !isQueryValid) {
     return NextResponse.json(
-      { error: "Unauthorized. Missing or invalid Authorization Bearer header." },
+      {
+        error:
+          "Unauthorized. Pass Authorization: Bearer <SYNC_SECRET> header or ?secret=<SYNC_SECRET> query parameter.",
+      },
       { status: 401 }
     );
   }
 
-  // 2. Target Playlist ID
-  const { searchParams } = new URL(request.url);
-  const playlistId =
-    searchParams.get("playlistId") || process.env.YT_PLAYLIST_ID;
-
-  if (!playlistId) {
-    return NextResponse.json(
-      {
-        error:
-          "Missing playlist ID. Provide ?playlistId=<id> or set YT_PLAYLIST_ID in environment variables.",
-      },
-      { status: 400 }
-    );
-  }
+  // 2. Determine target playlist(s)
+  const targetPlaylistId = searchParams.get("playlistId");
 
   try {
-    const result = await syncPlaylist(playlistId);
-    return NextResponse.json(result);
+    // If a specific playlist is requested
+    if (targetPlaylistId && targetPlaylistId !== "all") {
+      const result = await syncPlaylist(targetPlaylistId);
+      return NextResponse.json({ success: true, ...result });
+    }
+
+    // Otherwise sync all known playlists
+    const results = [];
+    let totalSynced = 0;
+
+    for (const pl of KNOWN_PLAYLISTS) {
+      try {
+        const res = await syncPlaylist(pl.id);
+        results.push({ id: pl.id, name: pl.name, ...res });
+        totalSynced += res.synced || 0;
+      } catch (err: unknown) {
+        const errorMsg = err instanceof Error ? err.message : "Sync error";
+        results.push({ id: pl.id, name: pl.name, error: errorMsg });
+      }
+    }
+
+    return NextResponse.json({
+      success: true,
+      totalSynced,
+      playlistsProcessed: results.length,
+      results,
+    });
   } catch (err: unknown) {
     const errorMsg =
       err instanceof Error ? err.message : "Internal Server Error";
