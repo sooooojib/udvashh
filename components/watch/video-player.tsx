@@ -17,6 +17,7 @@ import {
   Loader2,
   Play,
   SkipForward,
+  Tv,
 } from "lucide-react";
 
 // Dynamically import react-youtube to avoid SSR issues
@@ -81,13 +82,20 @@ export function VideoPlayer({
   return (
     <div className="space-y-6">
       {/* Navigation Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm">
+      <div className="flex items-center gap-2 text-sm flex-wrap">
         <Link
           href="/dashboard"
-          className="flex items-center gap-1.5 font-medium text-zinc-500 transition-colors hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+          className="text-zinc-500 transition-colors hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
         >
-          <ArrowLeft className="h-4 w-4" />
-          <span>Dashboard</span>
+          Dashboard
+        </Link>
+        <span className="text-zinc-300 dark:text-zinc-700">/</span>
+        <Link
+          href="/live-classes"
+          className="flex items-center gap-1 font-medium text-zinc-600 transition-colors hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+        >
+          <Tv className="h-3.5 w-3.5 text-red-500" />
+          <span>Live Classes</span>
         </Link>
         {playlistName && (
           <>
@@ -180,11 +188,11 @@ export function VideoPlayer({
         </div>
 
         <div className="flex items-center gap-2.5">
-          {/* Back to playlist button */}
+          {/* Back to Live Classes button */}
           <Button asChild variant="outline" className="gap-2">
-            <Link href="/dashboard">
+            <Link href="/live-classes">
               <ArrowLeft className="h-4 w-4" />
-              <span>Playlist</span>
+              <span>Live Classes</span>
             </Link>
           </Button>
 
