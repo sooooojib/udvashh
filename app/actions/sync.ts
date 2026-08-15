@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/utils/supabase/server";
+import { syncPlaylist } from "@/lib/youtube/sync";
 
 export interface SyncActionResult {
   success: boolean;
@@ -12,6 +13,7 @@ export interface SyncActionResult {
 export async function syncNow(
   playlistId?: string
 ): Promise<SyncActionResult> {
+  // 1. Verify authenticated session
   const supabase = await createClient();
   const {
     data: { user },
@@ -21,64 +23,39 @@ export async function syncNow(
     return { success: false, message: "Unauthorized. Please sign in." };
   }
 
+  // 2. Verify caller is the owner
   const adminEmail = process.env.ADMIN_EMAIL;
-  // If ADMIN_EMAIL is set, enforce that user.email matches it
   if (adminEmail && user.email?.toLowerCase() !== adminEmail.toLowerCase()) {
     return {
       success: false,
-      message: "Forbidden. Only the project owner can trigger manual sync.",
+      message: "Forbidden. Only the project owner can trigger a manual sync.",
     };
   }
 
-  const syncSecret = process.env.SYNC_SECRET;
-  if (!syncSecret) {
+  const targetPlaylist = playlistId || process.env.YT_PLAYLIST_ID || "";
+
+  if (!targetPlaylist) {
     return {
       success: false,
-      message: "Server configuration error: SYNC_SECRET not found.",
+      message:
+        "No playlist ID provided. Select a playlist or set YT_PLAYLIST_ID in your environment.",
     };
   }
 
-  // Construct absolute local or production URL for internal sync call
-  const targetPlaylist = playlistId || process.env.YT_PLAYLIST_ID || "";
-  const host =
-    process.env.VERCEL_PROJECT_PRODUCTION_URL ||
-    process.env.VERCEL_URL ||
-    "localhost:3000";
-  const protocol = host.includes("localhost") ? "http" : "https";
-  const endpoint = new URL(`${protocol}://${host}/api/sync`);
-
-  if (targetPlaylist) {
-    endpoint.searchParams.set("playlistId", targetPlaylist);
-  }
-
+  // 3. Call syncPlaylist directly on the server — no HTTP round-trip needed
   try {
-    const response = await fetch(endpoint.toString(), {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${syncSecret}`,
-      },
-      cache: "no-store",
-    });
+    const result = await syncPlaylist(targetPlaylist);
 
-    const data = await response.json();
-
-    if (!response.ok) {
-      return {
-        success: false,
-        message: data.error || `Sync failed with status ${response.status}`,
-      };
-    }
-
-    revalidatePath("/", "layout");
     revalidatePath("/dashboard");
 
     return {
       success: true,
-      synced: data.synced,
-      message: `Successfully synced ${data.synced} video(s) for playlist ${data.playlistId}!`,
+      synced: result.synced,
+      message: `✓ Synced ${result.synced} video${result.synced !== 1 ? "s" : ""} from playlist ${result.playlistId}`,
     };
   } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : "Sync failed";
-    return { success: false, message: `Sync error: ${msg}` };
+    const msg =
+      error instanceof Error ? error.message : "An unexpected error occurred";
+    return { success: false, message: msg };
   }
 }
