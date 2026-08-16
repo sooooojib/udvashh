@@ -82,6 +82,13 @@
   --font-bengali: var(--font-bengali), ui-sans-serif, system-ui, sans-serif;
 }
 
+/* ── Prevent horizontal overflow globally ── */
+html,
+body {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
 body {
   font-family: var(--font-sans);
   background-color: hsl(var(--background));
@@ -89,6 +96,8 @@ body {
   font-feature-settings: "cv02", "cv03", "cv04", "cv11", "rlig" 1, "calt" 1;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* iOS momentum scrolling */
+  -webkit-overflow-scrolling: touch;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -114,6 +123,19 @@ html.dark body {
     radial-gradient(900px 500px at 90% 90%, rgba(20, 30, 40, 0.5), transparent 60%),
     #0a0f12;
   background-attachment: fixed;
+}
+
+/* ── Touch-action: manipulation on all interactive elements ──
+   Eliminates the 300ms tap delay on mobile browsers. */
+a,
+button,
+[role="button"],
+label,
+select,
+input,
+textarea,
+[tabindex] {
+  touch-action: manipulation;
 }
 
 /* ── Minimalist Semi-Transparent Custom Scrollbar ── */
@@ -170,6 +192,15 @@ html.dark body {
   will-change: transform, opacity;
 }
 
+/* Respect reduced-motion user preference */
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in-up {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}
+
 .skeleton-shimmer {
   background: linear-gradient(
     90deg,
@@ -187,3 +218,39 @@ html.dark body {
   color: inherit;
 }
 
+/* ── Horizontal scroll snap row — for filter pills ──
+   Apply className="pills-row" to any horizontal scroll container. */
+.pills-row {
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  padding-bottom: 4px;
+}
+
+.pills-row::-webkit-scrollbar {
+  display: none;
+}
+
+.pills-row > * {
+  scroll-snap-align: start;
+  flex-shrink: 0;
+}
+
+/* ── Layout containment for video grids — reduces repaint during scroll ── */
+.video-grid-container {
+  contain: layout;
+}
+
+/* ── Safe-area spacing for notch / home indicator (iOS) ── */
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}

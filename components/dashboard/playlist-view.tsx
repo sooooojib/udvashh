@@ -97,11 +97,11 @@ export function PlaylistView({ videos, watchedVideoIds }: PlaylistViewProps) {
 
   return (
     <div className="space-y-6">
-      {/* Top Filter Pills Bar with SevenGrid styling */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-border/40 pb-4 dark:border-[#1F2C34]/80">
+      {/* Top Filter Pills Bar — horizontal scroll on mobile */}
+      <div className="pills-row gap-2 border-b border-border/40 pb-4 dark:border-[#1F2C34]/80 lg:flex-wrap">
         <button
           onClick={() => handleFilterClick("all")}
-          className={`inline-flex items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-xs font-semibold tracking-tight transition-all duration-200 active:scale-95 ${
+          className={`inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2.5 text-xs font-semibold tracking-tight transition-all duration-200 active:scale-95 min-h-[44px] ${
             filterPlaylistId === "all"
               ? "bg-[#25A8A2]/15 text-[#25A8A2] border border-[#25A8A2]/50 shadow-[0_0_12px_rgba(37,168,162,0.15)] font-medium"
               : "border border-border/60 bg-card/80 text-muted-foreground hover:border-[#25A8A2]/40 hover:text-foreground dark:border-[#1F2C34] dark:bg-[#111820] dark:text-[#9AA7AE] dark:hover:border-[#25A8A2]/40 dark:hover:text-[#E8EDF0]"
@@ -126,7 +126,7 @@ export function PlaylistView({ videos, watchedVideoIds }: PlaylistViewProps) {
             <button
               key={group.id}
               onClick={() => handleFilterClick(group.id)}
-              className={`inline-flex items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-xs tracking-tight transition-all duration-200 active:scale-95 ${
+              className={`inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2.5 text-xs tracking-tight transition-all duration-200 active:scale-95 min-h-[44px] ${
                 isSelected
                   ? "bg-[#25A8A2]/15 text-[#25A8A2] border border-[#25A8A2]/50 shadow-[0_0_12px_rgba(37,168,162,0.15)] font-semibold"
                   : "border border-border/60 bg-card/80 text-muted-foreground hover:border-[#25A8A2]/40 hover:text-foreground dark:border-[#1F2C34] dark:bg-[#111820] dark:text-[#9AA7AE] dark:hover:border-[#25A8A2]/40 dark:hover:text-[#E8EDF0]"
@@ -170,7 +170,7 @@ export function PlaylistView({ videos, watchedVideoIds }: PlaylistViewProps) {
               {/* Interactive Playlist Header Card */}
               <div
                 onClick={() => togglePlaylist(group.id)}
-                className="group flex cursor-pointer flex-col gap-4 p-5 transition-colors hover:bg-accent/40 dark:hover:bg-[#141E28] sm:flex-row sm:items-center sm:justify-between select-none"
+                className="group flex cursor-pointer flex-col gap-4 p-5 transition-colors hover:bg-accent/40 dark:hover:bg-[#141E28] sm:flex-row sm:items-center sm:justify-between select-none active:bg-accent/60 dark:active:bg-[#1F2C34] min-h-[72px]"
               >
                 {/* Left: Refined Accent Icon & Subject Title */}
                 <div className="flex items-center gap-4 min-w-0">
@@ -246,35 +246,34 @@ export function PlaylistView({ videos, watchedVideoIds }: PlaylistViewProps) {
                 </div>
               </div>
 
-              {/* Expanded Content: Video Grid or Empty State */}
-              {isExpanded && (
-                <div className="border-t border-border/40 bg-muted/15 p-5 dark:border-[#1F2C34]/70 dark:bg-[#0A0F12]/60 animate-fade-in-up">
-                  {group.videos.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-8 text-center">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted text-muted-foreground dark:bg-[#141E28] dark:text-[#5C6A72]">
-                        <VideoOff className="h-5 w-5" />
+                {isExpanded && (
+                  <div className="border-t border-border/40 bg-muted/15 p-4 sm:p-5 dark:border-[#1F2C34]/70 dark:bg-[#0A0F12]/60 animate-fade-in-up video-grid-container">
+                    {group.videos.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-8 text-center">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted text-muted-foreground dark:bg-[#141E28] dark:text-[#5C6A72]">
+                          <VideoOff className="h-5 w-5" />
+                        </div>
+                        <p className="mt-2 text-sm font-semibold tracking-tight text-foreground dark:text-[#E8EDF0]">
+                          No videos in this playlist yet
+                        </p>
+                        <p className="mt-0.5 text-xs text-muted-foreground dark:text-[#9AA7AE] leading-relaxed">
+                          Upload videos to this YouTube playlist, then click &ldquo;Sync Now&rdquo; to populate it.
+                        </p>
                       </div>
-                      <p className="mt-2 text-sm font-semibold tracking-tight text-foreground dark:text-[#E8EDF0]">
-                        No videos in this playlist yet
-                      </p>
-                      <p className="mt-0.5 text-xs text-muted-foreground dark:text-[#9AA7AE] leading-relaxed">
-                        Upload videos to this YouTube playlist, then click &ldquo;Sync Now&rdquo; to populate it.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                      {group.videos.map((video, idx) => (
-                        <VideoCard
-                          key={video.id}
-                          video={video}
-                          initialWatched={watchedSet.has(video.id)}
-                          index={idx}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
+                    ) : (
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                        {group.videos.map((video, idx) => (
+                          <VideoCard
+                            key={video.id}
+                            video={video}
+                            initialWatched={watchedSet.has(video.id)}
+                            index={idx}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
             </div>
           );
         })}

@@ -70,8 +70,8 @@ export function VideoCard({ video, initialWatched, index }: VideoCardProps) {
             src={video.thumbnail_url}
             alt={video.title}
             fill
-            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-            loading={index < 4 ? "eager" : "lazy"}
+            sizes="(max-width: 480px) 100vw, (max-width: 768px) 50vw, (max-width: 1280px) 33vw, 25vw"
+            loading={index < 3 ? "eager" : "lazy"}
             decoding="async"
             className="object-cover transition-transform duration-300 ease-out group-hover:scale-105"
           />
@@ -126,13 +126,14 @@ export function VideoCard({ video, initialWatched, index }: VideoCardProps) {
         )}
 
         {/* Card Footer: Checkbox + Action Button */}
-        <div className="mt-auto flex items-center justify-between gap-3 border-t border-border/40 dark:border-[#1F2C34] pt-3.5">
-          <label className="flex cursor-pointer items-center gap-2 text-xs font-medium text-muted-foreground select-none transition-colors hover:text-foreground dark:text-[#9AA7AE] dark:hover:text-[#E8EDF0]">
+        <div className="mt-auto flex items-center justify-between gap-3 border-t border-border/40 dark:border-[#1F2C34] pt-3">
+          {/* Expanded touch target wraps checkbox + label */}
+          <label className="flex cursor-pointer items-center gap-2 text-xs font-medium text-muted-foreground select-none transition-colors hover:text-foreground dark:text-[#9AA7AE] dark:hover:text-[#E8EDF0] min-h-[44px] py-1 -my-1 px-0.5">
             <Checkbox
               checked={optimisticWatched}
               onCheckedChange={handleToggle}
               id={`watched-${video.id}`}
-              className="rounded-md border-border dark:border-[#1F2C34] data-[state=checked]:bg-[#25A8A2] data-[state=checked]:border-[#25A8A2]"
+              className="rounded-md border-border dark:border-[#1F2C34] data-[state=checked]:bg-[#25A8A2] data-[state=checked]:border-[#25A8A2] h-4 w-4"
               aria-label={`Mark "${video.title}" as ${optimisticWatched ? "unwatched" : "watched"}`}
             />
             <span className="flex items-center gap-1 text-xs">
@@ -152,7 +153,7 @@ export function VideoCard({ video, initialWatched, index }: VideoCardProps) {
           <Button
             asChild
             size="sm"
-            className="h-8 rounded-xl px-3.5 text-xs font-semibold shadow-sm transition-all duration-150 active:scale-95 bg-primary text-primary-foreground hover:opacity-90 dark:bg-[#25A8A2] dark:text-white dark:hover:bg-[#20928D] dark:shadow-[0_0_10px_rgba(37,168,162,0.3)]"
+            className="min-h-[44px] rounded-xl px-3.5 text-xs font-semibold shadow-sm transition-all duration-150 active:scale-95 bg-primary text-primary-foreground hover:opacity-90 dark:bg-[#25A8A2] dark:text-white dark:hover:bg-[#20928D] dark:shadow-[0_0_10px_rgba(37,168,162,0.3)]"
           >
             <Link href={`/watch/${video.youtube_video_id}`}>
               <Play className="h-3 w-3 fill-current" />

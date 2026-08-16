@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans, Geist, JetBrains_Mono, Anek_Bangla } from "next/font/google";
 import { Header } from "@/components/header";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -45,6 +45,17 @@ export const metadata: Metadata = {
   },
 };
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",          // iOS notch / safe-area support
+  userScalable: false,            // prevents zoom on form-field tap
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f4f6f5" },
+    { media: "(prefers-color-scheme: dark)",  color: "#0a0f12" },
+  ],
+};
+
 export default function RootLayout({
   children,
 }: {
@@ -56,7 +67,7 @@ export default function RootLayout({
       suppressHydrationWarning
       className={`${jakarta.variable} ${geistSans.variable} ${jetbrainsMono.variable} ${anekBangla.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col font-sans bg-background text-foreground transition-colors duration-200">
+      <body className="min-h-full flex flex-col font-sans bg-background text-foreground transition-colors duration-200 overflow-x-hidden">
         <ThemeProvider
           attribute="class"
           defaultTheme="system"

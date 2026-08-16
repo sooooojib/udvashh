@@ -86,7 +86,7 @@ export default async function DashboardPage() {
   ];
 
   return (
-    <main className="flex-1 p-4 sm:p-6 md:p-10 max-w-7xl mx-auto w-full space-y-8 animate-fade-in-up">
+    <main className="flex-1 p-4 sm:p-6 md:p-10 max-w-7xl mx-auto w-full space-y-8 animate-fade-in-up overflow-x-hidden">
       {/* Owner Sync Panel */}
       {isOwner && (
         <Card className="overflow-hidden rounded-2xl border border-border/60 bg-card/90 shadow-sm backdrop-blur-md dark:border-[#1F2C34] dark:bg-[#111820]">
@@ -130,7 +130,7 @@ export default async function DashboardPage() {
           {/* Module 1: Live Classes (ACTIVE) */}
           <Link
             href="/live-classes"
-            className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border/60 bg-card/90 p-5.5 shadow-sm backdrop-blur-md transition-all duration-200 ease-in-out hover:scale-[1.01] hover:border-primary/50 dark:border-[#1F2C34] dark:bg-[#111820] dark:hover:border-[#25A8A2]/60 hover:shadow-md"
+            className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border/60 bg-card/90 p-5 shadow-sm backdrop-blur-md transition-all duration-200 ease-in-out hover:scale-[1.01] active:scale-[0.99] hover:border-primary/50 dark:border-[#1F2C34] dark:bg-[#111820] dark:hover:border-[#25A8A2]/60 hover:shadow-md min-h-[180px]"
           >
             {/* Top Badge */}
             <div className="flex items-center justify-between gap-2">
@@ -193,7 +193,7 @@ export default async function DashboardPage() {
           {/* Module 2: Intensive Classes (ACTIVE) */}
           <Link
             href="/intensive-classes"
-            className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border/60 bg-card/90 p-5.5 shadow-sm backdrop-blur-md transition-all duration-200 ease-in-out hover:scale-[1.01] hover:border-amber-500/50 dark:border-[#1F2C34] dark:bg-[#111820] dark:hover:border-amber-500/60 hover:shadow-md"
+            className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border/60 bg-card/90 p-5 shadow-sm backdrop-blur-md transition-all duration-200 ease-in-out hover:scale-[1.01] active:scale-[0.99] hover:border-amber-500/50 dark:border-[#1F2C34] dark:bg-[#111820] dark:hover:border-amber-500/60 hover:shadow-md min-h-[180px]"
           >
             {/* Top Badge */}
             <div className="flex items-center justify-between gap-2">

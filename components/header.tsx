@@ -16,9 +16,9 @@ export async function Header() {
   }
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border/80 bg-background/80 backdrop-blur-md dark:border-[#1F2C34]/80 dark:bg-[#0A0F12]/80 transition-colors duration-200">
+    <header className="sticky top-0 z-50 w-full border-b border-border/80 bg-background/80 backdrop-blur-md dark:border-[#1F2C34]/80 dark:bg-[#0A0F12]/80 transition-colors duration-200 pt-safe">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        {/* Left side: User badge for perfect centering balance */}
+        {/* Left side: User badge */}
         <div className="flex-1 flex items-center justify-start">
           {user && (
             <div className="hidden sm:flex items-center gap-2 rounded-xl border border-border/80 bg-card/80 px-3 py-1.5 text-xs font-medium text-foreground/80 dark:border-[#1F2C34] dark:bg-[#111820] dark:text-[#E8EDF0]">
@@ -28,21 +28,24 @@ export async function Header() {
           )}
         </div>
 
-        {/* Center: Perfectly Centered Brand Logo */}
+        {/* Center: Brand Logo */}
         <div className="flex items-center justify-center">
           <BrandLogo />
         </div>
 
-        {/* Right side: Theme Mode Toggle + Logout button */}
-        <div className="flex-1 flex items-center justify-end gap-2.5">
-          <ThemeToggle />
+        {/* Right side: Theme Toggle + Logout */}
+        <div className="flex-1 flex items-center justify-end gap-2">
+          {/* Theme toggle — 44px touch target */}
+          <div className="min-h-[44px] min-w-[44px] flex items-center justify-center">
+            <ThemeToggle />
+          </div>
           {user && (
             <form action={logout}>
               <Button
                 variant="outline"
                 size="sm"
                 type="submit"
-                className="gap-1.5 text-xs text-foreground/80 hover:text-red-600 hover:border-red-200 dark:border-[#1F2C34] dark:bg-[#111820] dark:text-[#9AA7AE] dark:hover:text-red-400 dark:hover:border-red-500/30 h-8.5 rounded-xl"
+                className="min-h-[44px] min-w-[44px] gap-1.5 text-xs text-foreground/80 hover:text-red-600 hover:border-red-200 dark:border-[#1F2C34] dark:bg-[#111820] dark:text-[#9AA7AE] dark:hover:text-red-400 dark:hover:border-red-500/30 rounded-xl active:scale-95 transition-transform"
               >
                 <LogOut className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">Log out</span>
