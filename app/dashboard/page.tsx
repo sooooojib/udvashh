@@ -5,6 +5,7 @@ import { createClient } from "@/utils/supabase/server";
 import { WatchProgressBar } from "@/components/dashboard/progress-bar";
 import { OwnerSyncButton } from "@/components/dashboard/sync-button";
 import { KNOWN_PLAYLISTS } from "@/lib/youtube/playlists";
+import { INTENSIVE_PLAYLISTS } from "@/lib/youtube/intensive-playlists";
 import {
   Card,
   CardContent,
@@ -16,6 +17,7 @@ import {
   ArrowRight,
   BookOpen,
   FileText,
+  Flame,
   PlaySquare,
   Tv,
 } from "lucide-react";
@@ -43,10 +45,20 @@ export default async function DashboardPage() {
     allowedAdmins.length === 0 ||
     allowedAdmins.includes(user.email?.toLowerCase() || "");
 
-  // Fetch total video count
+  // Fetch total video count (Live Classes)
+  const livePlaylistIds = KNOWN_PLAYLISTS.map((p) => p.id);
   const { data: videos } = await supabase
     .from("videos")
-    .select("id, duration");
+    .select("id, duration, playlist_id");
+
+  // Separate live vs intensive videos
+  const intensivePlaylistIds = INTENSIVE_PLAYLISTS.map((p) => p.id);
+  const liveVideos = (videos ?? []).filter((v: { playlist_id: string | null }) =>
+    v.playlist_id ? livePlaylistIds.includes(v.playlist_id) : false
+  );
+  const intensiveVideos = (videos ?? []).filter((v: { playlist_id: string | null }) =>
+    v.playlist_id ? intensivePlaylistIds.includes(v.playlist_id) : false
+  );
 
   // Fetch user's watched progress
   const { data: progressRows } = await supabase
@@ -55,9 +67,23 @@ export default async function DashboardPage() {
     .eq("user_id", user.id)
     .eq("watched", true);
 
-  const totalVideos = videos?.length ?? 0;
-  const watchedCount = progressRows?.length ?? 0;
+  const watchedIds = new Set((progressRows ?? []).map((r: { video_id: string }) => r.video_id));
+
+  // Live Classes stats
+  const totalVideos = liveVideos.length;
+  const watchedCount = liveVideos.filter((v: { id: string }) => watchedIds.has(v.id)).length;
   const livePercent = totalVideos > 0 ? Math.round((watchedCount / totalVideos) * 100) : 0;
+
+  // Intensive Classes stats
+  const totalIntensive = intensiveVideos.length;
+  const watchedIntensive = intensiveVideos.filter((v: { id: string }) => watchedIds.has(v.id)).length;
+  const intensivePercent = totalIntensive > 0 ? Math.round((watchedIntensive / totalIntensive) * 100) : 0;
+
+  // All playlists for Dashboard sync
+  const allDashboardPlaylists = [
+    ...KNOWN_PLAYLISTS.map((p) => ({ ...p, category: "Live Classes" })),
+    ...INTENSIVE_PLAYLISTS.map((p) => ({ ...p, category: "Intensive Classes" })),
+  ];
 
   return (
     <main className="flex-1 p-4 sm:p-6 md:p-10 max-w-7xl mx-auto w-full space-y-8 animate-fade-in-up">
@@ -81,14 +107,17 @@ export default async function DashboardPage() {
             </div>
           </CardHeader>
           <CardContent className="pt-0">
-            <OwnerSyncButton playlists={KNOWN_PLAYLISTS} />
+            <OwnerSyncButton playlists={allDashboardPlaylists} />
           </CardContent>
         </Card>
       )}
 
       {/* Overall Progress Bar */}
-      {totalVideos > 0 && (
-        <WatchProgressBar total={totalVideos} watched={watchedCount} />
+      {totalVideos + totalIntensive > 0 && (
+        <WatchProgressBar
+          total={totalVideos + totalIntensive}
+          watched={watchedCount + watchedIntensive}
+        />
       )}
 
       {/* Hub Modules Grid */}
@@ -97,7 +126,7 @@ export default async function DashboardPage() {
           Course Sections
         </h2>
 
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
           {/* Module 1: Live Classes (ACTIVE) */}
           <Link
             href="/live-classes"
@@ -161,7 +190,70 @@ export default async function DashboardPage() {
             </div>
           </Link>
 
-          {/* Module 2: Lecture Notes & Materials (FUTURE) */}
+          {/* Module 2: Intensive Classes (ACTIVE) */}
+          <Link
+            href="/intensive-classes"
+            className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border/60 bg-card/90 p-5.5 shadow-sm backdrop-blur-md transition-all duration-200 ease-in-out hover:scale-[1.01] hover:border-amber-500/50 dark:border-[#1F2C34] dark:bg-[#111820] dark:hover:border-amber-500/60 hover:shadow-md"
+          >
+            {/* Top Badge */}
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-500/15 text-amber-600 ring-1 ring-amber-500/30 shadow-sm transition-transform duration-200 group-hover:scale-105 dark:text-amber-400">
+                <Flame className="h-5.5 w-5.5" />
+              </div>
+              <span className="flex items-center gap-1.5 rounded-full bg-amber-500/15 px-2.5 py-0.5 text-xs font-bold text-amber-600 border border-amber-500/30 dark:text-amber-400">
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+                Active
+              </span>
+            </div>
+
+            {/* Title */}
+            <div className="mt-4">
+              <h3 className="font-heading text-lg font-bold tracking-tight text-foreground transition-colors group-hover:text-amber-600 dark:text-[#E8EDF0] dark:group-hover:text-amber-400">
+                Intensive Classes
+              </h3>
+            </div>
+
+            {/* Module Stats Grid */}
+            <div className="my-4 grid grid-cols-3 gap-2 rounded-xl border border-border/40 bg-muted/20 p-2.5 dark:border-[#1F2C34] dark:bg-[#0A0F12]/60">
+              <div>
+                <span className="block text-[10px] font-medium text-muted-foreground uppercase tracking-wider dark:text-[#5C6A72]">
+                  Total
+                </span>
+                <span className="font-mono text-sm font-bold text-foreground dark:text-[#E8EDF0]">
+                  {totalIntensive} <span className="text-[10px] font-normal text-muted-foreground">classes</span>
+                </span>
+              </div>
+              <div className="border-l border-border/40 pl-2.5 dark:border-[#1F2C34]">
+                <span className="block text-[10px] font-medium text-muted-foreground uppercase tracking-wider dark:text-[#5C6A72]">
+                  Completed
+                </span>
+                <span className="font-mono text-sm font-bold text-amber-600 dark:text-amber-400">
+                  {watchedIntensive} <span className="text-[10px] font-normal text-muted-foreground">done</span>
+                </span>
+              </div>
+              <div className="border-l border-border/40 pl-2.5 dark:border-[#1F2C34]">
+                <span className="block text-[10px] font-medium text-muted-foreground uppercase tracking-wider dark:text-[#5C6A72]">
+                  Progress
+                </span>
+                <span className="font-mono text-sm font-bold text-foreground dark:text-[#E8EDF0]">
+                  {intensivePercent}%
+                </span>
+              </div>
+            </div>
+
+            {/* Meta & Button */}
+            <div className="flex items-center justify-between border-t border-border/40 dark:border-[#1F2C34] pt-3 text-xs">
+              <span className="font-medium text-muted-foreground font-mono text-[11px] dark:text-[#9AA7AE]">
+                {INTENSIVE_PLAYLISTS.length} subjects
+              </span>
+              <span className="flex items-center gap-1 font-bold text-amber-600 dark:text-amber-400 transition-transform group-hover:translate-x-0.5">
+                <span>View Classes</span>
+                <ArrowRight className="h-3.5 w-3.5" />
+              </span>
+            </div>
+          </Link>
+
+          {/* Module 3: Lecture Notes & Materials (FUTURE) */}
           <div className="relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border/40 bg-card/50 p-5.5 opacity-75 backdrop-blur-md dark:border-[#1F2C34]/60 dark:bg-[#111820]/40">
             <div className="flex items-center justify-between gap-2">
               <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-muted text-muted-foreground dark:bg-[#141E28] dark:text-[#5C6A72]">
@@ -212,7 +304,7 @@ export default async function DashboardPage() {
             </div>
           </div>
 
-          {/* Module 3: Model Tests & Exams (FUTURE) */}
+          {/* Module 4: Model Tests & Exams (FUTURE) */}
           <div className="relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border/40 bg-card/50 p-5.5 opacity-75 backdrop-blur-md dark:border-[#1F2C34]/60 dark:bg-[#111820]/40">
             <div className="flex items-center justify-between gap-2">
               <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-muted text-muted-foreground dark:bg-[#141E28] dark:text-[#5C6A72]">

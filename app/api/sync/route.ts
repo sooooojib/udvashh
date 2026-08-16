@@ -36,11 +36,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: true, ...result });
     }
 
-    // Otherwise sync all known playlists
+    // Otherwise sync all known and intensive playlists
+    const { INTENSIVE_PLAYLISTS } = await import(
+      "@/lib/youtube/intensive-playlists"
+    );
+    const allPlaylists = [...KNOWN_PLAYLISTS, ...INTENSIVE_PLAYLISTS];
     const results = [];
     let totalSynced = 0;
 
-    for (const pl of KNOWN_PLAYLISTS) {
+    for (const pl of allPlaylists) {
       try {
         const res = await syncPlaylist(pl.id);
         results.push({ id: pl.id, name: pl.name, ...res });

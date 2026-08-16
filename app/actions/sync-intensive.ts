@@ -4,15 +4,15 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/utils/supabase/server";
 import { syncPlaylist } from "@/lib/youtube/sync";
 
-export interface SyncActionResult {
+export interface IntensiveSyncResult {
   success: boolean;
   message: string;
   synced?: number;
 }
 
-export async function syncNow(
+export async function syncIntensiveNow(
   playlistId?: string
-): Promise<SyncActionResult> {
+): Promise<IntensiveSyncResult> {
   // 1. Verify authenticated session
   const supabase = await createClient();
   const {
@@ -23,7 +23,7 @@ export async function syncNow(
     return { success: false, message: "Unauthorized. Please sign in." };
   }
 
-  // 2. Verify caller is an owner (supports comma-separated admin emails)
+  // 2. Verify caller is an owner
   const adminEmail = process.env.ADMIN_EMAIL;
   if (adminEmail) {
     const allowedEmails = adminEmail
@@ -39,26 +39,25 @@ export async function syncNow(
     }
   }
 
-  const targetPlaylist = playlistId || process.env.YT_PLAYLIST_ID || "";
+  const targetPlaylist = playlistId || "all";
 
-  if (!targetPlaylist) {
-    return {
-      success: false,
-      message:
-        "No playlist ID provided. Select a playlist or set YT_PLAYLIST_ID in your environment.",
-    };
-  }
-
-  // 3. Call syncPlaylist directly on the server
+  // 3. Call syncPlaylist (reuses the same sync engine as Live Classes)
   try {
-    if (playlistId === "all") {
-      const { KNOWN_PLAYLISTS } = await import("@/lib/youtube/playlists");
+    if (targetPlaylist === "all") {
       const { INTENSIVE_PLAYLISTS } = await import(
         "@/lib/youtube/intensive-playlists"
       );
-      const allPlaylists = [...KNOWN_PLAYLISTS, ...INTENSIVE_PLAYLISTS];
+
+      if (INTENSIVE_PLAYLISTS.length === 0) {
+        return {
+          success: false,
+          message:
+            "No Intensive Class playlists configured. Add playlist IDs in lib/youtube/intensive-playlists.ts.",
+        };
+      }
+
       let totalSynced = 0;
-      for (const pl of allPlaylists) {
+      for (const pl of INTENSIVE_PLAYLISTS) {
         try {
           const res = await syncPlaylist(pl.id);
           totalSynced += res.synced || 0;
@@ -67,19 +66,17 @@ export async function syncNow(
         }
       }
       revalidatePath("/dashboard");
-      revalidatePath("/live-classes");
       revalidatePath("/intensive-classes");
       return {
         success: true,
         synced: totalSynced,
-        message: `Synced all ${allPlaylists.length} playlists (${totalSynced} total videos).`,
+        message: `Synced all ${INTENSIVE_PLAYLISTS.length} intensive playlists (${totalSynced} total videos).`,
       };
     }
 
     const result = await syncPlaylist(targetPlaylist);
 
     revalidatePath("/dashboard");
-    revalidatePath("/live-classes");
     revalidatePath("/intensive-classes");
 
     return {

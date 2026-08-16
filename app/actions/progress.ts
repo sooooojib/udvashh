@@ -28,4 +28,6 @@ export async function toggleWatched(
   );
 
   revalidatePath("/dashboard");
+  revalidatePath("/live-classes");
+  revalidatePath("/intensive-classes");
 }
