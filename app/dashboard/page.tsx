@@ -45,14 +45,17 @@ export default async function DashboardPage() {
     allowedAdmins.length === 0 ||
     allowedAdmins.includes(user.email?.toLowerCase() || "");
 
-  // Fetch total video count (Live Classes)
+  // Fetch total video count for all known modules
   const livePlaylistIds = KNOWN_PLAYLISTS.map((p) => p.id);
+  const intensivePlaylistIds = INTENSIVE_PLAYLISTS.map((p) => p.id);
+  const allKnownPlaylistIds = [...livePlaylistIds, ...intensivePlaylistIds];
+
   const { data: videos } = await supabase
     .from("videos")
-    .select("id, duration, playlist_id");
+    .select("id, duration, playlist_id")
+    .in("playlist_id", allKnownPlaylistIds);
 
   // Separate live vs intensive videos
-  const intensivePlaylistIds = INTENSIVE_PLAYLISTS.map((p) => p.id);
   const liveVideos = (videos ?? []).filter((v: { playlist_id: string | null }) =>
     v.playlist_id ? livePlaylistIds.includes(v.playlist_id) : false
   );

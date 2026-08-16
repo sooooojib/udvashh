@@ -38,22 +38,28 @@ export default async function LiveClassesPage() {
     allowedAdmins.length === 0 ||
     allowedAdmins.includes(user.email?.toLowerCase() || "");
 
-  // Fetch all videos ordered by position
+  // Only fetch videos belonging to Live Class playlists
+  const livePlaylistIds = KNOWN_PLAYLISTS.map((p) => p.id);
+
+  // Fetch videos ordered by position
   const { data: videos } = await supabase
     .from("videos")
     .select("*")
+    .in("playlist_id", livePlaylistIds)
     .order("position", { ascending: true });
 
-  // Fetch user's watch progress
+  // Fetch user's watch progress (scoped to live-class videos only)
   const { data: progressRows } = await supabase
     .from("watch_progress")
     .select("video_id, watched")
     .eq("user_id", user.id)
     .eq("watched", true);
 
-  const watchedVideoIds: string[] = (progressRows ?? []).map(
-    (r: { video_id: string }) => r.video_id
-  );
+  // Only count progress for live-class videos
+  const liveVideoIds = new Set((videos ?? []).map((v: { id: string }) => v.id));
+  const watchedVideoIds: string[] = (progressRows ?? [])
+    .map((r: { video_id: string }) => r.video_id)
+    .filter((id) => liveVideoIds.has(id));
 
   const videoList: Video[] = videos ?? [];
   const watchedCount = watchedVideoIds.length;
