@@ -78,10 +78,22 @@ export default async function WatchPage({ params }: WatchPageProps) {
     }
   }
 
-  const playlistName = getPlaylistName(video.playlist_id);
+  const { INTENSIVE_PLAYLISTS, getIntensivePlaylistName } = await import(
+    "@/lib/youtube/intensive-playlists"
+  );
+
+  const isIntensive = INTENSIVE_PLAYLISTS.some(
+    (p) => p.id === video.playlist_id
+  );
+  const moduleName = isIntensive ? "Intensive Classes" : "Live Classes";
+  const moduleHref = isIntensive ? "/intensive-classes" : "/live-classes";
+  const moduleType = isIntensive ? "intensive" : "live";
+  const playlistName = isIntensive
+    ? getIntensivePlaylistName(video.playlist_id)
+    : getPlaylistName(video.playlist_id);
 
   return (
-    <main className="flex-1 w-full max-w-5xl mx-auto px-0 sm:px-6 py-4 sm:py-6 md:py-10 animate-fade-in-up overflow-x-hidden">
+    <main className="flex-1 w-full max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 md:py-10 animate-fade-in-up">
       <VideoPlayer
         videoId={video.id}
         youtubeVideoId={video.youtube_video_id}
@@ -90,6 +102,9 @@ export default async function WatchPage({ params }: WatchPageProps) {
         duration={video.duration}
         position={videoPosition}
         playlistName={playlistName}
+        moduleName={moduleName}
+        moduleHref={moduleHref}
+        moduleType={moduleType}
         initialWatched={isWatched}
         nextVideoId={nextVideoId}
       />
