@@ -11,7 +11,8 @@ export interface SyncActionResult {
 }
 
 export async function syncNow(
-  playlistId?: string
+  playlistId?: string,
+  playlistIds?: string[]
 ): Promise<SyncActionResult> {
   // 1. Verify authenticated session
   const supabase = await createClient();
@@ -52,13 +53,20 @@ export async function syncNow(
   // 3. Call syncPlaylist directly on the server
   try {
     if (playlistId === "all") {
-      const { KNOWN_PLAYLISTS } = await import("@/lib/youtube/playlists");
-      const { INTENSIVE_PLAYLISTS } = await import(
-        "@/lib/youtube/intensive-playlists"
-      );
-      const allPlaylists = [...KNOWN_PLAYLISTS, ...INTENSIVE_PLAYLISTS];
+      let targetList: { id: string; name?: string }[] = [];
+
+      if (playlistIds && playlistIds.length > 0) {
+        targetList = playlistIds.map((id) => ({ id }));
+      } else {
+        const { KNOWN_PLAYLISTS } = await import("@/lib/youtube/playlists");
+        const { INTENSIVE_PLAYLISTS } = await import(
+          "@/lib/youtube/intensive-playlists"
+        );
+        targetList = [...KNOWN_PLAYLISTS, ...INTENSIVE_PLAYLISTS];
+      }
+
       let totalSynced = 0;
-      for (const pl of allPlaylists) {
+      for (const pl of targetList) {
         try {
           const res = await syncPlaylist(pl.id);
           totalSynced += res.synced || 0;
@@ -72,7 +80,7 @@ export async function syncNow(
       return {
         success: true,
         synced: totalSynced,
-        message: `Synced all ${allPlaylists.length} playlists (${totalSynced} total videos).`,
+        message: `Synced ${targetList.length} playlist${targetList.length === 1 ? "" : "s"} (${totalSynced} total videos).`,
       };
     }
 

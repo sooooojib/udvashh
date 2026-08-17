@@ -110,7 +110,10 @@ export default async function DashboardPage() {
             </div>
           </CardHeader>
           <CardContent className="pt-0">
-            <OwnerSyncButton playlists={allDashboardPlaylists} />
+            <OwnerSyncButton
+              playlists={allDashboardPlaylists}
+              moduleName="All Modules"
+            />
           </CardContent>
         </Card>
       )}

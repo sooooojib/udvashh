@@ -19,9 +19,10 @@ export interface Playlist {
 
 interface OwnerSyncButtonProps {
   playlists?: Playlist[];
+  moduleName?: string;
 }
 
-export function OwnerSyncButton({ playlists }: OwnerSyncButtonProps) {
+export function OwnerSyncButton({ playlists, moduleName }: OwnerSyncButtonProps) {
   const [isPending, setIsPending] = React.useState(false);
   const [selectedPlaylist, setSelectedPlaylist] = React.useState<string>("all");
   const [result, setResult] = React.useState<SyncActionResult | null>(null);
@@ -30,7 +31,12 @@ export function OwnerSyncButton({ playlists }: OwnerSyncButtonProps) {
     setIsPending(true);
     setResult(null);
     try {
-      const res = await syncNow(selectedPlaylist || undefined);
+      const playlistIds =
+        selectedPlaylist === "all" && playlists && playlists.length > 0
+          ? playlists.map((p) => p.id)
+          : undefined;
+
+      const res = await syncNow(selectedPlaylist || undefined, playlistIds);
       setResult(res);
       if (res.success) {
         toast.success("Playlist Synced", {
@@ -52,7 +58,9 @@ export function OwnerSyncButton({ playlists }: OwnerSyncButtonProps) {
 
   const selectedLabel =
     selectedPlaylist === "all"
-      ? "All Playlists"
+      ? moduleName
+        ? `All ${moduleName} Playlists`
+        : "All Playlists"
       : playlists?.find((p) => p.id === selectedPlaylist)?.name ||
         "Default Playlist";
 
@@ -85,7 +93,11 @@ export function OwnerSyncButton({ playlists }: OwnerSyncButtonProps) {
               disabled={isPending}
               className="w-full h-11 rounded-xl border border-border/80 bg-card/80 pl-3.5 pr-8 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1 disabled:opacity-50 dark:border-[#1F2C34] dark:bg-[#0A0F12]/60 dark:text-[#E8EDF0] dark:focus:ring-[#25A8A2]"
             >
-              <option value="all">All {playlists.length} Playlists (All Modules)</option>
+              <option value="all">
+                {moduleName
+                  ? `All ${playlists.length} ${moduleName} Playlists`
+                  : `All ${playlists.length} Playlists`}
+              </option>
               {groupedPlaylists ? (
                 Object.entries(groupedPlaylists).map(([category, items]) => (
                   <optgroup key={category} label={category} className="dark:bg-[#111820] font-semibold text-xs">

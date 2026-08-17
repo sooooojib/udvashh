@@ -96,7 +96,7 @@ export default async function LiveClassesPage() {
             </div>
           </CardHeader>
           <CardContent className="pt-0">
-            <OwnerSyncButton playlists={KNOWN_PLAYLISTS} />
+            <OwnerSyncButton playlists={KNOWN_PLAYLISTS} moduleName="Live Classes" />
           </CardContent>
         </Card>
       )}
