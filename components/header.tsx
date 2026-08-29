@@ -1,9 +1,8 @@
 import { BrandLogo } from "@/components/brand-logo";
-import { logout } from "@/app/actions/auth";
 import { getSession } from "@/lib/auth/session";
-import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { LogOut, User } from "lucide-react";
+import { LogoutButton } from "@/components/auth/logout-button";
+import { User } from "lucide-react";
 
 export async function Header() {
   let userEmail: string | null = null;
@@ -20,7 +19,7 @@ export async function Header() {
         {/* Left side: User badge */}
         <div className="flex-1 flex items-center justify-start">
           {userEmail && (
-            <div className="hidden sm:flex items-center gap-2 rounded-xl border border-border/80 bg-card/80 px-3 py-1.5 text-xs font-medium text-foreground/80 dark:border-[#1F2C34] dark:bg-[#111820] dark:text-[#E8EDF0]">
+            <div className="hidden sm:flex items-center gap-2 rounded-xl border border-border/80 bg-card/80 px-3 py-1.5 text-xs font-medium text-foreground/80 dark:border-[#1F2C34] dark:bg-[#111820] dark:text-[#E8EDF0] animate-fade-in-up">
               <User className="h-3.5 w-3.5 text-muted-foreground dark:text-[#9AA7AE]" />
               <span className="max-w-[150px] truncate font-mono text-[11px]">{userEmail}</span>
             </div>
@@ -38,19 +37,7 @@ export async function Header() {
           <div className="min-h-[44px] min-w-[44px] flex items-center justify-center">
             <ThemeToggle />
           </div>
-          {userEmail && (
-            <form action={logout}>
-              <Button
-                variant="outline"
-                size="sm"
-                type="submit"
-                className="min-h-[44px] min-w-[44px] gap-1.5 text-xs text-foreground/80 hover:text-red-600 hover:border-red-200 dark:border-[#1F2C34] dark:bg-[#111820] dark:text-[#9AA7AE] dark:hover:text-red-400 dark:hover:border-red-500/30 rounded-xl active:scale-95 transition-transform"
-              >
-                <LogOut className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Log out</span>
-              </Button>
-            </form>
-          )}
+          {userEmail && <LogoutButton />}
         </div>
       </div>
     </header>
