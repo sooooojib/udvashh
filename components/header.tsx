@@ -1,18 +1,17 @@
 import { BrandLogo } from "@/components/brand-logo";
-import { createClient } from "@/utils/supabase/server";
 import { logout } from "@/app/actions/auth";
+import { getSession } from "@/lib/auth/session";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { LogOut, User } from "lucide-react";
 
 export async function Header() {
-  let user = null;
+  let userEmail: string | null = null;
   try {
-    const supabase = await createClient();
-    const { data } = await supabase.auth.getUser();
-    user = data?.user ?? null;
+    const session = await getSession();
+    userEmail = session?.email ?? null;
   } catch {
-    user = null;
+    userEmail = null;
   }
 
   return (
@@ -20,10 +19,10 @@ export async function Header() {
       <div className="mx-auto flex h-16 max-w-[1680px] items-center justify-between px-3.5 sm:px-6 lg:px-8">
         {/* Left side: User badge */}
         <div className="flex-1 flex items-center justify-start">
-          {user && (
+          {userEmail && (
             <div className="hidden sm:flex items-center gap-2 rounded-xl border border-border/80 bg-card/80 px-3 py-1.5 text-xs font-medium text-foreground/80 dark:border-[#1F2C34] dark:bg-[#111820] dark:text-[#E8EDF0]">
               <User className="h-3.5 w-3.5 text-muted-foreground dark:text-[#9AA7AE]" />
-              <span className="max-w-[150px] truncate font-mono text-[11px]">{user.email}</span>
+              <span className="max-w-[150px] truncate font-mono text-[11px]">{userEmail}</span>
             </div>
           )}
         </div>
@@ -39,7 +38,7 @@ export async function Header() {
           <div className="min-h-[44px] min-w-[44px] flex items-center justify-center">
             <ThemeToggle />
           </div>
-          {user && (
+          {userEmail && (
             <form action={logout}>
               <Button
                 variant="outline"

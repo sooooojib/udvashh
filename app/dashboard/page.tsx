@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
-import { createClient } from "@/utils/supabase/server";
+import { sql } from "@/lib/db";
+import { getSession } from "@/lib/auth/session";
 import { WatchProgressBar } from "@/components/dashboard/progress-bar";
 import { OwnerSyncButton } from "@/components/dashboard/sync-button";
 import { KNOWN_PLAYLISTS } from "@/lib/youtube/playlists";
@@ -28,13 +29,8 @@ export const metadata: Metadata = {
 };
 
 export default async function DashboardPage() {
-  const supabase = await createClient();
-
-  // Auth guard
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login?redirectTo=/dashboard");
+  const session = await getSession();
+  if (!session) redirect("/login?redirectTo=/dashboard");
 
   const adminEmail = process.env.ADMIN_EMAIL;
   const allowedAdmins = adminEmail
@@ -43,43 +39,42 @@ export default async function DashboardPage() {
 
   const isOwner =
     allowedAdmins.length === 0 ||
-    allowedAdmins.includes(user.email?.toLowerCase() || "");
+    allowedAdmins.includes(session.email?.toLowerCase() || "");
 
   // Fetch total video count for all known modules
   const livePlaylistIds = KNOWN_PLAYLISTS.map((p) => p.id);
   const intensivePlaylistIds = INTENSIVE_PLAYLISTS.map((p) => p.id);
   const allKnownPlaylistIds = [...livePlaylistIds, ...intensivePlaylistIds];
 
-  const { data: videos } = await supabase
-    .from("videos")
-    .select("id, duration, playlist_id")
-    .in("playlist_id", allKnownPlaylistIds);
+  const videos = await sql`
+    SELECT id, duration, playlist_id FROM videos
+    WHERE playlist_id = ANY(${allKnownPlaylistIds})
+  `;
 
   // Separate live vs intensive videos
-  const liveVideos = (videos ?? []).filter((v: { playlist_id: string | null }) =>
+  const liveVideos = videos.filter((v) =>
     v.playlist_id ? livePlaylistIds.includes(v.playlist_id) : false
   );
-  const intensiveVideos = (videos ?? []).filter((v: { playlist_id: string | null }) =>
+  const intensiveVideos = videos.filter((v) =>
     v.playlist_id ? intensivePlaylistIds.includes(v.playlist_id) : false
   );
 
   // Fetch user's watched progress
-  const { data: progressRows } = await supabase
-    .from("watch_progress")
-    .select("video_id, watched")
-    .eq("user_id", user.id)
-    .eq("watched", true);
+  const progressRows = await sql`
+    SELECT video_id FROM watch_progress
+    WHERE user_id = ${session.id} AND watched = true
+  `;
 
-  const watchedIds = new Set((progressRows ?? []).map((r: { video_id: string }) => r.video_id));
+  const watchedIds = new Set(progressRows.map((r) => r.video_id));
 
   // Live Classes stats
   const totalVideos = liveVideos.length;
-  const watchedCount = liveVideos.filter((v: { id: string }) => watchedIds.has(v.id)).length;
+  const watchedCount = liveVideos.filter((v) => watchedIds.has(v.id)).length;
   const livePercent = totalVideos > 0 ? Math.round((watchedCount / totalVideos) * 100) : 0;
 
   // Intensive Classes stats
   const totalIntensive = intensiveVideos.length;
-  const watchedIntensive = intensiveVideos.filter((v: { id: string }) => watchedIds.has(v.id)).length;
+  const watchedIntensive = intensiveVideos.filter((v) => watchedIds.has(v.id)).length;
   const intensivePercent = totalIntensive > 0 ? Math.round((watchedIntensive / totalIntensive) * 100) : 0;
 
   // All playlists for Dashboard sync
@@ -87,6 +82,7 @@ export default async function DashboardPage() {
     ...KNOWN_PLAYLISTS.map((p) => ({ ...p, category: "Live Classes" })),
     ...INTENSIVE_PLAYLISTS.map((p) => ({ ...p, category: "Intensive Classes" })),
   ];
+
 
   return (
     <main className="flex-1 p-3.5 sm:p-5 md:py-6 md:px-6 lg:px-8 max-w-[1680px] mx-auto w-full space-y-8 animate-fade-in-up overflow-x-hidden">

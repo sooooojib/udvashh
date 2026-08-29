@@ -1,10 +1,12 @@
 import { neon } from "@neondatabase/serverless";
 
-const connectionString = process.env.DATABASE_URL;
-
-if (!connectionString) {
-  throw new Error("Missing DATABASE_URL in environment variables.");
+function getSql() {
+  const connectionString = process.env.DATABASE_URL;
+  if (!connectionString) {
+    throw new Error("Missing DATABASE_URL environment variable. Set it in .env.local");
+  }
+  return neon(connectionString);
 }
 
-export const sql = neon(connectionString);
+export const sql = getSql();
 

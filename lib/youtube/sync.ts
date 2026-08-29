@@ -1,5 +1,6 @@
-import { createAdminClient } from "@/utils/supabase/admin";
+import { sql } from "@/lib/db";
 import { parseISO8601Duration } from "@/lib/youtube/duration";
+
 
 interface YouTubePlaylistItem {
   snippet?: {
@@ -183,16 +184,33 @@ export async function syncPlaylist(playlistId: string): Promise<SyncResult> {
     };
   });
 
-  // 4. Upsert records into Supabase using the Service Role admin client
-  const supabase = createAdminClient();
-  const { error: upsertError } = await supabase
-    .from("videos")
-    .upsert(videoRecords, {
-      onConflict: "youtube_video_id",
-    });
-
-  if (upsertError) {
-    throw new Error(`Supabase database error: ${upsertError.message}`);
+  // 4. Upsert records into Neon using SQL
+  for (const record of videoRecords) {
+    await sql`
+      INSERT INTO videos (
+        youtube_video_id, playlist_id, title, description,
+        thumbnail_url, position, duration, published_at, updated_at
+      ) VALUES (
+        ${record.youtube_video_id},
+        ${record.playlist_id},
+        ${record.title},
+        ${record.description},
+        ${record.thumbnail_url},
+        ${record.position},
+        ${record.duration},
+        ${record.published_at ? new Date(record.published_at).toISOString() : null},
+        ${record.updated_at}
+      )
+      ON CONFLICT (youtube_video_id) DO UPDATE SET
+        playlist_id   = EXCLUDED.playlist_id,
+        title         = EXCLUDED.title,
+        description   = EXCLUDED.description,
+        thumbnail_url = EXCLUDED.thumbnail_url,
+        position      = EXCLUDED.position,
+        duration      = EXCLUDED.duration,
+        published_at  = EXCLUDED.published_at,
+        updated_at    = EXCLUDED.updated_at
+    `;
   }
 
   return {
@@ -200,3 +218,4 @@ export async function syncPlaylist(playlistId: string): Promise<SyncResult> {
     playlistId,
   };
 }
+

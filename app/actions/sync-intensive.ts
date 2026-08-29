@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/utils/supabase/server";
+import { getSession } from "@/lib/auth/session";
 import { syncPlaylist } from "@/lib/youtube/sync";
 
 export interface IntensiveSyncResult {
@@ -14,12 +14,9 @@ export async function syncIntensiveNow(
   playlistId?: string
 ): Promise<IntensiveSyncResult> {
   // 1. Verify authenticated session
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const session = await getSession();
 
-  if (!user) {
+  if (!session) {
     return { success: false, message: "Unauthorized. Please sign in." };
   }
 
@@ -29,7 +26,7 @@ export async function syncIntensiveNow(
     const allowedEmails = adminEmail
       .split(",")
       .map((e) => e.trim().toLowerCase());
-    const userEmail = user.email?.toLowerCase() || "";
+    const userEmail = session.email?.toLowerCase() || "";
 
     if (!allowedEmails.includes(userEmail)) {
       return {
@@ -38,6 +35,7 @@ export async function syncIntensiveNow(
       };
     }
   }
+
 
   const targetPlaylist = playlistId || "all";
 

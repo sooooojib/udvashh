@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
-import { createClient } from "@/utils/supabase/server";
+import { sql } from "@/lib/db";
+import { getSession } from "@/lib/auth/session";
 import { type Video } from "@/components/dashboard/video-card";
 import { WatchProgressBar } from "@/components/dashboard/progress-bar";
 import { IntensivePlaylistView } from "@/components/dashboard/intensive-playlist-view";
@@ -21,13 +22,8 @@ export const metadata: Metadata = {
 };
 
 export default async function IntensiveClassesPage() {
-  const supabase = await createClient();
-
-  // Auth guard
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login?redirectTo=/intensive-classes");
+  const session = await getSession();
+  if (!session) redirect("/login?redirectTo=/intensive-classes");
 
   const adminEmail = process.env.ADMIN_EMAIL;
   const allowedAdmins = adminEmail
@@ -36,7 +32,7 @@ export default async function IntensiveClassesPage() {
 
   const isOwner =
     allowedAdmins.length === 0 ||
-    allowedAdmins.includes(user.email?.toLowerCase() || "");
+    allowedAdmins.includes(session.email?.toLowerCase() || "");
 
   // Get all intensive playlist IDs to filter videos
   const intensivePlaylistIds = INTENSIVE_PLAYLISTS.map((p) => p.id);
@@ -44,31 +40,29 @@ export default async function IntensiveClassesPage() {
   // Fetch videos only for intensive playlists
   let videoList: Video[] = [];
   if (intensivePlaylistIds.length > 0) {
-    const { data: videos } = await supabase
-      .from("videos")
-      .select("*")
-      .in("playlist_id", intensivePlaylistIds)
-      .order("position", { ascending: true });
-    videoList = videos ?? [];
+    const videos = await sql`
+      SELECT * FROM videos
+      WHERE playlist_id = ANY(${intensivePlaylistIds})
+      ORDER BY position ASC
+    `;
+    videoList = videos as unknown as Video[];
   }
 
   // Fetch user's watch progress for intensive videos only
   let watchedVideoIds: string[] = [];
   if (videoList.length > 0) {
     const videoIds = videoList.map((v) => v.id);
-    const { data: progressRows } = await supabase
-      .from("watch_progress")
-      .select("video_id, watched")
-      .eq("user_id", user.id)
-      .eq("watched", true)
-      .in("video_id", videoIds);
-
-    watchedVideoIds = (progressRows ?? []).map(
-      (r: { video_id: string }) => r.video_id
-    );
+    const progressRows = await sql`
+      SELECT video_id FROM watch_progress
+      WHERE user_id = ${session.id}
+        AND watched = true
+        AND video_id = ANY(${videoIds})
+    `;
+    watchedVideoIds = progressRows.map((r) => r.video_id as string);
   }
 
   const watchedCount = watchedVideoIds.length;
+
 
   return (
     <main className="flex-1 p-3.5 sm:p-5 md:py-6 md:px-6 lg:px-8 max-w-[1680px] mx-auto w-full space-y-8 animate-fade-in-up">

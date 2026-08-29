@@ -2,8 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createClient } from "@/utils/supabase/server";
-import { createAdminClient } from "@/utils/supabase/admin";
+import bcrypt from "bcryptjs";
+import { sql } from "@/lib/db";
+import { createSession, clearSession } from "@/lib/auth/session";
 
 export type AuthActionResult = {
   error?: string;
@@ -16,7 +17,7 @@ export async function login(
   prevState: AuthActionResult | null,
   formData: FormData
 ): Promise<AuthActionResult> {
-  const email = (formData.get("email") as string)?.trim();
+  const email = (formData.get("email") as string)?.trim().toLowerCase();
   const password = formData.get("password") as string;
   const redirectTo = (formData.get("redirectTo") as string) || "/dashboard";
 
@@ -24,40 +25,51 @@ export async function login(
     return { error: "Please enter both email and password." };
   }
 
-  const supabase = await createClient();
+  try {
+    // Look up user in Neon
+    const rows = await sql`
+      SELECT id, email, password_hash FROM users WHERE email = ${email} LIMIT 1
+    `;
 
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (rows.length === 0) {
+      return { error: "Invalid email or password." };
+    }
 
-  if (error) {
-    return { error: error.message };
-  }
+    const user = rows[0];
 
-  // ── Approval gate: check profiles table ──────────────────────────────────
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    if (!user.password_hash) {
+      return { error: "Invalid email or password." };
+    }
 
-  if (user) {
-    const adminClient = createAdminClient();
-    const { data: profile } = await adminClient
-      .from("profiles")
-      .select("is_approved")
-      .eq("id", user.id)
-      .single();
+    const passwordMatch = await bcrypt.compare(password, user.password_hash as string);
+    if (!passwordMatch) {
+      return { error: "Invalid email or password." };
+    }
 
-    if (!profile || profile.is_approved === false) {
-      await supabase.auth.signOut();
+    // Check approval status
+    const profileRows = await sql`
+      SELECT is_approved FROM profiles WHERE id = ${user.id} LIMIT 1
+    `;
+
+    if (profileRows.length === 0 || profileRows[0].is_approved === false) {
       return {
         error:
           "Your account is pending admin approval. Once the administrator approves your account, you will be able to sign in.",
       };
     }
+
+    // Create session cookie
+    await createSession({ id: user.id as string, email: user.email as string });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Database error occurred";
+    console.error("[login] error:", msg);
+    return { error: `Login failed: ${msg}` };
   }
-  // ─────────────────────────────────────────────────────────────────────────
 
   revalidatePath("/", "layout");
   redirect(redirectTo);
 }
+
 
 // ── SIGNUP ───────────────────────────────────────────────────────────────────
 
@@ -82,41 +94,32 @@ export async function signup(
     return { error: "Passwords do not match." };
   }
 
-  const adminClient = createAdminClient();
-
-  // Create user directly via admin API - bypasses all Supabase email rate limits and sends zero emails
-  const { data, error } = await adminClient.auth.admin.createUser({
-    email,
-    password,
-    email_confirm: true,
-    user_metadata: { full_name: fullName || "" },
-  });
-
-  if (error) {
-    if (
-      error.message.toLowerCase().includes("already registered") ||
-      error.message.toLowerCase().includes("already exists")
-    ) {
-      return {
-        error:
-          "An account with this email already exists. Please sign in or use another email.",
-      };
-    }
-    return { error: error.message };
+  // Check if user already exists
+  const existing = await sql`SELECT id FROM users WHERE email = ${email} LIMIT 1`;
+  if (existing.length > 0) {
+    return {
+      error:
+        "An account with this email already exists. Please sign in or use another email.",
+    };
   }
 
-  // Guaranteed direct insert into profiles with is_approved = false
-  if (data?.user) {
-    await adminClient.from("profiles").upsert(
-      {
-        id: data.user.id,
-        email: data.user.email,
-        full_name: fullName || "",
-        is_approved: false,
-      },
-      { onConflict: "id" }
-    );
-  }
+  // Hash password and create user
+  const passwordHash = await bcrypt.hash(password, 12);
+
+  const newUserRows = await sql`
+    INSERT INTO users (email, password_hash, role)
+    VALUES (${email}, ${passwordHash}, 'user')
+    RETURNING id
+  `;
+
+  const newUserId = newUserRows[0].id;
+
+  // Create profile with is_approved = false
+  await sql`
+    INSERT INTO profiles (id, email, full_name, is_approved)
+    VALUES (${newUserId}, ${email}, ${fullName || ""}, false)
+    ON CONFLICT (id) DO NOTHING
+  `;
 
   return {
     success:
@@ -127,8 +130,7 @@ export async function signup(
 // ── LOGOUT ───────────────────────────────────────────────────────────────────
 
 export async function logout(): Promise<void> {
-  const supabase = await createClient();
-  await supabase.auth.signOut();
+  await clearSession();
   revalidatePath("/", "layout");
   redirect("/login");
 }

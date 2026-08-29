@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
-import { createClient } from "@/utils/supabase/server";
+import { sql } from "@/lib/db";
+import { getSession } from "@/lib/auth/session";
 import { type Video } from "@/components/dashboard/video-card";
 import { WatchProgressBar } from "@/components/dashboard/progress-bar";
 import { PlaylistView } from "@/components/dashboard/playlist-view";
@@ -21,13 +22,8 @@ export const metadata: Metadata = {
 };
 
 export default async function LiveClassesPage() {
-  const supabase = await createClient();
-
-  // Auth guard
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login?redirectTo=/live-classes");
+  const session = await getSession();
+  if (!session) redirect("/login?redirectTo=/live-classes");
 
   const adminEmail = process.env.ADMIN_EMAIL;
   const allowedAdmins = adminEmail
@@ -36,33 +32,33 @@ export default async function LiveClassesPage() {
 
   const isOwner =
     allowedAdmins.length === 0 ||
-    allowedAdmins.includes(user.email?.toLowerCase() || "");
+    allowedAdmins.includes(session.email?.toLowerCase() || "");
 
   // Only fetch videos belonging to Live Class playlists
   const livePlaylistIds = KNOWN_PLAYLISTS.map((p) => p.id);
 
   // Fetch videos ordered by position
-  const { data: videos } = await supabase
-    .from("videos")
-    .select("*")
-    .in("playlist_id", livePlaylistIds)
-    .order("position", { ascending: true });
+  const videos = await sql`
+    SELECT * FROM videos
+    WHERE playlist_id = ANY(${livePlaylistIds})
+    ORDER BY position ASC
+  `;
 
-  // Fetch user's watch progress (scoped to live-class videos only)
-  const { data: progressRows } = await supabase
-    .from("watch_progress")
-    .select("video_id, watched")
-    .eq("user_id", user.id)
-    .eq("watched", true);
+  // Fetch user's watch progress (watched only)
+  const progressRows = await sql`
+    SELECT video_id FROM watch_progress
+    WHERE user_id = ${session.id} AND watched = true
+  `;
 
   // Only count progress for live-class videos
-  const liveVideoIds = new Set((videos ?? []).map((v: { id: string }) => v.id));
-  const watchedVideoIds: string[] = (progressRows ?? [])
-    .map((r: { video_id: string }) => r.video_id)
+  const liveVideoIds = new Set(videos.map((v) => v.id));
+  const watchedVideoIds: string[] = progressRows
+    .map((r) => r.video_id as string)
     .filter((id) => liveVideoIds.has(id));
 
-  const videoList: Video[] = videos ?? [];
+  const videoList: Video[] = videos as unknown as Video[];
   const watchedCount = watchedVideoIds.length;
+
 
   return (
     <main className="flex-1 p-3.5 sm:p-5 md:py-6 md:px-6 lg:px-8 max-w-[1680px] mx-auto w-full space-y-8 animate-fade-in-up">

@@ -1,31 +1,30 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/utils/supabase/server";
+import { sql } from "@/lib/db";
+import { getSession } from "@/lib/auth/session";
 
 export async function toggleWatched(
   videoId: string,
   watched: boolean
 ): Promise<void> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const session = await getSession();
+  if (!session) throw new Error("Unauthorized");
 
-  if (!user) throw new Error("Unauthorized");
-
-  await supabase.from("watch_progress").upsert(
-    {
-      user_id: user.id,
-      video_id: videoId,
-      watched,
-      watched_at: watched ? new Date().toISOString() : null,
-      updated_at: new Date().toISOString(),
-    },
-    {
-      onConflict: "user_id,video_id",
-    }
-  );
+  await sql`
+    INSERT INTO watch_progress (user_id, video_id, watched, watched_at, updated_at)
+    VALUES (
+      ${session.id},
+      ${videoId},
+      ${watched},
+      ${watched ? new Date().toISOString() : null},
+      ${new Date().toISOString()}
+    )
+    ON CONFLICT (user_id, video_id) DO UPDATE SET
+      watched = EXCLUDED.watched,
+      watched_at = EXCLUDED.watched_at,
+      updated_at = EXCLUDED.updated_at
+  `;
 
   revalidatePath("/dashboard");
   revalidatePath("/live-classes");

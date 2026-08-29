@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
-import { createClient } from "@/utils/supabase/server";
+import { sql } from "@/lib/db";
+import { getSession } from "@/lib/auth/session";
 import { VideoPlayer } from "@/components/watch/video-player";
 import { getPlaylistName } from "@/lib/youtube/playlists";
 
@@ -12,12 +13,10 @@ export async function generateMetadata({
   params,
 }: WatchPageProps): Promise<Metadata> {
   const { videoId } = await params;
-  const supabase = await createClient();
-  const { data: video } = await supabase
-    .from("videos")
-    .select("title")
-    .eq("youtube_video_id", videoId)
-    .single();
+  const rows = await sql`
+    SELECT title FROM videos WHERE youtube_video_id = ${videoId} LIMIT 1
+  `;
+  const video = rows[0];
 
   return {
     title: video ? `${video.title} | অবনতি` : "Watch | অবনতি",
@@ -26,54 +25,47 @@ export async function generateMetadata({
 
 export default async function WatchPage({ params }: WatchPageProps) {
   const { videoId } = await params;
-  const supabase = await createClient();
-
-  // Auth guard
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect(`/login?redirectTo=/watch/${videoId}`);
+  const session = await getSession();
+  if (!session) redirect(`/login?redirectTo=/watch/${videoId}`);
 
   // Fetch the video by youtube_video_id
-  const { data: video } = await supabase
-    .from("videos")
-    .select("*")
-    .eq("youtube_video_id", videoId)
-    .single();
+  const videoRows = await sql`
+    SELECT * FROM videos WHERE youtube_video_id = ${videoId} LIMIT 1
+  `;
 
-  if (!video) notFound();
+  if (videoRows.length === 0) notFound();
+  const video = videoRows[0];
 
   // Fetch watched status for this video
-  const { data: progress } = await supabase
-    .from("watch_progress")
-    .select("watched")
-    .eq("user_id", user.id)
-    .eq("video_id", video.id)
-    .single();
+  const progressRows = await sql`
+    SELECT watched FROM watch_progress
+    WHERE user_id = ${session.id} AND video_id = ${video.id}
+    LIMIT 1
+  `;
 
-  const isWatched = progress?.watched === true;
+  const isWatched = progressRows[0]?.watched === true;
 
   // Find all videos in the same playlist and sort naturally by class number
-  const { data: playlistVideos } = await supabase
-    .from("videos")
-    .select("youtube_video_id, title, position")
-    .eq("playlist_id", video.playlist_id);
+  const playlistRows = await sql`
+    SELECT youtube_video_id, title, position FROM videos
+    WHERE playlist_id = ${video.playlist_id}
+  `;
 
   let nextVideoId: string | null = null;
   let videoPosition = video.position;
 
-  if (playlistVideos && playlistVideos.length > 0) {
+  if (playlistRows.length > 0) {
     const { compareVideos } = await import("@/lib/utils/format");
-    playlistVideos.sort(compareVideos);
+    playlistRows.sort(compareVideos as Parameters<typeof playlistRows.sort>[0]);
 
-    const currentIndex = playlistVideos.findIndex(
+    const currentIndex = playlistRows.findIndex(
       (v) => v.youtube_video_id === video.youtube_video_id
     );
 
     if (currentIndex !== -1) {
       videoPosition = currentIndex;
-      if (currentIndex + 1 < playlistVideos.length) {
-        nextVideoId = playlistVideos[currentIndex + 1].youtube_video_id;
+      if (currentIndex + 1 < playlistRows.length) {
+        nextVideoId = playlistRows[currentIndex + 1].youtube_video_id;
       }
     }
   }
