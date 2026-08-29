@@ -7,12 +7,15 @@ import { Progress } from "@/components/ui/progress";
 import { formatHoursMinutes, compareVideos } from "@/lib/utils/format";
 import {
   BookOpen,
+  Check,
   CheckCircle2,
   ChevronDown,
   Clock,
+  Filter,
   Layers,
   ListVideo,
   Play,
+  RotateCcw,
   VideoOff,
 } from "lucide-react";
 
@@ -33,6 +36,8 @@ export function PlaylistView({ videos, watchedVideoIds }: PlaylistViewProps) {
     Record<string, boolean>
   >({});
   const [filterPlaylistId, setFilterPlaylistId] = React.useState<string>("all");
+  const [isDropdownOpen, setIsDropdownOpen] = React.useState<boolean>(false);
+  const dropdownRef = React.useRef<HTMLDivElement>(null);
 
   const watchedSet = new Set(watchedVideoIds);
 
@@ -73,6 +78,29 @@ export function PlaylistView({ videos, watchedVideoIds }: PlaylistViewProps) {
     return result;
   }, [videos]);
 
+  // Close dropdown when clicking outside or pressing Escape
+  React.useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsDropdownOpen(false);
+      }
+    }
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setIsDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
+
   const togglePlaylist = (id: string) => {
     setExpandedPlaylists((prev) => ({
       ...prev,
@@ -80,8 +108,9 @@ export function PlaylistView({ videos, watchedVideoIds }: PlaylistViewProps) {
     }));
   };
 
-  const handleFilterClick = (id: string) => {
+  const handleSelectPlaylist = (id: string) => {
     setFilterPlaylistId(id);
+    setIsDropdownOpen(false);
     if (id === "all") {
       setExpandedPlaylists({});
     } else {
@@ -95,55 +124,176 @@ export function PlaylistView({ videos, watchedVideoIds }: PlaylistViewProps) {
       ? groups
       : groups.filter((g) => g.id === filterPlaylistId);
 
+  const selectedGroup =
+    filterPlaylistId === "all"
+      ? null
+      : groups.find((g) => g.id === filterPlaylistId);
+
+  const totalVideosCount = videos.length;
+
   return (
     <div className="space-y-6">
-      {/* Top Filter Pills Bar — horizontal scroll on mobile */}
-      <div className="pills-row gap-2 border-b border-border/40 pb-4 dark:border-[#1F2C34]/80 lg:flex-wrap">
-        <button
-          onClick={() => handleFilterClick("all")}
-          className={`inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2.5 text-xs font-semibold tracking-tight transition-all duration-200 active:scale-95 min-h-[44px] ${
-            filterPlaylistId === "all"
-              ? "bg-[#25A8A2]/15 text-[#25A8A2] border border-[#25A8A2]/50 shadow-[0_0_12px_rgba(37,168,162,0.15)] font-medium"
-              : "border border-border/60 bg-card/80 text-muted-foreground hover:border-[#25A8A2]/40 hover:text-foreground dark:border-[#1F2C34] dark:bg-[#111820] dark:text-[#9AA7AE] dark:hover:border-[#25A8A2]/40 dark:hover:text-[#E8EDF0]"
-          }`}
-        >
-          <Layers className="h-3.5 w-3.5" />
-          <span>All</span>
-          <span className="font-mono text-[11px] opacity-80">({groups.length})</span>
-        </button>
-
-        {groups.map((group) => {
-          const groupWatchedCount = group.videos.filter((v) =>
-            watchedSet.has(v.id)
-          ).length;
-          const isComplete =
-            group.videos.length > 0 &&
-            groupWatchedCount === group.videos.length;
-
-          const isSelected = filterPlaylistId === group.id;
-
-          return (
-            <button
-              key={group.id}
-              onClick={() => handleFilterClick(group.id)}
-              className={`inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2.5 text-xs tracking-tight transition-all duration-200 active:scale-95 min-h-[44px] ${
-                isSelected
-                  ? "bg-[#25A8A2]/15 text-[#25A8A2] border border-[#25A8A2]/50 shadow-[0_0_12px_rgba(37,168,162,0.15)] font-semibold"
-                  : "border border-border/60 bg-card/80 text-muted-foreground hover:border-[#25A8A2]/40 hover:text-foreground dark:border-[#1F2C34] dark:bg-[#111820] dark:text-[#9AA7AE] dark:hover:border-[#25A8A2]/40 dark:hover:text-[#E8EDF0]"
-              }`}
-            >
-              {isComplete ? (
-                <CheckCircle2 className="h-3.5 w-3.5 text-[#25A8A2]" />
-              ) : (
-                <BookOpen className="h-3.5 w-3.5 opacity-60" />
-              )}
-              <span className="max-w-[160px] truncate">{group.name}</span>
-              <span className="text-[11px] opacity-75 font-mono">
-                ({group.videos.length})
+      {/* Subject Filter Section with Dropdown — Workable on both small and big screens */}
+      <div className="relative border-b border-border/40 pb-5 dark:border-[#1F2C34]/80">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          {/* Section Indicator Label */}
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#25A8A2]/15 text-[#25A8A2] ring-1 ring-[#25A8A2]/30">
+              <Filter className="h-4 w-4" />
+            </div>
+            <div>
+              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground dark:text-[#9AA7AE]">
+                Select Subject
               </span>
-            </button>
-          );
-        })}
+              <p className="text-xs text-muted-foreground/70 dark:text-[#5C6A72]">
+                {filterPlaylistId === "all"
+                  ? `Showing all ${groups.length} subjects (${totalVideosCount} classes)`
+                  : `Filtered: ${selectedGroup?.name ?? ""}`}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            {/* Interactive Dropdown Box */}
+            <div className="relative w-full sm:w-80 md:w-96" ref={dropdownRef}>
+              <button
+                type="button"
+                onClick={() => setIsDropdownOpen((prev) => !prev)}
+                aria-expanded={isDropdownOpen}
+                aria-haspopup="listbox"
+                className={`flex w-full items-center justify-between gap-3 rounded-xl border px-3.5 py-2.5 text-xs font-medium transition-all duration-200 min-h-[46px] select-none text-left active:scale-[0.99] ${
+                  isDropdownOpen
+                    ? "border-[#25A8A2] bg-card shadow-[0_0_15px_rgba(37,168,162,0.15)] ring-2 ring-[#25A8A2]/20 dark:border-[#25A8A2] dark:bg-[#111820]"
+                    : filterPlaylistId !== "all"
+                    ? "border-[#25A8A2]/50 bg-[#25A8A2]/5 text-foreground dark:border-[#25A8A2]/40 dark:bg-[#111820] shadow-sm"
+                    : "border-border/70 bg-card/90 hover:border-[#25A8A2]/50 hover:bg-card dark:border-[#1F2C34] dark:bg-[#111820] dark:hover:border-[#25A8A2]/50 shadow-sm"
+                }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                  {filterPlaylistId === "all" ? (
+                    <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-[#25A8A2]/15 text-[#25A8A2]">
+                      <Layers className="h-3.5 w-3.5" />
+                    </div>
+                  ) : (
+                    <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-[#25A8A2]/15 text-[#25A8A2]">
+                      <BookOpen className="h-3.5 w-3.5" />
+                    </div>
+                  )}
+
+                  <span className="truncate font-semibold text-foreground dark:text-[#E8EDF0]">
+                    {filterPlaylistId === "all"
+                      ? "All Subjects"
+                      : selectedGroup?.name}
+                  </span>
+
+                  <span className="shrink-0 rounded-md bg-muted/60 px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground dark:bg-[#141E28] dark:text-[#9AA7AE]">
+                    {filterPlaylistId === "all"
+                      ? `(${groups.length})`
+                      : `(${selectedGroup?.videos.length ?? 0})`}
+                  </span>
+                </div>
+
+                <ChevronDown
+                  className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 ${
+                    isDropdownOpen ? "rotate-180 text-[#25A8A2]" : ""
+                  }`}
+                />
+              </button>
+
+              {/* Dropdown Menu Popover */}
+              {isDropdownOpen && (
+                <div
+                  role="listbox"
+                  className="absolute left-0 right-0 top-full z-50 mt-1.5 max-h-80 overflow-y-auto rounded-2xl border border-border/80 bg-card/95 p-1.5 shadow-2xl backdrop-blur-xl animate-fade-in-up dark:border-[#1F2C34] dark:bg-[#111820]/95"
+                >
+                  {/* All Subjects Option */}
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected={filterPlaylistId === "all"}
+                    onClick={() => handleSelectPlaylist("all")}
+                    className={`flex w-full items-center justify-between gap-2.5 rounded-xl px-3 py-2.5 text-xs transition-all duration-150 text-left min-h-[42px] ${
+                      filterPlaylistId === "all"
+                        ? "bg-[#25A8A2]/15 text-[#25A8A2] font-semibold border border-[#25A8A2]/30"
+                        : "text-foreground hover:bg-accent/60 dark:text-[#E8EDF0] dark:hover:bg-[#141E28]"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <Layers className="h-3.5 w-3.5 shrink-0 text-[#25A8A2]" />
+                      <span className="truncate">All Subjects</span>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="font-mono text-[11px] opacity-75">
+                        ({groups.length} subjects • {totalVideosCount} classes)
+                      </span>
+                      {filterPlaylistId === "all" && (
+                        <Check className="h-3.5 w-3.5 text-[#25A8A2]" />
+                      )}
+                    </div>
+                  </button>
+
+                  <div className="my-1 border-t border-border/40 dark:border-[#1F2C34]/60" />
+
+                  {/* Individual Subjects */}
+                  {groups.map((group) => {
+                    const groupWatchedCount = group.videos.filter((v) =>
+                      watchedSet.has(v.id)
+                    ).length;
+                    const isComplete =
+                      group.videos.length > 0 &&
+                      groupWatchedCount === group.videos.length;
+                    const isSelected = filterPlaylistId === group.id;
+
+                    return (
+                      <button
+                        key={group.id}
+                        type="button"
+                        role="option"
+                        aria-selected={isSelected}
+                        onClick={() => handleSelectPlaylist(group.id)}
+                        className={`flex w-full items-center justify-between gap-2.5 rounded-xl px-3 py-2.5 text-xs transition-all duration-150 text-left min-h-[42px] ${
+                          isSelected
+                            ? "bg-[#25A8A2]/15 text-[#25A8A2] font-semibold border border-[#25A8A2]/30"
+                            : "text-foreground hover:bg-accent/60 dark:text-[#E8EDF0] dark:hover:bg-[#141E28]"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                          {isComplete ? (
+                            <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-[#25A8A2]" />
+                          ) : (
+                            <BookOpen className="h-3.5 w-3.5 shrink-0 opacity-60" />
+                          )}
+                          <span className="truncate">{group.name}</span>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="font-mono text-[11px] opacity-75">
+                            ({group.videos.length})
+                          </span>
+                          {isSelected && (
+                            <Check className="h-3.5 w-3.5 text-[#25A8A2]" />
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Quick Reset to All Button (when filtered) */}
+            {filterPlaylistId !== "all" && (
+              <button
+                type="button"
+                onClick={() => handleSelectPlaylist("all")}
+                title="Show all subjects"
+                className="inline-flex h-[46px] items-center gap-1.5 rounded-xl border border-border/70 bg-card/80 px-3 text-xs font-semibold text-muted-foreground transition-all duration-200 hover:border-[#25A8A2]/50 hover:text-foreground active:scale-95 dark:border-[#1F2C34] dark:bg-[#111820] dark:text-[#9AA7AE] dark:hover:border-[#25A8A2]/50 dark:hover:text-[#E8EDF0] shrink-0"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Reset</span>
+              </button>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Playlist Collapsible Cards with SevenGrid styling */}
@@ -261,7 +411,7 @@ export function PlaylistView({ videos, watchedVideoIds }: PlaylistViewProps) {
                         </p>
                       </div>
                     ) : (
-                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
                         {group.videos.map((video, idx) => (
                           <VideoCard
                             key={video.id}
