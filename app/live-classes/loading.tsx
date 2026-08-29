@@ -1,10 +1,13 @@
 export default function LiveClassesLoading() {
   return (
-    <main className="flex-1 p-3.5 sm:p-5 md:py-6 md:px-6 lg:px-8 max-w-[1680px] mx-auto w-full space-y-8 animate-fade-in-up">
-      {/* Header Skeleton */}
+    <main className="flex-1 p-3.5 sm:p-5 md:py-6 md:px-6 lg:px-8 max-w-[1680px] mx-auto w-full space-y-8 min-h-[calc(100dvh-4rem)] animate-page-enter">
+      {/* Clean Page Header Skeleton - Exact matching dimensions with page.tsx */}
       <div className="flex items-center gap-3.5">
-        <div className="h-11 w-11 rounded-xl bg-muted/60 dark:bg-[#141E28] animate-pulse" />
-        <div className="h-8 w-44 rounded-md bg-muted/70 dark:bg-[#141E28] animate-pulse" />
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#25A8A2]/15 ring-1 ring-[#25A8A2]/30 animate-pulse" />
+        <div className="space-y-1.5 min-w-0">
+          <div className="h-7 w-40 sm:w-48 rounded-lg bg-muted/70 dark:bg-[#141E28] animate-pulse" />
+          <div className="h-3.5 w-64 sm:w-80 rounded-md bg-muted/40 dark:bg-[#141E28]/60 animate-pulse" />
+        </div>
       </div>
 
       {/* Owner Sync Panel Skeleton */}
@@ -12,7 +15,7 @@ export default function LiveClassesLoading() {
         <div className="h-1 w-full bg-gradient-to-r from-[#25A8A2] via-teal-500 to-emerald-500" />
         <div className="p-6 pb-3">
           <div className="flex items-center gap-3">
-            <div className="h-9 w-9 shrink-0 rounded-xl bg-muted/60 dark:bg-[#141E28] animate-pulse" />
+            <div className="h-9 w-9 shrink-0 rounded-xl bg-[#25A8A2]/20 animate-pulse" />
             <div className="space-y-1.5">
               <div className="h-4 w-36 rounded-md bg-muted/70 dark:bg-[#141E28] animate-pulse" />
               <div className="h-3 w-56 rounded-md bg-muted/40 dark:bg-[#141E28]/60 animate-pulse" />
@@ -45,7 +48,7 @@ export default function LiveClassesLoading() {
       {/* Subject Filter Dropdown Skeleton */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-5 border-b border-border/40 dark:border-[#1F2C34]/80">
         <div className="flex items-center gap-2.5">
-          <div className="h-8 w-8 rounded-xl bg-muted/60 dark:bg-[#141E28] animate-pulse" />
+          <div className="h-8 w-8 rounded-xl bg-[#25A8A2]/15 animate-pulse" />
           <div className="space-y-1.5">
             <div className="h-3.5 w-28 rounded bg-muted/70 dark:bg-[#141E28] animate-pulse" />
             <div className="h-3 w-44 rounded bg-muted/40 dark:bg-[#141E28]/60 animate-pulse" />
@@ -63,7 +66,7 @@ export default function LiveClassesLoading() {
           >
             <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between min-h-[72px]">
               <div className="flex items-center gap-4 min-w-0">
-                <div className="h-11 w-11 shrink-0 rounded-xl bg-muted/60 dark:bg-[#141E28] animate-pulse" />
+                <div className="h-11 w-11 shrink-0 rounded-xl bg-[#25A8A2]/15 animate-pulse" />
                 <div className="space-y-2 min-w-0">
                   <div className="h-5 w-40 sm:w-56 rounded bg-muted/70 dark:bg-[#141E28] animate-pulse" />
                   <div className="h-3 w-48 sm:w-64 rounded bg-muted/40 dark:bg-[#141E28]/60 animate-pulse" />

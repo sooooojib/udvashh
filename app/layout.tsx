@@ -76,10 +76,11 @@ export default function RootLayout({
         >
           <TopProgressBar />
           <Header />
-          <div className="flex-1 flex flex-col">{children}</div>
+          <div className="flex-1 flex flex-col min-h-[calc(100dvh-4rem)] w-full">{children}</div>
           <Toaster />
         </ThemeProvider>
       </body>
     </html>
   );
 }
+

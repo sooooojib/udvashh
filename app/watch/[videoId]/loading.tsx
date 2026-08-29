@@ -1,9 +1,11 @@
 import { ChevronRight, Play } from "lucide-react";
 
 export default function WatchVideoLoading() {
+
   return (
-    <main className="flex-1 w-full max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 md:py-10 animate-fade-in-up">
+    <main className="flex-1 w-full max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 md:py-10 min-h-[calc(100dvh-4rem)] animate-page-enter">
       <div className="space-y-5 sm:space-y-6">
+
         {/* Breadcrumb Skeleton */}
         <nav aria-label="Breadcrumb" className="flex items-center flex-wrap gap-1.5 sm:gap-2 text-xs">
           <div className="h-6 w-24 rounded-lg bg-muted/60 dark:bg-[#141E28] animate-pulse" />
