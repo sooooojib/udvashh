@@ -1,7 +1,6 @@
 import { sql } from "@/lib/db";
 import { parseISO8601Duration } from "@/lib/youtube/duration";
 
-
 interface YouTubePlaylistItem {
   snippet?: {
     title?: string;
@@ -30,6 +29,10 @@ interface YouTubeVideoItem {
   contentDetails?: {
     duration?: string;
   };
+  status?: {
+    privacyStatus?: string;
+    uploadStatus?: string;
+  };
 }
 
 export interface SyncResult {
@@ -39,10 +42,10 @@ export interface SyncResult {
 }
 
 export async function syncPlaylist(playlistId: string): Promise<SyncResult> {
-  const apiKey = process.env.YT_API_KEY;
+  const apiKey = process.env.YT_API_KEY || process.env.YOUTUBE_API_KEY;
 
   if (!apiKey) {
-    throw new Error("Missing YT_API_KEY in environment variables.");
+    throw new Error("Missing YT_API_KEY or YOUTUBE_API_KEY in environment variables.");
   }
 
   if (!playlistId) {
@@ -92,8 +95,8 @@ export async function syncPlaylist(playlistId: string): Promise<SyncResult> {
     nextPageToken = data.nextPageToken;
   } while (nextPageToken);
 
-  // Filter out deleted/private videos
-  const validItems = rawItems.filter((item) => {
+  // Filter out deleted/private placeholders from playlist items
+  const candidateItems = rawItems.filter((item) => {
     const videoId =
       item.contentDetails?.videoId || item.snippet?.resourceId?.videoId;
     const title = item.snippet?.title;
@@ -104,28 +107,22 @@ export async function syncPlaylist(playlistId: string): Promise<SyncResult> {
     );
   });
 
-  if (validItems.length === 0) {
-    return {
-      synced: 0,
-      playlistId,
-      message: "No valid videos found in this playlist.",
-    };
-  }
-
-  // 2. Batch fetch video durations from videos.list (batches of 50)
-  const videoIds = validItems.map(
+  // 2. Batch fetch video status & durations from videos.list (batches of 50)
+  // This verifies whether the videos are actually live, playable, and not deleted on YouTube.
+  const videoIds = candidateItems.map(
     (item) =>
       (item.contentDetails?.videoId ||
         item.snippet?.resourceId?.videoId) as string
   );
 
   const durationMap = new Map<string, number>();
+  const activeVideoIds = new Set<string>();
   const batchSize = 50;
 
   for (let i = 0; i < videoIds.length; i += batchSize) {
     const chunk = videoIds.slice(i, i + batchSize);
     const videoUrl = new URL("https://www.googleapis.com/youtube/v3/videos");
-    videoUrl.searchParams.set("part", "contentDetails");
+    videoUrl.searchParams.set("part", "contentDetails,status");
     videoUrl.searchParams.set("id", chunk.join(","));
     videoUrl.searchParams.set("key", apiKey);
 
@@ -138,11 +135,41 @@ export async function syncPlaylist(playlistId: string): Promise<SyncResult> {
       const videoData = await videoRes.json();
       if (Array.isArray(videoData.items)) {
         videoData.items.forEach((vItem: YouTubeVideoItem) => {
+          // Skip if explicitly marked private or rejected/deleted
+          if (vItem.status?.privacyStatus === "private") return;
+          if (
+            vItem.status?.uploadStatus === "rejected" ||
+            vItem.status?.uploadStatus === "deleted"
+          ) {
+            return;
+          }
+
+          activeVideoIds.add(vItem.id);
           const rawDuration = vItem.contentDetails?.duration;
           durationMap.set(vItem.id, parseISO8601Duration(rawDuration));
         });
       }
     }
+  }
+
+  // Only keep items that are confirmed active & available by YouTube
+  const validItems = candidateItems.filter((item) => {
+    const videoId = (item.contentDetails?.videoId ||
+      item.snippet?.resourceId?.videoId) as string;
+    return videoId && activeVideoIds.has(videoId);
+  });
+
+  // If no valid videos exist in the playlist, prune all videos for this playlist
+  if (validItems.length === 0) {
+    await sql`
+      DELETE FROM videos
+      WHERE playlist_id = ${playlistId}
+    `;
+    return {
+      synced: 0,
+      playlistId,
+      message: "No valid videos found. Any removed videos were cleared from the database.",
+    };
   }
 
   // 3. Sort items naturally by class number (e.g. 01, 02, 03) and prepare records for upsert
@@ -184,7 +211,7 @@ export async function syncPlaylist(playlistId: string): Promise<SyncResult> {
     };
   });
 
-  // 4. Upsert records into Neon using SQL
+  // 4. Upsert valid records into Neon using SQL
   for (const record of videoRecords) {
     await sql`
       INSERT INTO videos (
@@ -213,9 +240,17 @@ export async function syncPlaylist(playlistId: string): Promise<SyncResult> {
     `;
   }
 
+  // 5. Clean up removed/deleted videos:
+  // Delete any records currently in the database for this playlist that are no longer in YouTube's active list
+  const currentVideoIds = videoRecords.map((r) => r.youtube_video_id);
+  await sql`
+    DELETE FROM videos
+    WHERE playlist_id = ${playlistId}
+      AND NOT (youtube_video_id = ANY(${currentVideoIds}))
+  `;
+
   return {
     synced: videoRecords.length,
     playlistId,
   };
 }
-
