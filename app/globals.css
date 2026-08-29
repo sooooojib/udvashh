@@ -82,14 +82,17 @@
   --font-bengali: var(--font-bengali), ui-sans-serif, system-ui, sans-serif;
 }
 
-/* ── Prevent horizontal overflow globally ── */
-html,
-body {
+/* ── Prevent horizontal overflow globally & lock scrollbar layout ── */
+html {
   overflow-x: hidden;
   max-width: 100vw;
+  scrollbar-gutter: stable;
 }
 
 body {
+  overflow-x: hidden;
+  max-width: 100vw;
+
   font-family: var(--font-sans);
   background-color: hsl(var(--background));
   color: hsl(var(--foreground));

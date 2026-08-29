@@ -15,24 +15,24 @@ export async function Header() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/80 bg-background/80 backdrop-blur-md dark:border-[#1F2C34]/80 dark:bg-[#0A0F12]/80 transition-colors duration-200 pt-safe">
-      <div className="mx-auto flex h-16 max-w-[1680px] items-center justify-between px-3.5 sm:px-6 lg:px-8">
+      <div className="relative mx-auto flex h-16 max-w-[1680px] items-center justify-between px-3.5 sm:px-6 lg:px-8">
         {/* Left side: User badge */}
-        <div className="flex-1 flex items-center justify-start">
+        <div className="flex items-center justify-start z-10 min-w-0">
           {userEmail && (
-            <div className="hidden sm:flex items-center gap-2 rounded-xl border border-border/80 bg-card/80 px-3 py-1.5 text-xs font-medium text-foreground/80 dark:border-[#1F2C34] dark:bg-[#111820] dark:text-[#E8EDF0] animate-fade-in-up">
-              <User className="h-3.5 w-3.5 text-muted-foreground dark:text-[#9AA7AE]" />
+            <div className="hidden sm:flex items-center gap-2 rounded-xl border border-border/80 bg-card/80 px-3 py-1.5 text-xs font-medium text-foreground/80 dark:border-[#1F2C34] dark:bg-[#111820] dark:text-[#E8EDF0]">
+              <User className="h-3.5 w-3.5 shrink-0 text-muted-foreground dark:text-[#9AA7AE]" />
               <span className="max-w-[150px] truncate font-mono text-[11px]">{userEmail}</span>
             </div>
           )}
         </div>
 
-        {/* Center: Brand Logo */}
-        <div className="flex items-center justify-center">
+        {/* Center: Brand Logo (Locked to exact geometric center) */}
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-auto flex items-center justify-center">
           <BrandLogo />
         </div>
 
         {/* Right side: Theme Toggle + Logout */}
-        <div className="flex-1 flex items-center justify-end gap-2">
+        <div className="flex items-center justify-end gap-2 z-10">
           {/* Theme toggle — 44px touch target */}
           <div className="min-h-[44px] min-w-[44px] flex items-center justify-center">
             <ThemeToggle />
