@@ -14,7 +14,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Zap, PlaySquare, VideoOff } from "lucide-react";
+import { Lightbulb, PlaySquare, VideoOff } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Subject Hacks | অবনতি",
@@ -65,7 +65,7 @@ export default async function SubjectHacksPage() {
       {/* Page Header — fuchsia glow accent */}
       <div className="flex items-center gap-3.5">
         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-fuchsia-500/15 text-fuchsia-600 ring-1 ring-fuchsia-500/30 shadow-sm shadow-fuchsia-500/10 dark:text-fuchsia-400">
-          <Zap className="h-5.5 w-5.5" />
+          <Lightbulb className="h-5.5 w-5.5" />
         </div>
         <div>
           <h1 className="font-heading text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground dark:text-[#E8EDF0]">

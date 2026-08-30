@@ -20,7 +20,7 @@ import {
   BookOpen,
   FileText,
   Flame,
-  Zap,
+  Lightbulb,
   PlaySquare,
   Tv,
 } from "lucide-react";
@@ -275,7 +275,7 @@ export default async function DashboardPage() {
             {/* Top Badge */}
             <div className="flex items-center justify-between gap-2">
               <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-fuchsia-500/15 text-fuchsia-600 ring-1 ring-fuchsia-500/30 shadow-sm transition-transform duration-200 group-hover:scale-105 dark:text-fuchsia-400">
-                <Zap className="h-5.5 w-5.5" />
+                <Lightbulb className="h-5.5 w-5.5" />
               </div>
               <span className="flex items-center gap-1.5 rounded-full bg-fuchsia-500/15 px-2.5 py-0.5 text-xs font-bold text-fuchsia-600 border border-fuchsia-500/30 dark:text-fuchsia-400">
                 <span className="h-1.5 w-1.5 rounded-full bg-fuchsia-500 animate-pulse" />
