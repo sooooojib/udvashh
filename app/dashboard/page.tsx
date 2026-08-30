@@ -20,7 +20,7 @@ import {
   BookOpen,
   FileText,
   Flame,
-  Lightbulb,
+  Zap,
   PlaySquare,
   Tv,
 } from "lucide-react";
@@ -270,22 +270,22 @@ export default async function DashboardPage() {
           {/* Module 3: Subject Hacks (ACTIVE) */}
           <Link
             href="/subject-hacks"
-            className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border/60 bg-card/90 p-5 shadow-sm backdrop-blur-md transition-all duration-200 ease-in-out hover:scale-[1.01] active:scale-[0.99] hover:border-violet-500/50 dark:border-[#1F2C34] dark:bg-[#111820] dark:hover:border-violet-500/60 hover:shadow-md min-h-[180px]"
+            className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border/60 bg-card/90 p-5 shadow-sm backdrop-blur-md transition-all duration-200 ease-in-out hover:scale-[1.01] active:scale-[0.99] hover:border-fuchsia-500/50 dark:border-[#1F2C34] dark:bg-[#111820] dark:hover:border-fuchsia-500/60 hover:shadow-md min-h-[180px]"
           >
             {/* Top Badge */}
             <div className="flex items-center justify-between gap-2">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-violet-500/15 text-violet-600 ring-1 ring-violet-500/30 shadow-sm transition-transform duration-200 group-hover:scale-105 dark:text-violet-400">
-                <Lightbulb className="h-5.5 w-5.5" />
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-fuchsia-500/15 text-fuchsia-600 ring-1 ring-fuchsia-500/30 shadow-sm transition-transform duration-200 group-hover:scale-105 dark:text-fuchsia-400">
+                <Zap className="h-5.5 w-5.5" />
               </div>
-              <span className="flex items-center gap-1.5 rounded-full bg-violet-500/15 px-2.5 py-0.5 text-xs font-bold text-violet-600 border border-violet-500/30 dark:text-violet-400">
-                <span className="h-1.5 w-1.5 rounded-full bg-violet-500 animate-pulse" />
+              <span className="flex items-center gap-1.5 rounded-full bg-fuchsia-500/15 px-2.5 py-0.5 text-xs font-bold text-fuchsia-600 border border-fuchsia-500/30 dark:text-fuchsia-400">
+                <span className="h-1.5 w-1.5 rounded-full bg-fuchsia-500 animate-pulse" />
                 Active
               </span>
             </div>
 
             {/* Title */}
             <div className="mt-4">
-              <h3 className="font-heading text-lg font-bold tracking-tight text-foreground transition-colors group-hover:text-violet-600 dark:text-[#E8EDF0] dark:group-hover:text-violet-400">
+              <h3 className="font-heading text-lg font-bold tracking-tight text-foreground transition-colors group-hover:text-fuchsia-600 dark:text-[#E8EDF0] dark:group-hover:text-fuchsia-400">
                 Subject Hacks
               </h3>
             </div>
@@ -304,7 +304,7 @@ export default async function DashboardPage() {
                 <span className="block text-[10px] font-medium text-muted-foreground uppercase tracking-wider dark:text-[#5C6A72]">
                   Completed
                 </span>
-                <span className="font-mono text-sm font-bold text-violet-600 dark:text-violet-400">
+                <span className="font-mono text-sm font-bold text-fuchsia-600 dark:text-fuchsia-400">
                   {watchedSubjectHacks} <span className="text-[10px] font-normal text-muted-foreground">done</span>
                 </span>
               </div>
@@ -323,7 +323,7 @@ export default async function DashboardPage() {
               <span className="font-medium text-muted-foreground font-mono text-[11px] dark:text-[#9AA7AE]">
                 {SUBJECT_HACKS_PLAYLISTS.length} playlist{SUBJECT_HACKS_PLAYLISTS.length !== 1 ? "s" : ""}
               </span>
-              <span className="flex items-center gap-1 font-bold text-violet-600 dark:text-violet-400 transition-transform group-hover:translate-x-0.5">
+              <span className="flex items-center gap-1 font-bold text-fuchsia-600 dark:text-fuchsia-400 transition-transform group-hover:translate-x-0.5">
                 <span>View Hacks</span>
                 <ArrowRight className="h-3.5 w-3.5" />
               </span>

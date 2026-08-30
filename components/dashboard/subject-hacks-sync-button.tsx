@@ -43,7 +43,7 @@ export function SubjectHacksSyncButton() {
       <Button
         onClick={handleSync}
         disabled={isPending}
-        className="gap-2 font-semibold shadow-sm bg-violet-600 text-white hover:bg-violet-700 dark:bg-violet-600 dark:text-white dark:hover:bg-violet-700 dark:shadow-[0_0_10px_rgba(124,58,237,0.3)] transition-all active:scale-95"
+        className="gap-2 font-semibold shadow-sm bg-gradient-to-r from-fuchsia-600 to-pink-600 text-white hover:from-fuchsia-700 hover:to-pink-700 shadow-fuchsia-500/20 dark:shadow-[0_0_12px_rgba(217,70,239,0.3)] transition-all active:scale-95 border-0"
       >
         {isPending ? (
           <>
@@ -63,12 +63,12 @@ export function SubjectHacksSyncButton() {
           role={result.success ? "status" : "alert"}
           className={`flex items-start gap-2.5 rounded-xl border px-4 py-3 text-sm transition-all animate-in fade-in slide-in-from-bottom-2 duration-300 ${
             result.success
-              ? "border-violet-200 bg-violet-50/80 text-violet-800 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-400"
+              ? "border-fuchsia-200 bg-fuchsia-50/80 text-fuchsia-800 dark:border-fuchsia-500/30 dark:bg-fuchsia-500/10 dark:text-fuchsia-400"
               : "border-red-200 bg-red-50/80 text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300"
           }`}
         >
           {result.success ? (
-            <CheckCircle2 className="h-5 w-5 shrink-0 mt-px text-violet-600 dark:text-violet-400" />
+            <CheckCircle2 className="h-5 w-5 shrink-0 mt-px text-fuchsia-600 dark:text-fuchsia-400" />
           ) : (
             <AlertCircle className="h-5 w-5 shrink-0 mt-px text-red-600 dark:text-red-400" />
           )}
