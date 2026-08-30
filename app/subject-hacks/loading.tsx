@@ -4,22 +4,22 @@ export default function SubjectHacksLoading() {
 
       {/* Page Header Skeleton */}
       <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 sm:h-11 sm:w-11 shrink-0 rounded-xl bg-fuchsia-500/15 ring-1 ring-fuchsia-500/30 animate-pulse" />
+        <div className="flex h-10 w-10 sm:h-11 sm:w-11 shrink-0 rounded-xl bg-blue-500/15 ring-1 ring-blue-500/30 animate-pulse" />
         <div className="h-7 w-40 sm:w-52 rounded-lg bg-muted/70 dark:bg-[#141E28] animate-pulse" />
       </div>
 
-      {/* Sync Panel Skeleton — compact inline row */}
-      <div className="overflow-hidden rounded-2xl border border-fuchsia-500/20 bg-card/90 dark:border-fuchsia-500/15 dark:bg-[#111820]">
-        <div className="h-[3px] w-full bg-gradient-to-r from-fuchsia-600 via-pink-500 to-rose-500" />
+      {/* Sync Panel Skeleton */}
+      <div className="overflow-hidden rounded-2xl border border-blue-500/20 bg-card/90 dark:border-blue-500/15 dark:bg-[#111820]">
+        <div className="h-[3px] w-full bg-gradient-to-r from-blue-700 via-blue-500 to-indigo-600" />
         <div className="flex items-center justify-between gap-3 p-4 sm:p-5">
           <div className="flex items-center gap-3 min-w-0 flex-1">
-            <div className="h-8 w-8 sm:h-9 sm:w-9 shrink-0 rounded-xl bg-fuchsia-500/20 animate-pulse" />
+            <div className="h-8 w-8 sm:h-9 sm:w-9 shrink-0 rounded-xl bg-blue-500/20 animate-pulse" />
             <div className="space-y-1.5 min-w-0 flex-1">
               <div className="h-4 w-36 rounded-md bg-muted/70 dark:bg-[#141E28] animate-pulse" />
               <div className="h-3 w-52 max-w-full rounded-md bg-muted/40 dark:bg-[#141E28]/60 animate-pulse" />
             </div>
           </div>
-          <div className="h-8 w-24 shrink-0 rounded-lg bg-fuchsia-500/20 dark:bg-fuchsia-500/15 animate-pulse" />
+          <div className="h-8 w-24 shrink-0 rounded-lg bg-blue-500/20 dark:bg-blue-500/15 animate-pulse" />
         </div>
       </div>
 

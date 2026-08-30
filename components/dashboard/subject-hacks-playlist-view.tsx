@@ -22,8 +22,8 @@ export function SubjectHacksPlaylistView({
 
   if (sortedVideos.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-fuchsia-500/20 bg-card/50 py-20 backdrop-blur-md dark:border-fuchsia-500/15 dark:bg-[#111820]/40">
-        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-fuchsia-500/10 text-fuchsia-500 dark:text-fuchsia-400 mb-3">
+      <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-blue-500/20 bg-card/50 py-20 backdrop-blur-md dark:border-blue-500/15 dark:bg-[#111820]/40">
+        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-500/10 text-blue-500 dark:text-blue-400 mb-3">
           <VideoOff className="h-7 w-7" />
         </div>
         <p className="text-sm font-semibold tracking-tight text-foreground dark:text-[#E8EDF0]">

@@ -58,7 +58,7 @@ export default async function SubjectHacksPage() {
 
       {/* ── Page Header ── */}
       <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-xl bg-fuchsia-500/15 text-fuchsia-600 ring-1 ring-fuchsia-500/30 shadow-sm shadow-fuchsia-500/10 dark:text-fuchsia-400">
+        <div className="flex h-10 w-10 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-xl bg-blue-500/15 text-blue-600 ring-1 ring-blue-500/30 shadow-sm shadow-blue-500/10 dark:text-blue-400">
           <Lightbulb className="h-5 w-5" />
         </div>
         <h1 className="font-heading text-xl sm:text-3xl font-extrabold tracking-tight text-foreground dark:text-[#E8EDF0]">
@@ -66,16 +66,13 @@ export default async function SubjectHacksPage() {
         </h1>
       </div>
 
-      {/* ── Owner Sync Panel — inline compact row on mobile ── */}
+      {/* ── Owner Sync Panel — compact inline row ── */}
       {isOwner && (
-        <div className="overflow-hidden rounded-2xl border border-fuchsia-500/20 bg-card/90 shadow-sm dark:border-fuchsia-500/15 dark:bg-[#111820]">
-          {/* top gradient stripe */}
-          <div className="h-[3px] w-full bg-gradient-to-r from-fuchsia-600 via-pink-500 to-rose-500" />
-
+        <div className="overflow-hidden rounded-2xl border border-blue-500/20 bg-card/90 shadow-sm dark:border-blue-500/15 dark:bg-[#111820]">
+          <div className="h-[3px] w-full bg-gradient-to-r from-blue-700 via-blue-500 to-indigo-600" />
           <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
-            {/* left: icon + text */}
             <div className="flex items-center gap-3 min-w-0">
-              <div className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-fuchsia-600 to-pink-600 text-white shadow-[0_0_10px_rgba(217,70,239,0.35)]">
+              <div className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-[0_0_10px_rgba(37,99,235,0.4)]">
                 <Lightbulb className="h-4 w-4" />
               </div>
               <div className="min-w-0">
@@ -87,8 +84,6 @@ export default async function SubjectHacksPage() {
                 </p>
               </div>
             </div>
-
-            {/* right: sync button */}
             <div className="shrink-0">
               <SubjectHacksSyncButton />
             </div>
@@ -103,8 +98,8 @@ export default async function SubjectHacksPage() {
 
       {/* ── Video Grid / Empty State ── */}
       {videoList.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-fuchsia-500/20 bg-card/50 py-16 sm:py-20 backdrop-blur-md dark:border-fuchsia-500/15 dark:bg-[#111820]/40">
-          <div className="flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-2xl bg-fuchsia-500/10 text-fuchsia-500 dark:text-fuchsia-400 mb-3">
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-blue-500/20 bg-card/50 py-16 sm:py-20 backdrop-blur-md dark:border-blue-500/15 dark:bg-[#111820]/40">
+          <div className="flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-2xl bg-blue-500/10 text-blue-500 dark:text-blue-400 mb-3">
             <VideoOff className="h-6 w-6 sm:h-7 sm:w-7" />
           </div>
           <p className="text-sm font-semibold tracking-tight text-foreground dark:text-[#E8EDF0]">
