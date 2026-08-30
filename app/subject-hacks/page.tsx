@@ -67,14 +67,9 @@ export default async function SubjectHacksPage() {
         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-fuchsia-500/15 text-fuchsia-600 ring-1 ring-fuchsia-500/30 shadow-sm shadow-fuchsia-500/10 dark:text-fuchsia-400">
           <Lightbulb className="h-5.5 w-5.5" />
         </div>
-        <div>
-          <h1 className="font-heading text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground dark:text-[#E8EDF0]">
-            Subject Hacks
-          </h1>
-          <p className="text-xs text-muted-foreground dark:text-[#9AA7AE] mt-0.5">
-            Quick-revision tips &amp; tricks from the best tutors
-          </p>
-        </div>
+        <h1 className="font-heading text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground dark:text-[#E8EDF0]">
+          Subject Hacks
+        </h1>
       </div>
 
       {/* Owner Sync Panel */}
