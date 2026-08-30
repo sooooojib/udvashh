@@ -28,5 +28,5 @@ export function getIntensivePlaylistName(
 ): string {
   if (!playlistId) return "Uncategorized Playlist";
   const found = INTENSIVE_PLAYLISTS.find((p) => p.id === playlistId);
-  return found ? found.name : `Playlist ${playlistId}`;
+  return found ? found.name : "Intensive Class";
 }

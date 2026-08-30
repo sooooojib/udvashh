@@ -96,7 +96,7 @@ export async function syncNow(
     return {
       success: true,
       synced: result.synced,
-      message: `Synced ${result.synced} video${result.synced !== 1 ? "s" : ""} from playlist ${result.playlistId}`,
+      message: `Synced ${result.synced} video${result.synced !== 1 ? "s" : ""}.`,
     };
   } catch (error: unknown) {
     const msg =

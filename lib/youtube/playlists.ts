@@ -70,5 +70,5 @@ export const KNOWN_PLAYLISTS: PlaylistInfo[] = [
 export function getPlaylistName(playlistId?: string | null): string {
   if (!playlistId) return "Uncategorized Playlist";
   const found = KNOWN_PLAYLISTS.find((p) => p.id === playlistId);
-  return found ? found.name : `Playlist ${playlistId}`;
+  return found ? found.name : "Playlist";
 }

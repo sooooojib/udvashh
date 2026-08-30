@@ -18,6 +18,7 @@ import {
   FileText,
   Flame,
   LayoutGrid,
+  Lightbulb,
   Loader2,
   Play,
   SkipForward,
@@ -49,7 +50,7 @@ interface VideoPlayerProps {
   playlistName?: string;
   moduleName?: string;
   moduleHref?: string;
-  moduleType?: "live" | "intensive";
+  moduleType?: "live" | "intensive" | "subject-hacks";
   initialWatched: boolean;
   nextVideoId: string | null;
 }
@@ -104,6 +105,7 @@ export function VideoPlayer({
   };
 
   const isIntensive = moduleType === "intensive";
+  const isSubjectHacks = moduleType === "subject-hacks";
 
   return (
     <div className="space-y-5 sm:space-y-6">
@@ -128,13 +130,15 @@ export function VideoPlayer({
         >
           {isIntensive ? (
             <Flame className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+          ) : isSubjectHacks ? (
+            <Lightbulb className="h-3.5 w-3.5 text-blue-500 shrink-0" />
           ) : (
             <Tv className="h-3.5 w-3.5 text-[#25A8A2] shrink-0" />
           )}
           <span>{moduleName}</span>
         </Link>
 
-        {playlistName && (
+        {playlistName && playlistName !== moduleName && (
           <>
             <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/40 shrink-0" />
             <span
@@ -171,6 +175,8 @@ export function VideoPlayer({
               optimisticWatched
                 ? isIntensive
                   ? "border-amber-500/30 bg-amber-50 text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-300"
+                  : isSubjectHacks
+                  ? "border-blue-500/30 bg-blue-50 text-blue-900 dark:border-blue-900/50 dark:bg-blue-950/40 dark:text-blue-300"
                   : "border-emerald-500/30 bg-emerald-50 text-emerald-900 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300"
                 : "border-border/60 bg-card/80 text-muted-foreground dark:border-[#1F2C34] dark:bg-[#111820]"
             }`}
@@ -181,6 +187,8 @@ export function VideoPlayer({
                   className={`h-3.5 w-3.5 ${
                     isIntensive
                       ? "text-amber-600 dark:text-amber-400"
+                      : isSubjectHacks
+                      ? "text-blue-600 dark:text-blue-400"
                       : "text-emerald-600 dark:text-emerald-400"
                   }`}
                 />
@@ -243,9 +251,13 @@ export function VideoPlayer({
               optimisticWatched
                 ? isIntensive
                   ? "border-amber-500/40 text-amber-600 bg-amber-500/10 hover:bg-amber-500/20 dark:border-amber-500/40 dark:bg-amber-500/15 dark:text-amber-400"
+                  : isSubjectHacks
+                  ? "border-blue-500/40 text-blue-600 bg-blue-500/10 hover:bg-blue-500/20 dark:border-blue-500/40 dark:bg-blue-500/15 dark:text-blue-400"
                   : "border-[#25A8A2]/40 text-[#25A8A2] bg-[#25A8A2]/10 hover:bg-[#25A8A2]/20 dark:border-[#25A8A2]/40 dark:bg-[#25A8A2]/15 dark:text-[#25A8A2]"
                 : isIntensive
                 ? "bg-amber-500 text-white hover:bg-amber-600 shadow-[0_0_10px_rgba(245,158,11,0.3)]"
+                : isSubjectHacks
+                ? "bg-blue-600 text-white hover:bg-blue-700 shadow-[0_0_10px_rgba(37,99,235,0.3)]"
                 : "bg-primary text-primary-foreground dark:bg-[#25A8A2] dark:text-white dark:hover:bg-[#20928D] dark:shadow-[0_0_10px_rgba(37,168,162,0.3)]"
             }`}
           >
@@ -268,6 +280,8 @@ export function VideoPlayer({
               className={`flex-1 sm:flex-initial h-11 rounded-xl gap-2 font-semibold shadow-sm text-xs active:scale-[0.98] transition-all ${
                 isIntensive
                   ? "bg-amber-500 text-white hover:bg-amber-600 dark:bg-amber-500 dark:hover:bg-amber-600"
+                  : isSubjectHacks
+                  ? "bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500"
                   : "bg-primary text-primary-foreground dark:bg-[#25A8A2] dark:text-white dark:hover:bg-[#20928D]"
               }`}
             >
@@ -288,6 +302,8 @@ export function VideoPlayer({
               className={`h-4 w-4 ${
                 isIntensive
                   ? "text-amber-500"
+                  : isSubjectHacks
+                  ? "text-blue-500"
                   : "text-muted-foreground dark:text-[#25A8A2]"
               }`}
             />

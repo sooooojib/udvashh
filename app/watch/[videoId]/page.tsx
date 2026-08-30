@@ -73,16 +73,33 @@ export default async function WatchPage({ params }: WatchPageProps) {
   const { INTENSIVE_PLAYLISTS, getIntensivePlaylistName } = await import(
     "@/lib/youtube/intensive-playlists"
   );
+  const { SUBJECT_HACKS_PLAYLISTS, getSubjectHacksPlaylistName } = await import(
+    "@/lib/youtube/subject-hacks-playlists"
+  );
 
   const isIntensive = INTENSIVE_PLAYLISTS.some(
     (p) => p.id === video.playlist_id
   );
-  const moduleName = isIntensive ? "Intensive Classes" : "Live Classes";
-  const moduleHref = isIntensive ? "/intensive-classes" : "/live-classes";
-  const moduleType = isIntensive ? "intensive" : "live";
-  const playlistName = isIntensive
-    ? getIntensivePlaylistName(video.playlist_id)
-    : getPlaylistName(video.playlist_id);
+  const isSubjectHacks = SUBJECT_HACKS_PLAYLISTS.some(
+    (p) => p.id === video.playlist_id
+  );
+
+  let moduleName = "Live Classes";
+  let moduleHref = "/live-classes";
+  let moduleType: "live" | "intensive" | "subject-hacks" = "live";
+  let playlistName = getPlaylistName(video.playlist_id);
+
+  if (isIntensive) {
+    moduleName = "Intensive Classes";
+    moduleHref = "/intensive-classes";
+    moduleType = "intensive";
+    playlistName = getIntensivePlaylistName(video.playlist_id);
+  } else if (isSubjectHacks) {
+    moduleName = "Subject Hacks";
+    moduleHref = "/subject-hacks";
+    moduleType = "subject-hacks";
+    playlistName = getSubjectHacksPlaylistName(video.playlist_id);
+  }
 
   return (
     <main className="flex-1 w-full max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 md:py-10 min-h-[calc(100dvh-4rem)] animate-page-enter">

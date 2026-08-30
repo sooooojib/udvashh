@@ -23,5 +23,5 @@ export function getSubjectHacksPlaylistName(
 ): string {
   if (!playlistId) return "Uncategorized Playlist";
   const found = SUBJECT_HACKS_PLAYLISTS.find((p) => p.id === playlistId);
-  return found ? found.name : `Playlist ${playlistId}`;
+  return found ? found.name : "Subject Hacks";
 }
