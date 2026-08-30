@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { formatDuration, extractClassNumber } from "@/lib/utils/format";
-import { Check, CheckCircle2, Clock, Play } from "lucide-react";
+import { Check, Clock, Play } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface Video {
@@ -138,12 +138,9 @@ export function VideoCard({ video, initialWatched, index }: VideoCardProps) {
             />
             <span className="flex items-center gap-1 text-xs">
               {optimisticWatched ? (
-                <>
-                  <CheckCircle2 className="h-3.5 w-3.5 text-[#25A8A2]" />
-                  <span className="font-semibold text-[#25A8A2]">
-                    Watched
-                  </span>
-                </>
+                <span className="font-semibold text-[#25A8A2]">
+                  Watched
+                </span>
               ) : (
                 <span>Mark watched</span>
               )}
