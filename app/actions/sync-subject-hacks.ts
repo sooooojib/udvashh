@@ -4,16 +4,15 @@ import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/auth/session";
 import { syncPlaylist } from "@/lib/youtube/sync";
 
-export interface SyncActionResult {
+export interface SubjectHacksSyncResult {
   success: boolean;
   message: string;
   synced?: number;
 }
 
-export async function syncNow(
-  playlistId?: string,
-  playlistIds?: string[]
-): Promise<SyncActionResult> {
+export async function syncSubjectHacksNow(
+  playlistId?: string
+): Promise<SubjectHacksSyncResult> {
   // 1. Verify authenticated session
   const session = await getSession();
 
@@ -21,7 +20,7 @@ export async function syncNow(
     return { success: false, message: "Unauthorized. Please sign in." };
   }
 
-  // 2. Verify caller is an owner (supports comma-separated admin emails)
+  // 2. Verify caller is an owner
   const adminEmail = process.env.ADMIN_EMAIL;
   if (adminEmail) {
     const allowedEmails = adminEmail
@@ -37,37 +36,25 @@ export async function syncNow(
     }
   }
 
+  const targetPlaylist = playlistId || "all";
 
-  const targetPlaylist = playlistId || process.env.YT_PLAYLIST_ID || "";
-
-  if (!targetPlaylist) {
-    return {
-      success: false,
-      message:
-        "No playlist ID provided. Select a playlist or set YT_PLAYLIST_ID in your environment.",
-    };
-  }
-
-  // 3. Call syncPlaylist directly on the server
+  // 3. Call syncPlaylist (reuses the same sync engine)
   try {
-    if (playlistId === "all") {
-      let targetList: { id: string; name?: string }[] = [];
+    if (targetPlaylist === "all") {
+      const { SUBJECT_HACKS_PLAYLISTS } = await import(
+        "@/lib/youtube/subject-hacks-playlists"
+      );
 
-      if (playlistIds && playlistIds.length > 0) {
-        targetList = playlistIds.map((id) => ({ id }));
-      } else {
-        const { KNOWN_PLAYLISTS } = await import("@/lib/youtube/playlists");
-        const { INTENSIVE_PLAYLISTS } = await import(
-          "@/lib/youtube/intensive-playlists"
-        );
-        const { SUBJECT_HACKS_PLAYLISTS } = await import(
-          "@/lib/youtube/subject-hacks-playlists"
-        );
-        targetList = [...KNOWN_PLAYLISTS, ...INTENSIVE_PLAYLISTS, ...SUBJECT_HACKS_PLAYLISTS];
+      if (SUBJECT_HACKS_PLAYLISTS.length === 0) {
+        return {
+          success: false,
+          message:
+            "No Subject Hacks playlists configured. Add playlist IDs in lib/youtube/subject-hacks-playlists.ts.",
+        };
       }
 
       let totalSynced = 0;
-      for (const pl of targetList) {
+      for (const pl of SUBJECT_HACKS_PLAYLISTS) {
         try {
           const res = await syncPlaylist(pl.id);
           totalSynced += res.synced || 0;
@@ -76,21 +63,17 @@ export async function syncNow(
         }
       }
       revalidatePath("/dashboard");
-      revalidatePath("/live-classes");
-      revalidatePath("/intensive-classes");
       revalidatePath("/subject-hacks");
       return {
         success: true,
         synced: totalSynced,
-        message: `Synced ${targetList.length} playlist${targetList.length === 1 ? "" : "s"} (${totalSynced} total videos).`,
+        message: `Synced all ${SUBJECT_HACKS_PLAYLISTS.length} Subject Hacks playlist${SUBJECT_HACKS_PLAYLISTS.length !== 1 ? "s" : ""} (${totalSynced} total videos).`,
       };
     }
 
     const result = await syncPlaylist(targetPlaylist);
 
     revalidatePath("/dashboard");
-    revalidatePath("/live-classes");
-    revalidatePath("/intensive-classes");
     revalidatePath("/subject-hacks");
 
     return {

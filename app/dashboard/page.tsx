@@ -7,6 +7,7 @@ import { WatchProgressBar } from "@/components/dashboard/progress-bar";
 import { OwnerSyncButton } from "@/components/dashboard/sync-button";
 import { KNOWN_PLAYLISTS } from "@/lib/youtube/playlists";
 import { INTENSIVE_PLAYLISTS } from "@/lib/youtube/intensive-playlists";
+import { SUBJECT_HACKS_PLAYLISTS } from "@/lib/youtube/subject-hacks-playlists";
 import {
   Card,
   CardContent,
@@ -19,6 +20,7 @@ import {
   BookOpen,
   FileText,
   Flame,
+  Lightbulb,
   PlaySquare,
   Tv,
 } from "lucide-react";
@@ -44,19 +46,23 @@ export default async function DashboardPage() {
   // Fetch total video count for all known modules
   const livePlaylistIds = KNOWN_PLAYLISTS.map((p) => p.id);
   const intensivePlaylistIds = INTENSIVE_PLAYLISTS.map((p) => p.id);
-  const allKnownPlaylistIds = [...livePlaylistIds, ...intensivePlaylistIds];
+  const subjectHacksPlaylistIds = SUBJECT_HACKS_PLAYLISTS.map((p) => p.id);
+  const allKnownPlaylistIds = [...livePlaylistIds, ...intensivePlaylistIds, ...subjectHacksPlaylistIds];
 
   const videos = await sql`
     SELECT id, duration, playlist_id FROM videos
     WHERE playlist_id = ANY(${allKnownPlaylistIds})
   `;
 
-  // Separate live vs intensive videos
+  // Separate live vs intensive vs subject hacks videos
   const liveVideos = videos.filter((v) =>
     v.playlist_id ? livePlaylistIds.includes(v.playlist_id) : false
   );
   const intensiveVideos = videos.filter((v) =>
     v.playlist_id ? intensivePlaylistIds.includes(v.playlist_id) : false
+  );
+  const subjectHacksVideos = videos.filter((v) =>
+    v.playlist_id ? subjectHacksPlaylistIds.includes(v.playlist_id) : false
   );
 
   // Fetch user's watched progress
@@ -77,10 +83,16 @@ export default async function DashboardPage() {
   const watchedIntensive = intensiveVideos.filter((v) => watchedIds.has(v.id)).length;
   const intensivePercent = totalIntensive > 0 ? Math.round((watchedIntensive / totalIntensive) * 100) : 0;
 
+  // Subject Hacks stats
+  const totalSubjectHacks = subjectHacksVideos.length;
+  const watchedSubjectHacks = subjectHacksVideos.filter((v) => watchedIds.has(v.id)).length;
+  const subjectHacksPercent = totalSubjectHacks > 0 ? Math.round((watchedSubjectHacks / totalSubjectHacks) * 100) : 0;
+
   // All playlists for Dashboard sync
   const allDashboardPlaylists = [
     ...KNOWN_PLAYLISTS.map((p) => ({ ...p, category: "Live Classes" })),
     ...INTENSIVE_PLAYLISTS.map((p) => ({ ...p, category: "Intensive Classes" })),
+    ...SUBJECT_HACKS_PLAYLISTS.map((p) => ({ ...p, category: "Subject Hacks" })),
   ];
 
 
@@ -115,10 +127,10 @@ export default async function DashboardPage() {
       )}
 
       {/* Overall Progress Bar */}
-      {totalVideos + totalIntensive > 0 && (
+      {totalVideos + totalIntensive + totalSubjectHacks > 0 && (
         <WatchProgressBar
-          total={totalVideos + totalIntensive}
-          watched={watchedCount + watchedIntensive}
+          total={totalVideos + totalIntensive + totalSubjectHacks}
+          watched={watchedCount + watchedIntensive + watchedSubjectHacks}
         />
       )}
 
@@ -255,7 +267,70 @@ export default async function DashboardPage() {
             </div>
           </Link>
 
-          {/* Module 3: Lecture Notes & Materials (FUTURE) */}
+          {/* Module 3: Subject Hacks (ACTIVE) */}
+          <Link
+            href="/subject-hacks"
+            className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border/60 bg-card/90 p-5 shadow-sm backdrop-blur-md transition-all duration-200 ease-in-out hover:scale-[1.01] active:scale-[0.99] hover:border-violet-500/50 dark:border-[#1F2C34] dark:bg-[#111820] dark:hover:border-violet-500/60 hover:shadow-md min-h-[180px]"
+          >
+            {/* Top Badge */}
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-violet-500/15 text-violet-600 ring-1 ring-violet-500/30 shadow-sm transition-transform duration-200 group-hover:scale-105 dark:text-violet-400">
+                <Lightbulb className="h-5.5 w-5.5" />
+              </div>
+              <span className="flex items-center gap-1.5 rounded-full bg-violet-500/15 px-2.5 py-0.5 text-xs font-bold text-violet-600 border border-violet-500/30 dark:text-violet-400">
+                <span className="h-1.5 w-1.5 rounded-full bg-violet-500 animate-pulse" />
+                Active
+              </span>
+            </div>
+
+            {/* Title */}
+            <div className="mt-4">
+              <h3 className="font-heading text-lg font-bold tracking-tight text-foreground transition-colors group-hover:text-violet-600 dark:text-[#E8EDF0] dark:group-hover:text-violet-400">
+                Subject Hacks
+              </h3>
+            </div>
+
+            {/* Module Stats Grid */}
+            <div className="my-4 grid grid-cols-3 gap-2 rounded-xl border border-border/40 bg-muted/20 p-2.5 dark:border-[#1F2C34] dark:bg-[#0A0F12]/60">
+              <div>
+                <span className="block text-[10px] font-medium text-muted-foreground uppercase tracking-wider dark:text-[#5C6A72]">
+                  Total
+                </span>
+                <span className="font-mono text-sm font-bold text-foreground dark:text-[#E8EDF0]">
+                  {totalSubjectHacks} <span className="text-[10px] font-normal text-muted-foreground">videos</span>
+                </span>
+              </div>
+              <div className="border-l border-border/40 pl-2.5 dark:border-[#1F2C34]">
+                <span className="block text-[10px] font-medium text-muted-foreground uppercase tracking-wider dark:text-[#5C6A72]">
+                  Completed
+                </span>
+                <span className="font-mono text-sm font-bold text-violet-600 dark:text-violet-400">
+                  {watchedSubjectHacks} <span className="text-[10px] font-normal text-muted-foreground">done</span>
+                </span>
+              </div>
+              <div className="border-l border-border/40 pl-2.5 dark:border-[#1F2C34]">
+                <span className="block text-[10px] font-medium text-muted-foreground uppercase tracking-wider dark:text-[#5C6A72]">
+                  Progress
+                </span>
+                <span className="font-mono text-sm font-bold text-foreground dark:text-[#E8EDF0]">
+                  {subjectHacksPercent}%
+                </span>
+              </div>
+            </div>
+
+            {/* Meta & Button */}
+            <div className="flex items-center justify-between border-t border-border/40 dark:border-[#1F2C34] pt-3 text-xs">
+              <span className="font-medium text-muted-foreground font-mono text-[11px] dark:text-[#9AA7AE]">
+                {SUBJECT_HACKS_PLAYLISTS.length} playlist{SUBJECT_HACKS_PLAYLISTS.length !== 1 ? "s" : ""}
+              </span>
+              <span className="flex items-center gap-1 font-bold text-violet-600 dark:text-violet-400 transition-transform group-hover:translate-x-0.5">
+                <span>View Hacks</span>
+                <ArrowRight className="h-3.5 w-3.5" />
+              </span>
+            </div>
+          </Link>
+
+          {/* Module 4: Lecture Notes & Materials (FUTURE) */}
           <div className="relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border/40 bg-card/50 p-5.5 opacity-75 backdrop-blur-md dark:border-[#1F2C34]/60 dark:bg-[#111820]/40">
             <div className="flex items-center justify-between gap-2">
               <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-muted text-muted-foreground dark:bg-[#141E28] dark:text-[#5C6A72]">
