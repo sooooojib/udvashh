@@ -95,7 +95,7 @@ export default async function SubjectHacksPage() {
             </div>
           </CardHeader>
           <CardContent className="pt-0">
-            <SubjectHacksSyncButton playlists={SUBJECT_HACKS_PLAYLISTS} />
+            <SubjectHacksSyncButton />
           </CardContent>
         </Card>
       )}
