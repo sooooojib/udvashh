@@ -22,9 +22,11 @@ export function SubjectHacksPlaylistView({
 
   if (sortedVideos.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border/60 bg-card/50 py-20 backdrop-blur-md dark:border-[#1F2C34] dark:bg-[#111820]/40">
-        <VideoOff className="h-9 w-9 text-muted-foreground/50 dark:text-[#5C6A72]" />
-        <p className="mt-3 text-sm font-semibold tracking-tight text-foreground dark:text-[#E8EDF0]">
+      <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-fuchsia-500/20 bg-card/50 py-20 backdrop-blur-md dark:border-fuchsia-500/15 dark:bg-[#111820]/40">
+        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-fuchsia-500/10 text-fuchsia-500 dark:text-fuchsia-400 mb-3">
+          <VideoOff className="h-7 w-7" />
+        </div>
+        <p className="text-sm font-semibold tracking-tight text-foreground dark:text-[#E8EDF0]">
           No videos found
         </p>
       </div>
@@ -32,7 +34,8 @@ export function SubjectHacksPlaylistView({
   }
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+    /* Mobile: 1 col, sm: 2 col, lg: 3 col, xl: 4 col, 2xl: 5 col */
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
       {sortedVideos.map((video, idx) => (
         <VideoCard
           key={video.id}

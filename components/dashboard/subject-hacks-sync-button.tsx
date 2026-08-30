@@ -39,20 +39,21 @@ export function SubjectHacksSyncButton() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col gap-2">
       <Button
         onClick={handleSync}
         disabled={isPending}
-        className="gap-2 font-semibold shadow-sm bg-gradient-to-r from-fuchsia-600 to-pink-600 text-white hover:from-fuchsia-700 hover:to-pink-700 shadow-fuchsia-500/20 dark:shadow-[0_0_12px_rgba(217,70,239,0.3)] transition-all active:scale-95 border-0"
+        size="sm"
+        className="gap-2 font-semibold bg-gradient-to-r from-fuchsia-600 to-pink-600 text-white hover:from-fuchsia-700 hover:to-pink-700 shadow-sm shadow-fuchsia-500/20 dark:shadow-[0_0_10px_rgba(217,70,239,0.25)] transition-all active:scale-95 border-0 whitespace-nowrap"
       >
         {isPending ? (
           <>
-            <Loader2 className="h-4 w-4 animate-spin" />
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
             <span>Syncing…</span>
           </>
         ) : (
           <>
-            <RefreshCw className="h-4 w-4" />
+            <RefreshCw className="h-3.5 w-3.5" />
             <span>Sync Now</span>
           </>
         )}
@@ -61,16 +62,16 @@ export function SubjectHacksSyncButton() {
       {result && (
         <div
           role={result.success ? "status" : "alert"}
-          className={`flex items-start gap-2.5 rounded-xl border px-4 py-3 text-sm transition-all animate-in fade-in slide-in-from-bottom-2 duration-300 ${
+          className={`flex items-start gap-2 rounded-xl border px-3 py-2 text-xs transition-all animate-in fade-in slide-in-from-bottom-2 duration-300 ${
             result.success
               ? "border-fuchsia-200 bg-fuchsia-50/80 text-fuchsia-800 dark:border-fuchsia-500/30 dark:bg-fuchsia-500/10 dark:text-fuchsia-400"
               : "border-red-200 bg-red-50/80 text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300"
           }`}
         >
           {result.success ? (
-            <CheckCircle2 className="h-5 w-5 shrink-0 mt-px text-fuchsia-600 dark:text-fuchsia-400" />
+            <CheckCircle2 className="h-4 w-4 shrink-0 mt-px text-fuchsia-600 dark:text-fuchsia-400" />
           ) : (
-            <AlertCircle className="h-5 w-5 shrink-0 mt-px text-red-600 dark:text-red-400" />
+            <AlertCircle className="h-4 w-4 shrink-0 mt-px text-red-600 dark:text-red-400" />
           )}
           <p className="leading-snug">{result.message}</p>
         </div>
