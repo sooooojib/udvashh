@@ -103,7 +103,7 @@ export default async function IntensiveClassesPage() {
 
       {/* Progress Bar */}
       {videoList.length > 0 && (
-        <WatchProgressBar total={videoList.length} watched={watchedCount} />
+        <WatchProgressBar total={videoList.length} watched={watchedCount} theme="amber" />
       )}
 
       {/* Video Content Grouped by Playlist */}

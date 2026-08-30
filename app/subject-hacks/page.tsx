@@ -93,7 +93,7 @@ export default async function SubjectHacksPage() {
 
       {/* ── Progress Bar ── */}
       {videoList.length > 0 && (
-        <WatchProgressBar total={videoList.length} watched={watchedCount} />
+        <WatchProgressBar total={videoList.length} watched={watchedCount} theme="blue" />
       )}
 
       {/* ── Video Grid / Empty State ── */}

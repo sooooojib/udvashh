@@ -42,6 +42,7 @@ export function SubjectHacksPlaylistView({
           video={video}
           initialWatched={watchedSet.has(video.id)}
           index={idx}
+          theme="blue"
         />
       ))}
     </div>

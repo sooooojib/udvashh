@@ -427,6 +427,7 @@ export function IntensivePlaylistView({
                           video={video}
                           initialWatched={watchedSet.has(video.id)}
                           index={idx}
+                          theme="amber"
                         />
                       ))}
                     </div>
