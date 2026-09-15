@@ -15,9 +15,9 @@ let cachedToken: CachedToken | null = null;
  * Reuses cached access tokens until 5 minutes before expiration.
  */
 export async function getYouTubeAccessToken(): Promise<string> {
-  const clientId = process.env.YT_OAUTH_CLIENT_ID;
-  const clientSecret = process.env.YT_OAUTH_CLIENT_SECRET;
-  const refreshToken = process.env.YT_OAUTH_REFRESH_TOKEN;
+  const clientId = process.env.YT_OAUTH_CLIENT_ID?.trim().replace(/^["']|["']$/g, "");
+  const clientSecret = process.env.YT_OAUTH_CLIENT_SECRET?.trim().replace(/^["']|["']$/g, "");
+  const refreshToken = process.env.YT_OAUTH_REFRESH_TOKEN?.trim().replace(/^["']|["']$/g, "");
 
   if (!clientId || !clientSecret || !refreshToken) {
     throw new Error(
@@ -46,10 +46,11 @@ export async function getYouTubeAccessToken(): Promise<string> {
 
   if (!response.ok) {
     const errorBody = await response.json().catch(() => ({}));
+    const maskedId = `${clientId.slice(0, 8)}...${clientId.slice(-12)} (len: ${clientId.length})`;
     throw new Error(
       `Failed to refresh YouTube access token (${response.status}): ${
         errorBody.error_description || errorBody.error || response.statusText
-      }`
+      }. Please verify YT_OAUTH_CLIENT_ID in Vercel settings (currently: ${maskedId}).`
     );
   }
 
