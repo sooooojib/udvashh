@@ -29,9 +29,14 @@ interface PlaylistGroup {
 interface PlaylistViewProps {
   videos: Video[];
   watchedVideoIds: string[];
+  isAdmin?: boolean;
 }
 
-export function PlaylistView({ videos, watchedVideoIds }: PlaylistViewProps) {
+export function PlaylistView({
+  videos,
+  watchedVideoIds,
+  isAdmin = false,
+}: PlaylistViewProps) {
   const [expandedPlaylists, setExpandedPlaylists] = React.useState<
     Record<string, boolean>
   >({});
@@ -155,7 +160,7 @@ export function PlaylistView({ videos, watchedVideoIds }: PlaylistViewProps) {
 
           <div className="flex items-center gap-2 w-full sm:w-auto">
             {/* Interactive Dropdown Box */}
-            <div className="relative w-full sm:w-80 md:w-96" ref={dropdownRef}>
+            <div className="relative min-w-0 flex-1 sm:w-80 sm:flex-initial md:w-96" ref={dropdownRef}>
               <button
                 type="button"
                 onClick={() => setIsDropdownOpen((prev) => !prev)}
@@ -418,6 +423,7 @@ export function PlaylistView({ videos, watchedVideoIds }: PlaylistViewProps) {
                             video={video}
                             initialWatched={watchedSet.has(video.id)}
                             index={idx}
+                            isAdmin={isAdmin}
                           />
                         ))}
                       </div>

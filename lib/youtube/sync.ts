@@ -116,6 +116,7 @@ export async function syncPlaylist(playlistId: string): Promise<SyncResult> {
   );
 
   const durationMap = new Map<string, number>();
+  const privacyMap = new Map<string, string>();
   const activeVideoIds = new Set<string>();
   const batchSize = 50;
 
@@ -147,6 +148,9 @@ export async function syncPlaylist(playlistId: string): Promise<SyncResult> {
           activeVideoIds.add(vItem.id);
           const rawDuration = vItem.contentDetails?.duration;
           durationMap.set(vItem.id, parseISO8601Duration(rawDuration));
+          if (vItem.status?.privacyStatus) {
+            privacyMap.set(vItem.id, vItem.status.privacyStatus);
+          }
         });
       }
     }
@@ -197,6 +201,7 @@ export async function syncPlaylist(playlistId: string): Promise<SyncResult> {
       item.snippet?.publishedAt ||
       null;
     const duration = durationMap.get(videoId) || 0;
+    const privacyStatus = privacyMap.get(videoId) || "unlisted";
 
     return {
       youtube_video_id: videoId,
@@ -206,6 +211,7 @@ export async function syncPlaylist(playlistId: string): Promise<SyncResult> {
       thumbnail_url: thumbnailUrl,
       position,
       duration,
+      privacy_status: privacyStatus,
       published_at: publishedAt,
       updated_at: new Date().toISOString(),
     };
@@ -216,7 +222,7 @@ export async function syncPlaylist(playlistId: string): Promise<SyncResult> {
     await sql`
       INSERT INTO videos (
         youtube_video_id, playlist_id, title, description,
-        thumbnail_url, position, duration, published_at, updated_at
+        thumbnail_url, position, duration, privacy_status, published_at, updated_at
       ) VALUES (
         ${record.youtube_video_id},
         ${record.playlist_id},
@@ -225,18 +231,20 @@ export async function syncPlaylist(playlistId: string): Promise<SyncResult> {
         ${record.thumbnail_url},
         ${record.position},
         ${record.duration},
+        ${record.privacy_status},
         ${record.published_at ? new Date(record.published_at).toISOString() : null},
         ${record.updated_at}
       )
       ON CONFLICT (youtube_video_id) DO UPDATE SET
-        playlist_id   = EXCLUDED.playlist_id,
-        title         = EXCLUDED.title,
-        description   = EXCLUDED.description,
-        thumbnail_url = EXCLUDED.thumbnail_url,
-        position      = EXCLUDED.position,
-        duration      = EXCLUDED.duration,
-        published_at  = EXCLUDED.published_at,
-        updated_at    = EXCLUDED.updated_at
+        playlist_id    = EXCLUDED.playlist_id,
+        title          = EXCLUDED.title,
+        description    = EXCLUDED.description,
+        thumbnail_url  = EXCLUDED.thumbnail_url,
+        position       = EXCLUDED.position,
+        duration       = EXCLUDED.duration,
+        privacy_status = EXCLUDED.privacy_status,
+        published_at   = EXCLUDED.published_at,
+        updated_at     = EXCLUDED.updated_at
     `;
   }
 

@@ -5,12 +5,13 @@ import Link from "next/link";
 import Image from "next/image";
 import { useOptimistic, useTransition } from "react";
 import { toggleWatched } from "@/app/actions/progress";
+import { toggleVideoPrivacy } from "@/app/actions/toggle-privacy";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { formatDuration, extractClassNumber } from "@/lib/utils/format";
-import { Check, Clock, Play } from "lucide-react";
+import { Check, Clock, Globe, Link2, Loader2, Play } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export type VideoTheme = "teal" | "amber" | "blue";
@@ -25,6 +26,7 @@ export interface Video {
   duration: number;
   published_at: string | null;
   playlist_id: string | null;
+  privacy_status?: string | null;
 }
 
 interface VideoCardProps {
@@ -32,6 +34,7 @@ interface VideoCardProps {
   initialWatched: boolean;
   index: number;
   theme?: VideoTheme;
+  isAdmin?: boolean;
 }
 
 // All Tailwind classes must be static strings so they survive purging
@@ -82,10 +85,16 @@ export function VideoCard({
   initialWatched,
   index,
   theme = "teal",
+  isAdmin = false,
 }: VideoCardProps) {
   const [optimisticWatched, setOptimisticWatched] =
     useOptimistic(initialWatched);
+  const [optimisticPrivacy, setOptimisticPrivacy] = useOptimistic(
+    video.privacy_status || "unlisted"
+  );
   const [, startTransition] = useTransition();
+  const [isTogglingPrivacy, startPrivacyTransition] = useTransition();
+
   const classNumber = extractClassNumber(video.title) ?? (index + 1);
   const t = themeStyles[theme];
 
@@ -99,6 +108,22 @@ export function VideoCard({
         toast.info("Marked as unwatched", { description: video.title });
       }
       await toggleWatched(video.id, nextWatched);
+    });
+  };
+
+  const handleTogglePrivacy = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const nextStatus = optimisticPrivacy === "public" ? "unlisted" : "public";
+    startPrivacyTransition(async () => {
+      setOptimisticPrivacy(nextStatus);
+      const res = await toggleVideoPrivacy(video.youtube_video_id, nextStatus);
+      if (res.success) {
+        toast.success(res.message, { description: video.title });
+      } else {
+        toast.error(res.message, { description: video.title });
+        setOptimisticPrivacy(optimisticPrivacy);
+      }
     });
   };
 
@@ -139,6 +164,40 @@ export function VideoCard({
         <div className="absolute left-2 top-2 flex h-5 min-w-5 items-center justify-center rounded-md bg-black/80 px-1.5 text-[11px] font-bold text-white shadow-sm backdrop-blur-md font-mono">
           {classNumber}
         </div>
+
+        {/* Privacy toggle badge (Admin only) */}
+        {isAdmin && (
+          <button
+            type="button"
+            disabled={isTogglingPrivacy}
+            onClick={handleTogglePrivacy}
+            title={
+              optimisticPrivacy === "public"
+                ? "Privacy: Public (searchable on YouTube). Click to switch to Unlisted"
+                : "Privacy: Unlisted (accessible via link only). Click to switch to Public"
+            }
+            className={cn(
+              "absolute right-2 top-2 z-10 flex h-6 items-center gap-1.5 rounded-md px-2 text-[11px] font-semibold tracking-wide shadow-xs backdrop-blur-md transition-all duration-150 cursor-pointer active:scale-[0.98] disabled:pointer-events-none disabled:opacity-60 border",
+              optimisticPrivacy === "public"
+                ? "bg-emerald-600/90 hover:bg-emerald-500 text-white shadow-emerald-900/30 border-emerald-400/40 dark:bg-emerald-500/25 dark:text-emerald-300 dark:border-emerald-500/40 dark:hover:bg-emerald-500/35 dark:hover:border-emerald-500/60"
+                : "bg-white/90 hover:bg-white text-zinc-700 hover:text-zinc-900 border-zinc-200/80 shadow-xs dark:bg-[#141E28]/95 dark:text-[#9AA7AE] dark:border-[#1F2C34] dark:hover:bg-[#1B2631] dark:hover:text-[#E8EDF0] dark:hover:border-[#25A8A2]/40"
+            )}
+          >
+            {isTogglingPrivacy ? (
+              <Loader2 className="h-3 w-3 animate-spin text-current" />
+            ) : optimisticPrivacy === "public" ? (
+              <>
+                <Globe className="h-3 w-3 text-emerald-200 dark:text-emerald-400 shrink-0" />
+                <span>Public</span>
+              </>
+            ) : (
+              <>
+                <Link2 className="h-3 w-3 text-zinc-500 dark:text-[#9AA7AE] shrink-0" />
+                <span>Unlisted</span>
+              </>
+            )}
+          </button>
+        )}
 
         {/* Watched overlay */}
         {optimisticWatched && (

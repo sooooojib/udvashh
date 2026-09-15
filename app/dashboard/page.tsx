@@ -43,6 +43,14 @@ export default async function DashboardPage() {
     allowedAdmins.length === 0 ||
     allowedAdmins.includes(session.email?.toLowerCase() || "");
 
+  // Auto-sync privacy statuses from YouTube if admin and cooldown elapsed
+  if (isOwner) {
+    const { autoSyncPrivacyIfNeeded } = await import(
+      "@/lib/youtube/privacy-sync"
+    );
+    await autoSyncPrivacyIfNeeded();
+  }
+
   // Fetch total video count for all known modules
   const livePlaylistIds = KNOWN_PLAYLISTS.map((p) => p.id);
   const intensivePlaylistIds = INTENSIVE_PLAYLISTS.map((p) => p.id);

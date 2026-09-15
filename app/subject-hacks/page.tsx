@@ -27,6 +27,14 @@ export default async function SubjectHacksPage() {
     allowedAdmins.length === 0 ||
     allowedAdmins.includes(session.email?.toLowerCase() || "");
 
+  // Auto-sync privacy statuses from YouTube if admin and cooldown elapsed
+  if (isOwner) {
+    const { autoSyncPrivacyIfNeeded } = await import(
+      "@/lib/youtube/privacy-sync"
+    );
+    await autoSyncPrivacyIfNeeded();
+  }
+
   const subjectHacksPlaylistIds = SUBJECT_HACKS_PLAYLISTS.map((p) => p.id);
 
   let videoList: Video[] = [];
@@ -54,7 +62,7 @@ export default async function SubjectHacksPage() {
   const watchedCount = watchedVideoIds.length;
 
   return (
-    <main className="flex-1 p-3.5 sm:p-5 md:py-6 md:px-6 lg:px-8 max-w-[1680px] mx-auto w-full space-y-5 sm:space-y-8 min-h-[calc(100dvh-4rem)] animate-page-enter">
+    <main className="flex-1 p-3.5 sm:p-5 md:py-6 md:px-6 lg:px-8 max-w-[1680px] mx-auto w-full space-y-5 sm:space-y-8 min-h-[calc(100dvh-4rem)] animate-page-enter overflow-x-hidden">
 
       {/* ── Page Header ── */}
       <div className="flex items-center gap-3">
@@ -119,6 +127,7 @@ export default async function SubjectHacksPage() {
         <SubjectHacksPlaylistView
           videos={videoList}
           watchedVideoIds={watchedVideoIds}
+          isAdmin={isOwner}
         />
       )}
     </main>

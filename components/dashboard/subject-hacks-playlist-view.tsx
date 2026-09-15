@@ -8,11 +8,13 @@ import { compareVideos } from "@/lib/utils/format";
 interface SubjectHacksPlaylistViewProps {
   videos: Video[];
   watchedVideoIds: string[];
+  isAdmin?: boolean;
 }
 
 export function SubjectHacksPlaylistView({
   videos,
   watchedVideoIds,
+  isAdmin = false,
 }: SubjectHacksPlaylistViewProps) {
   const watchedSet = new Set(watchedVideoIds);
 
@@ -43,6 +45,7 @@ export function SubjectHacksPlaylistView({
           initialWatched={watchedSet.has(video.id)}
           index={idx}
           theme="blue"
+          isAdmin={isAdmin}
         />
       ))}
     </div>

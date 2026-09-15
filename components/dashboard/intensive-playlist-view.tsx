@@ -32,11 +32,13 @@ interface PlaylistGroup {
 interface IntensivePlaylistViewProps {
   videos: Video[];
   watchedVideoIds: string[];
+  isAdmin?: boolean;
 }
 
 export function IntensivePlaylistView({
   videos,
   watchedVideoIds,
+  isAdmin = false,
 }: IntensivePlaylistViewProps) {
   const [expandedPlaylists, setExpandedPlaylists] = React.useState<
     Record<string, boolean>
@@ -161,7 +163,7 @@ export function IntensivePlaylistView({
 
           <div className="flex items-center gap-2 w-full sm:w-auto">
             {/* Interactive Amber Dropdown Box */}
-            <div className="relative w-full sm:w-80 md:w-96" ref={dropdownRef}>
+            <div className="relative min-w-0 flex-1 sm:w-80 sm:flex-initial md:w-96" ref={dropdownRef}>
               <button
                 type="button"
                 onClick={() => setIsDropdownOpen((prev) => !prev)}
@@ -428,6 +430,7 @@ export function IntensivePlaylistView({
                           initialWatched={watchedSet.has(video.id)}
                           index={idx}
                           theme="amber"
+                          isAdmin={isAdmin}
                         />
                       ))}
                     </div>

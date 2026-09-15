@@ -67,6 +67,14 @@ export default function RootLayout({
       suppressHydrationWarning
       className={`${jakarta.variable} ${geistSans.variable} ${jetbrainsMono.variable} ${anekBangla.variable} h-full antialiased`}
     >
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@100..900&display=swap"
+          rel="stylesheet"
+        />
+      </head>
       <body className="min-h-full flex flex-col font-sans bg-background text-foreground transition-colors duration-200 overflow-x-hidden">
         <ThemeProvider
           attribute="class"

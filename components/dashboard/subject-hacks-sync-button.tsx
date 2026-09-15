@@ -2,16 +2,39 @@
 
 import * as React from "react";
 import { syncSubjectHacksNow } from "@/app/actions/sync-subject-hacks";
+import { syncPrivacyStatusesAction } from "@/app/actions/sync-privacy";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { AlertCircle, CheckCircle2, Loader2, RefreshCw } from "lucide-react";
+import { AlertCircle, CheckCircle2, Loader2, RefreshCw, ShieldCheck } from "lucide-react";
 
 export function SubjectHacksSyncButton() {
   const [isPending, setIsPending] = React.useState(false);
+  const [isSyncingPrivacy, setIsSyncingPrivacy] = React.useState(false);
   const [result, setResult] = React.useState<{
     success: boolean;
     message: string;
   } | null>(null);
+
+  const handleSyncPrivacy = async () => {
+    setIsSyncingPrivacy(true);
+    setResult(null);
+    try {
+      const res = await syncPrivacyStatusesAction();
+      setResult({ success: res.success, message: res.message });
+      if (res.success) {
+        toast.success("Privacy Status Synced", { description: res.message });
+      } else {
+        toast.error("Privacy Sync Failed", { description: res.message });
+      }
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Privacy sync failed";
+      setResult({ success: false, message });
+      toast.error("Privacy Sync Failed", { description: message });
+    } finally {
+      setIsSyncingPrivacy(false);
+    }
+  };
 
   const handleSync = async () => {
     setIsPending(true);
@@ -35,24 +58,47 @@ export function SubjectHacksSyncButton() {
 
   return (
     <div className="flex flex-col gap-2">
-      <Button
-        onClick={handleSync}
-        disabled={isPending}
-        size="sm"
-        className="gap-2 font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 shadow-sm shadow-blue-500/20 dark:shadow-[0_0_10px_rgba(37,99,235,0.3)] transition-all active:scale-95 border-0 whitespace-nowrap"
-      >
-        {isPending ? (
-          <>
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            <span>Syncing…</span>
-          </>
-        ) : (
-          <>
-            <RefreshCw className="h-3.5 w-3.5" />
-            <span>Sync Now</span>
-          </>
-        )}
-      </Button>
+      <div className="flex items-center gap-2">
+        <Button
+          type="button"
+          onClick={handleSyncPrivacy}
+          disabled={isSyncingPrivacy || isPending}
+          size="sm"
+          title="Fast check: syncs public/unlisted statuses with YouTube for all videos"
+          className="gap-1.5 sm:gap-2 font-semibold shadow-xs border border-border/80 bg-card/90 text-foreground/80 hover:bg-muted/70 hover:text-foreground hover:border-border dark:border-[#1F2C34] dark:bg-[#141E28] dark:text-[#E8EDF0] dark:hover:bg-[#1B2631] dark:hover:border-blue-500/50 dark:hover:text-white active:scale-[0.98] transition-all text-xs justify-center px-2.5 sm:px-3"
+        >
+          {isSyncingPrivacy ? (
+            <>
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-500" />
+              <span>Checking…</span>
+            </>
+          ) : (
+            <>
+              <ShieldCheck className="h-3.5 w-3.5 text-blue-500" />
+              <span>Sync Privacy</span>
+            </>
+          )}
+        </Button>
+
+        <Button
+          onClick={handleSync}
+          disabled={isPending || isSyncingPrivacy}
+          size="sm"
+          className="gap-2 font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 shadow-sm shadow-blue-500/20 dark:shadow-[0_0_10px_rgba(37,99,235,0.3)] transition-all active:scale-95 border-0 whitespace-nowrap"
+        >
+          {isPending ? (
+            <>
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              <span>Syncing…</span>
+            </>
+          ) : (
+            <>
+              <RefreshCw className="h-3.5 w-3.5" />
+              <span>Sync Now</span>
+            </>
+          )}
+        </Button>
+      </div>
 
       {result && (
         <div

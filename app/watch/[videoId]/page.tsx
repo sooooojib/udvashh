@@ -28,6 +28,15 @@ export default async function WatchPage({ params }: WatchPageProps) {
   const session = await getSession();
   if (!session) redirect(`/login?redirectTo=/watch/${videoId}`);
 
+  const adminEmail = process.env.ADMIN_EMAIL;
+  const allowedAdmins = adminEmail
+    ? adminEmail.split(",").map((e) => e.trim().toLowerCase())
+    : [];
+
+  const isOwner =
+    allowedAdmins.length === 0 ||
+    allowedAdmins.includes(session.email?.toLowerCase() || "");
+
   // Fetch the video by youtube_video_id
   const videoRows = await sql`
     SELECT * FROM videos WHERE youtube_video_id = ${videoId} LIMIT 1
@@ -35,6 +44,14 @@ export default async function WatchPage({ params }: WatchPageProps) {
 
   if (videoRows.length === 0) notFound();
   const video = videoRows[0];
+
+  // Sync live privacy status from YouTube in real time
+  const { syncSingleVideoPrivacy } = await import("@/lib/youtube/privacy-sync");
+  const livePrivacy = await syncSingleVideoPrivacy(
+    video.youtube_video_id,
+    video.privacy_status
+  );
+  const currentPrivacy = livePrivacy || video.privacy_status;
 
   // Fetch watched status for this video
   const progressRows = await sql`
@@ -117,6 +134,8 @@ export default async function WatchPage({ params }: WatchPageProps) {
         moduleType={moduleType}
         initialWatched={isWatched}
         nextVideoId={nextVideoId}
+        isAdmin={isOwner}
+        privacyStatus={currentPrivacy}
       />
     </main>
   );

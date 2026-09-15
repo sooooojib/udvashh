@@ -5,6 +5,7 @@ import {
   syncIntensiveNow,
   type IntensiveSyncResult,
 } from "@/app/actions/sync-intensive";
+import { syncPrivacyStatusesAction } from "@/app/actions/sync-privacy";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
@@ -12,6 +13,7 @@ import {
   CheckCircle2,
   Loader2,
   RefreshCw,
+  ShieldCheck,
 } from "lucide-react";
 
 export interface IntensivePlaylist {
@@ -25,8 +27,37 @@ interface IntensiveSyncButtonProps {
 
 export function IntensiveSyncButton({ playlists }: IntensiveSyncButtonProps) {
   const [isPending, setIsPending] = React.useState(false);
+  const [isSyncingPrivacy, setIsSyncingPrivacy] = React.useState(false);
   const [selectedPlaylist, setSelectedPlaylist] = React.useState<string>("all");
   const [result, setResult] = React.useState<IntensiveSyncResult | null>(null);
+
+  const handleSyncPrivacy = async () => {
+    setIsSyncingPrivacy(true);
+    setResult(null);
+    try {
+      const res = await syncPrivacyStatusesAction();
+      setResult({
+        success: res.success,
+        message: res.message,
+      });
+      if (res.success) {
+        toast.success("Privacy Status Synced", {
+          description: res.message,
+        });
+      } else {
+        toast.error("Privacy Sync Failed", {
+          description: res.message,
+        });
+      }
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Privacy sync failed";
+      setResult({ success: false, message });
+      toast.error("Privacy Sync Failed", { description: message });
+    } finally {
+      setIsSyncingPrivacy(false);
+    }
+  };
 
   const handleSync = async () => {
     setIsPending(true);
@@ -86,24 +117,48 @@ export function IntensiveSyncButton({ playlists }: IntensiveSyncButtonProps) {
           </div>
         )}
 
-        {/* Sync Now button */}
-        <Button
-          onClick={handleSync}
-          disabled={isPending}
-          className="gap-2 font-semibold shadow-sm shrink-0 bg-amber-600 text-white hover:bg-amber-700 dark:bg-amber-600 dark:text-white dark:hover:bg-amber-700 dark:shadow-[0_0_10px_rgba(217,119,6,0.3)] transition-all active:scale-95"
-        >
-          {isPending ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" />
-              <span>Syncing {selectedLabel}…</span>
-            </>
-          ) : (
-            <>
-              <RefreshCw className="h-4 w-4" />
-              <span>Sync Now</span>
-            </>
-          )}
-        </Button>
+        {/* Action buttons */}
+        <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
+          {/* Sync Privacy from YouTube */}
+          <Button
+            type="button"
+            onClick={handleSyncPrivacy}
+            disabled={isSyncingPrivacy || isPending}
+            title="Fast check: syncs public/unlisted statuses with YouTube for all videos"
+            className="gap-1.5 sm:gap-2 font-semibold shadow-xs border border-border/80 bg-card/90 text-foreground/80 hover:bg-muted/70 hover:text-foreground hover:border-border dark:border-[#1F2C34] dark:bg-[#141E28] dark:text-[#E8EDF0] dark:hover:bg-[#1B2631] dark:hover:border-amber-500/50 dark:hover:text-white active:scale-[0.98] transition-all text-xs sm:text-sm w-full sm:w-auto justify-center px-2.5 sm:px-4"
+          >
+            {isSyncingPrivacy ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin text-amber-500" />
+                <span className="truncate">Checking…</span>
+              </>
+            ) : (
+              <>
+                <ShieldCheck className="h-4 w-4 text-amber-500" />
+                <span className="truncate">Sync Privacy</span>
+              </>
+            )}
+          </Button>
+
+          {/* Sync Now button */}
+          <Button
+            onClick={handleSync}
+            disabled={isPending || isSyncingPrivacy}
+            className="gap-1.5 sm:gap-2 font-semibold shadow-sm bg-amber-600 text-white hover:bg-amber-700 dark:bg-amber-600 dark:text-white dark:hover:bg-amber-700 dark:shadow-[0_0_10px_rgba(217,119,6,0.3)] transition-all active:scale-95 text-xs sm:text-sm w-full sm:w-auto justify-center px-2.5 sm:px-4"
+          >
+            {isPending ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span className="truncate">Syncing…</span>
+              </>
+            ) : (
+              <>
+                <RefreshCw className="h-4 w-4" />
+                <span className="truncate">Sync Now</span>
+              </>
+            )}
+          </Button>
+        </div>
       </div>
 
       {/* Result feedback */}
