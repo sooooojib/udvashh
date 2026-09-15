@@ -27,14 +27,6 @@ export default async function SubjectHacksPage() {
     allowedAdmins.length === 0 ||
     allowedAdmins.includes(session.email?.toLowerCase() || "");
 
-  // Auto-sync privacy statuses from YouTube if admin and cooldown elapsed
-  if (isOwner) {
-    const { autoSyncPrivacyIfNeeded } = await import(
-      "@/lib/youtube/privacy-sync"
-    );
-    await autoSyncPrivacyIfNeeded();
-  }
-
   const subjectHacksPlaylistIds = SUBJECT_HACKS_PLAYLISTS.map((p) => p.id);
 
   let videoList: Video[] = [];

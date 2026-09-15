@@ -34,14 +34,6 @@ export default async function IntensiveClassesPage() {
     allowedAdmins.length === 0 ||
     allowedAdmins.includes(session.email?.toLowerCase() || "");
 
-  // Auto-sync privacy statuses from YouTube if admin and cooldown elapsed
-  if (isOwner) {
-    const { autoSyncPrivacyIfNeeded } = await import(
-      "@/lib/youtube/privacy-sync"
-    );
-    await autoSyncPrivacyIfNeeded();
-  }
-
   // Get all intensive playlist IDs to filter videos
   const intensivePlaylistIds = INTENSIVE_PLAYLISTS.map((p) => p.id);
 

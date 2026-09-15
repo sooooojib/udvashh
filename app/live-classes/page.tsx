@@ -34,14 +34,6 @@ export default async function LiveClassesPage() {
     allowedAdmins.length === 0 ||
     allowedAdmins.includes(session.email?.toLowerCase() || "");
 
-  // Auto-sync privacy statuses from YouTube if admin and cooldown elapsed
-  if (isOwner) {
-    const { autoSyncPrivacyIfNeeded } = await import(
-      "@/lib/youtube/privacy-sync"
-    );
-    await autoSyncPrivacyIfNeeded();
-  }
-
   // Only fetch videos belonging to Live Class playlists
   const livePlaylistIds = KNOWN_PLAYLISTS.map((p) => p.id);
 

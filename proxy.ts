@@ -1,6 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { jwtVerify } from "jose";
 
 const SESSION_COOKIE = "ud_session";
+const SECRET = new TextEncoder().encode(
+  process.env.SESSION_SECRET || "udvashh-neon-secret-please-set-in-env-32chars"
+);
 
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
@@ -9,7 +13,8 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith("/dashboard") ||
     pathname.startsWith("/watch") ||
     pathname.startsWith("/live-classes") ||
-    pathname.startsWith("/intensive-classes");
+    pathname.startsWith("/intensive-classes") ||
+    pathname.startsWith("/subject-hacks");
 
   const isAuthPath =
     pathname.startsWith("/login") || pathname.startsWith("/signup");
@@ -19,15 +24,9 @@ export async function proxy(request: NextRequest) {
   const token = request.cookies.get(SESSION_COOKIE)?.value;
   if (token) {
     try {
-      // Simple JWT check — verify the token has 3 parts and a valid payload
-      // Full signature verification happens in session.ts on the server side
-      const parts = token.split(".");
-      if (parts.length === 3) {
-        const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
-        const now = Math.floor(Date.now() / 1000);
-        if (payload.exp && payload.exp > now && payload.id && payload.email) {
-          isAuthenticated = true;
-        }
+      const { payload } = await jwtVerify(token, SECRET);
+      if (payload.id && payload.email) {
+        isAuthenticated = true;
       }
     } catch {
       isAuthenticated = false;
@@ -38,7 +37,12 @@ export async function proxy(request: NextRequest) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = "/login";
     redirectUrl.searchParams.set("redirectTo", pathname);
-    return NextResponse.redirect(redirectUrl);
+    const response = NextResponse.redirect(redirectUrl);
+    if (token) {
+      // Clear invalid or stale token so browser doesn't get stuck in a redirect loop
+      response.cookies.delete(SESSION_COOKIE);
+    }
+    return response;
   }
 
   if (isAuthenticated && isAuthPath) {
