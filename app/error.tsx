@@ -12,9 +12,22 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const isActionError =
+    Boolean(error?.message?.includes("Server Action")) ||
+    Boolean(error?.message?.includes("was not found on the server"));
+
   React.useEffect(() => {
     console.error("[Application Error]:", error);
-  }, [error]);
+
+    // If an action failed due to a new deployment, automatically reload once to fetch new bundle
+    if (isActionError) {
+      const key = "next_action_skew_" + (error.digest || "reload");
+      if (!sessionStorage.getItem(key)) {
+        sessionStorage.setItem(key, "1");
+        window.location.reload();
+      }
+    }
+  }, [error, isActionError]);
 
   return (
     <main className="flex min-h-[calc(100vh-4rem)] flex-1 flex-col items-center justify-center p-6 text-center animate-fade-in-up">
@@ -25,23 +38,31 @@ export default function GlobalError({
 
         <div className="space-y-2">
           <span className="font-mono text-xs font-bold uppercase tracking-widest text-destructive dark:text-red-400">
-            Something Went Wrong
+            {isActionError ? "Update Available" : "Something Went Wrong"}
           </span>
           <h1 className="font-heading text-2xl font-bold tracking-tight text-foreground dark:text-[#E8EDF0]">
-            An Error Occurred
+            {isActionError ? "App Updated to New Version" : "An Error Occurred"}
           </h1>
           <p className="text-xs text-muted-foreground dark:text-[#9AA7AE] leading-relaxed">
-            {error?.message || "An unexpected error occurred while loading this page."}
+            {isActionError
+              ? "A new version of the app was just deployed. Please refresh your browser to load the latest update."
+              : error?.message || "An unexpected error occurred while loading this page."}
           </p>
         </div>
 
         <div className="flex flex-col sm:flex-row w-full gap-3 pt-2">
           <Button
-            onClick={() => reset()}
+            onClick={() => {
+              if (isActionError) {
+                window.location.reload();
+              } else {
+                reset();
+              }
+            }}
             className="flex-1 h-10 rounded-xl gap-2 text-xs font-semibold shadow-sm bg-primary text-primary-foreground dark:bg-[#25A8A2] dark:text-white dark:hover:bg-[#20928D]"
           >
             <RefreshCw className="h-3.5 w-3.5" />
-            <span>Try Again</span>
+            <span>{isActionError ? "Refresh Page" : "Try Again"}</span>
           </Button>
 
           <Button
