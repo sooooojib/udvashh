@@ -127,16 +127,64 @@ export function VideoPlayer({
     }
   }, [isTheaterMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Lock body scroll when Theater Mode is active on big screens so the dark overlay covers everything cleanly
+  // Scroll position store when toggling theater mode
+  const scrollPositionRef = React.useRef<number>(0);
+
+  // Lock all scrolling when Theater Mode is active on big screens
   React.useEffect(() => {
     if (isTheaterMode && typeof window !== "undefined" && window.innerWidth >= 768) {
+      const originalHtmlOverflow = document.documentElement.style.overflow;
+      const originalHtmlOverscroll = document.documentElement.style.overscrollBehavior;
+      const originalBodyOverflow = document.body.style.overflow;
+      const originalBodyOverscroll = document.body.style.overscrollBehavior;
+      const originalTouchAction = document.body.style.touchAction;
+
+      // Lock document root and body
+      document.documentElement.style.overflow = "hidden";
+      document.documentElement.style.overscrollBehavior = "none";
       document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
+      document.body.style.overscrollBehavior = "none";
+      document.body.style.touchAction = "none";
+
+      // Prevent wheel / trackpad momentum scrolling
+      const handleWheel = (e: WheelEvent) => {
+        e.preventDefault();
+      };
+
+      // Prevent touch drag scrolling
+      const handleTouchMove = (e: TouchEvent) => {
+        e.preventDefault();
+      };
+
+      // Prevent scroll keys
+      const handleKeyDown = (e: KeyboardEvent) => {
+        const scrollKeys = ["PageUp", "PageDown", "End", "Home", "ArrowUp", "ArrowDown", " "];
+        if (scrollKeys.includes(e.key)) {
+          const target = e.target as HTMLElement;
+          if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) {
+            return;
+          }
+          if (["PageUp", "PageDown", "End", "Home", "ArrowUp", "ArrowDown"].includes(e.key)) {
+            e.preventDefault();
+          }
+        }
+      };
+
+      window.addEventListener("wheel", handleWheel, { passive: false });
+      window.addEventListener("touchmove", handleTouchMove, { passive: false });
+      window.addEventListener("keydown", handleKeyDown);
+
+      return () => {
+        document.documentElement.style.overflow = originalHtmlOverflow;
+        document.documentElement.style.overscrollBehavior = originalHtmlOverscroll;
+        document.body.style.overflow = originalBodyOverflow;
+        document.body.style.overscrollBehavior = originalBodyOverscroll;
+        document.body.style.touchAction = originalTouchAction;
+        window.removeEventListener("wheel", handleWheel);
+        window.removeEventListener("touchmove", handleTouchMove);
+        window.removeEventListener("keydown", handleKeyDown);
+      };
     }
-    return () => {
-      document.body.style.overflow = "";
-    };
   }, [isTheaterMode]);
 
   // Auto-exit theater mode if screen is resized to small screen (< 768px)
@@ -174,7 +222,25 @@ export function VideoPlayer({
     if (typeof window !== "undefined" && window.innerWidth < 768) {
       return;
     }
-    setIsTheaterMode((prev) => !prev);
+    setIsTheaterMode((prev) => {
+      if (!prev) {
+        // Entering theater mode: record scroll position & scroll to top
+        if (typeof window !== "undefined") {
+          scrollPositionRef.current = window.scrollY;
+          window.scrollTo({ top: 0, behavior: "instant" });
+        }
+        return true;
+      } else {
+        // Exiting theater mode: restore previous scroll position
+        if (typeof window !== "undefined") {
+          const targetY = scrollPositionRef.current;
+          setTimeout(() => {
+            window.scrollTo({ top: targetY, behavior: "instant" });
+          }, 30);
+        }
+        return false;
+      }
+    });
   }, []);
 
   const toggleFullscreen = React.useCallback(() => {
