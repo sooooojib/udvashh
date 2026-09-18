@@ -3,6 +3,8 @@ import type { Metadata } from "next";
 import { sql } from "@/lib/db";
 import { getSession } from "@/lib/auth/session";
 import { VideoPlayer } from "@/components/watch/video-player";
+import { VideoPdfSection } from "@/components/watch/video-pdf-section";
+import type { VideoPdfItem } from "@/app/actions/pdf";
 import { getPlaylistName } from "@/lib/youtube/playlists";
 
 interface WatchPageProps {
@@ -118,10 +120,16 @@ export default async function WatchPage({ params }: WatchPageProps) {
     playlistName = getSubjectHacksPlaylistName(video.playlist_id);
   }
 
+  // Fetch attached lecture notes / PDFs for this video
+  const pdfRows = (await sql`
+    SELECT * FROM video_pdfs
+    WHERE video_id = ${video.id}
+    ORDER BY created_at ASC
+  `) as unknown as VideoPdfItem[];
+
   return (
     <main className="flex-1 w-full max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 md:py-10 min-h-[calc(100dvh-4rem)] animate-page-enter">
       <VideoPlayer
-
         videoId={video.id}
         youtubeVideoId={video.youtube_video_id}
         title={video.title}
@@ -136,6 +144,14 @@ export default async function WatchPage({ params }: WatchPageProps) {
         nextVideoId={nextVideoId}
         isAdmin={isOwner}
         privacyStatus={currentPrivacy}
+      />
+
+      <VideoPdfSection
+        videoId={video.id}
+        initialPdfs={pdfRows}
+        isAdmin={isOwner}
+        moduleType={moduleType}
+        isDriveConnected={Boolean(process.env.GOOGLE_DRIVE_REFRESH_TOKEN)}
       />
     </main>
   );

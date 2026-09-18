@@ -88,6 +88,10 @@ export default async function DashboardPage() {
   const watchedSubjectHacks = subjectHacksVideos.filter((v) => watchedIds.has(v.id)).length;
   const subjectHacksPercent = totalSubjectHacks > 0 ? Math.round((watchedSubjectHacks / totalSubjectHacks) * 100) : 0;
 
+  // Total attached lecture notes & PDFs
+  const totalPdfsResult = await sql`SELECT count(*)::int as count FROM video_pdfs`;
+  const totalPdfs = totalPdfsResult[0]?.count ?? 0;
+
   // All playlists for Dashboard sync
   const allDashboardPlaylists = [
     ...KNOWN_PLAYLISTS.map((p) => ({ ...p, category: "Live Classes" })),
@@ -330,54 +334,47 @@ export default async function DashboardPage() {
             </div>
           </Link>
 
-          {/* Module 4: Lecture Notes & Materials (FUTURE) */}
-          <div className="relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border/40 bg-card/50 p-5.5 opacity-75 backdrop-blur-md dark:border-[#1F2C34]/60 dark:bg-[#111820]/40">
+          {/* Module 4: Lecture Notes & Materials */}
+          <div className="relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border/60 bg-card p-5.5 shadow-sm backdrop-blur-md dark:border-[#1F2C34] dark:bg-[#111820]">
             <div className="flex items-center justify-between gap-2">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-muted text-muted-foreground dark:bg-[#141E28] dark:text-[#5C6A72]">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-red-500/10 text-red-600 dark:bg-red-500/15 dark:text-red-400">
                 <FileText className="h-5.5 w-5.5" />
               </div>
-              <span className="rounded-full bg-muted dark:bg-[#141E28] px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground dark:text-[#9AA7AE]">
-                Coming Soon
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 dark:bg-emerald-500/15 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                Active
               </span>
             </div>
 
             <div className="mt-4">
-              <h3 className="font-heading text-lg font-bold tracking-tight text-foreground/80 dark:text-[#E8EDF0]/80">
+              <h3 className="font-heading text-lg font-bold tracking-tight text-foreground dark:text-[#E8EDF0]">
                 Lecture Notes & PDFs
               </h3>
             </div>
 
             {/* Stats Row */}
-            <div className="my-4 grid grid-cols-3 gap-2 rounded-xl border border-border/40 bg-muted/15 p-2.5 dark:border-[#1F2C34]/60 dark:bg-[#0A0F12]/30">
+            <div className="my-4 grid grid-cols-2 gap-2 rounded-xl border border-border/40 bg-muted/20 p-2.5 dark:border-[#1F2C34]/60 dark:bg-[#0A0F12]/30">
               <div>
                 <span className="block text-[10px] font-medium text-muted-foreground uppercase tracking-wider dark:text-[#5C6A72]">
-                  Total
+                  Total Attached
                 </span>
-                <span className="font-mono text-sm font-bold text-foreground/70 dark:text-[#E8EDF0]/70">
-                  0 <span className="text-[10px] font-normal text-muted-foreground">PDFs</span>
-                </span>
-              </div>
-              <div className="border-l border-border/40 pl-2.5 dark:border-[#1F2C34]/60">
-                <span className="block text-[10px] font-medium text-muted-foreground uppercase tracking-wider dark:text-[#5C6A72]">
-                  Saved
-                </span>
-                <span className="font-mono text-sm font-bold text-foreground/70 dark:text-[#E8EDF0]/70">
-                  0 <span className="text-[10px] font-normal text-muted-foreground">read</span>
+                <span className="font-mono text-base font-bold text-foreground dark:text-[#E8EDF0]">
+                  {totalPdfs} <span className="text-[11px] font-normal text-muted-foreground">PDFs</span>
                 </span>
               </div>
               <div className="border-l border-border/40 pl-2.5 dark:border-[#1F2C34]/60">
                 <span className="block text-[10px] font-medium text-muted-foreground uppercase tracking-wider dark:text-[#5C6A72]">
-                  Status
+                  Storage
                 </span>
-                <span className="font-mono text-xs font-semibold text-muted-foreground">
-                  Ready
+                <span className="font-mono text-xs font-semibold text-foreground/80 dark:text-[#E8EDF0]/80">
+                  Supabase + Drive
                 </span>
               </div>
             </div>
 
             <div className="flex items-center justify-between border-t border-border/30 dark:border-[#1F2C34]/40 pt-3 text-xs text-muted-foreground dark:text-[#5C6A72]">
-              <span>Section ready</span>
-              <span>Available soon</span>
+              <span>Attached to watch pages</span>
+              <span>Unlimited uploads</span>
             </div>
           </div>
 

@@ -72,7 +72,7 @@ export function compareVideos(
     typeof b.position === "number" &&
     a.position !== b.position
   ) {
-    return a.position - b.position;
+    return (a.position ?? 0) - (b.position ?? 0);
   }
 
   // Natural alphabetical fallback
@@ -80,5 +80,16 @@ export function compareVideos(
     numeric: true,
     sensitivity: "base",
   });
+}
+
+/**
+ * Formats a file size in bytes to a human-readable string (e.g. "2.4 MB")
+ */
+export function formatFileSize(bytes: number | null | undefined): string {
+  if (!bytes || bytes <= 0) return "";
+  const k = 1024;
+  const sizes = ["B", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
 }
 
