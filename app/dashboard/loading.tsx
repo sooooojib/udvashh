@@ -93,31 +93,6 @@ export default function DashboardLoading() {
             </div>
           </div>
 
-          {/* Card 3: Lecture Notes & PDFs (Coming Soon) */}
-          <div className="flex flex-col justify-between overflow-hidden rounded-2xl border border-border/40 bg-card/50 p-5.5 opacity-75 backdrop-blur-md dark:border-[#1F2C34]/60 dark:bg-[#111820]/40 min-h-[180px]">
-            <div className="flex items-center justify-between gap-2">
-              <div className="h-11 w-11 rounded-xl bg-muted dark:bg-[#141E28] animate-pulse" />
-              <div className="h-5 w-24 rounded-full bg-muted dark:bg-[#141E28] animate-pulse" />
-            </div>
-
-            <div className="mt-4">
-              <div className="h-6 w-44 rounded-md bg-muted/70 dark:bg-[#141E28] animate-pulse" />
-            </div>
-
-            <div className="my-4 grid grid-cols-3 gap-2 rounded-xl border border-border/40 bg-muted/15 p-2.5 dark:border-[#1F2C34]/60 dark:bg-[#0A0F12]/30">
-              {[1, 2, 3].map((j) => (
-                <div key={j} className={`space-y-1 ${j > 1 ? "border-l border-border/40 pl-2.5 dark:border-[#1F2C34]/60" : ""}`}>
-                  <div className="h-2.5 w-10 rounded bg-muted/50 dark:bg-[#141E28]/80 animate-pulse" />
-                  <div className="h-4 w-12 rounded bg-muted/70 dark:bg-[#141E28] animate-pulse" />
-                </div>
-              ))}
-            </div>
-
-            <div className="flex items-center justify-between border-t border-border/30 dark:border-[#1F2C34]/40 pt-3">
-              <div className="h-3.5 w-20 rounded bg-muted/40 dark:bg-[#141E28] animate-pulse" />
-              <div className="h-3.5 w-24 rounded bg-muted/50 dark:bg-[#141E28] animate-pulse" />
-            </div>
-          </div>
 
           {/* Card 4: Model Tests & Exams (Coming Soon) */}
           <div className="flex flex-col justify-between overflow-hidden rounded-2xl border border-border/40 bg-card/50 p-5.5 opacity-75 backdrop-blur-md dark:border-[#1F2C34]/60 dark:bg-[#111820]/40 min-h-[180px]">
