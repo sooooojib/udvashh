@@ -32,6 +32,15 @@ function verifyAdmin(sessionEmail?: string): boolean {
   return allowedEmails.includes(sessionEmail?.toLowerCase() || "");
 }
 
+function revalidatePdfRoutes() {
+  revalidatePath("/", "layout");
+  revalidatePath("/live-classes", "page");
+  revalidatePath("/intensive-classes", "page");
+  revalidatePath("/subject-hacks", "page");
+  revalidatePath("/dashboard", "page");
+  revalidatePath("/watch/[videoId]", "page");
+}
+
 /**
  * Upload a PDF file directly to Supabase Storage bucket 'video-pdfs'
  */
@@ -112,8 +121,7 @@ export async function uploadDirectPdf(
 
     const newPdf = inserted[0] as unknown as VideoPdfItem;
 
-    revalidatePath(`/watch/[videoId]`, "page");
-    revalidatePath(`/dashboard`, "page");
+    revalidatePdfRoutes();
 
     return {
       success: true,
@@ -181,8 +189,7 @@ export async function addDrivePdf({
 
     const newPdf = inserted[0] as unknown as VideoPdfItem;
 
-    revalidatePath(`/watch/[videoId]`, "page");
-    revalidatePath(`/dashboard`, "page");
+    revalidatePdfRoutes();
 
     return {
       success: true,
@@ -254,8 +261,7 @@ export async function deleteVideoPdf({
     // 4. Delete row from Neon DB
     await sql`DELETE FROM video_pdfs WHERE id = ${pdfId}`;
 
-    revalidatePath(`/watch/[videoId]`, "page");
-    revalidatePath(`/dashboard`, "page");
+    revalidatePdfRoutes();
 
     return { success: true, message: "PDF removed successfully." };
   } catch (error: unknown) {
@@ -314,8 +320,7 @@ export async function uploadPdfToDriveAction(
 
     const newPdf = inserted[0] as unknown as VideoPdfItem;
 
-    revalidatePath(`/watch/[videoId]`, "page");
-    revalidatePath(`/dashboard`, "page");
+    revalidatePdfRoutes();
 
     return {
       success: true,

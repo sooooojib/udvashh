@@ -39,9 +39,13 @@ export default async function LiveClassesPage() {
 
   // Fetch videos ordered by position
   const videos = await sql`
-    SELECT * FROM videos
-    WHERE playlist_id = ANY(${livePlaylistIds})
-    ORDER BY position ASC
+    SELECT 
+      v.*,
+      EXISTS(SELECT 1 FROM video_pdfs vp WHERE vp.video_id = v.id) AS has_pdf,
+      (SELECT COUNT(*)::int FROM video_pdfs vp WHERE vp.video_id = v.id) AS pdf_count
+    FROM videos v
+    WHERE v.playlist_id = ANY(${livePlaylistIds})
+    ORDER BY v.position ASC
   `;
 
   // Fetch user's watch progress (watched only)

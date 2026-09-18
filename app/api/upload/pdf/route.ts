@@ -102,6 +102,10 @@ export async function POST(request: NextRequest) {
       newPdf = inserted[0];
     }
 
+    revalidatePath("/", "layout");
+    revalidatePath("/live-classes", "page");
+    revalidatePath("/intensive-classes", "page");
+    revalidatePath("/subject-hacks", "page");
     revalidatePath(`/watch/[videoId]`, "page");
     revalidatePath(`/dashboard`, "page");
 

@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { formatDuration, extractClassNumber } from "@/lib/utils/format";
-import { Check, Clock, Globe, Link2, Loader2, Play } from "lucide-react";
+import { Check, Clock, FileText, Globe, Link2, Loader2, Play } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export type VideoTheme = "teal" | "amber" | "blue";
@@ -27,6 +27,8 @@ export interface Video {
   published_at: string | null;
   playlist_id: string | null;
   privacy_status?: string | null;
+  has_pdf?: boolean;
+  pdf_count?: number;
 }
 
 interface VideoCardProps {
@@ -157,6 +159,25 @@ export function VideoCard({
           <div className="absolute bottom-2 right-2 flex items-center gap-1 rounded-md bg-black/85 px-1.5 py-0.5 text-[11px] font-mono font-medium text-white shadow-sm backdrop-blur-md">
             <Clock className="h-2.5 w-2.5 text-zinc-300" />
             <span>{formatDuration(video.duration)}</span>
+          </div>
+        )}
+
+        {/* PDF Status Indicator */}
+        {video.has_pdf ? (
+          <div
+            title={`${video.pdf_count ?? 1} Lecture PDF${(video.pdf_count ?? 1) > 1 ? "s" : ""} available`}
+            className="absolute bottom-2 left-2 z-10 flex items-center gap-1 rounded-md bg-emerald-600/90 text-white px-1.5 py-0.5 text-[10.5px] font-bold tracking-wide shadow-sm backdrop-blur-md border border-emerald-400/40"
+          >
+            <FileText className="h-3 w-3 stroke-[2.5]" />
+            <span>PDF{video.pdf_count && video.pdf_count > 1 ? ` (${video.pdf_count})` : ""}</span>
+          </div>
+        ) : (
+          <div
+            title="No PDF attached to this lecture"
+            className="absolute bottom-2 left-2 z-10 flex items-center gap-1 rounded-md bg-black/75 dark:bg-[#0A0F12]/85 text-zinc-400 dark:text-[#80909A] px-1.5 py-0.5 text-[10.5px] font-medium tracking-wide shadow-sm backdrop-blur-md border border-white/10"
+          >
+            <FileText className="h-3 w-3 opacity-50" />
+            <span>No PDF</span>
           </div>
         )}
 

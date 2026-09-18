@@ -32,9 +32,13 @@ export default async function SubjectHacksPage() {
   let videoList: Video[] = [];
   if (subjectHacksPlaylistIds.length > 0) {
     const videos = await sql`
-      SELECT * FROM videos
-      WHERE playlist_id = ANY(${subjectHacksPlaylistIds})
-      ORDER BY position ASC
+      SELECT 
+        v.*,
+        EXISTS(SELECT 1 FROM video_pdfs vp WHERE vp.video_id = v.id) AS has_pdf,
+        (SELECT COUNT(*)::int FROM video_pdfs vp WHERE vp.video_id = v.id) AS pdf_count
+      FROM videos v
+      WHERE v.playlist_id = ANY(${subjectHacksPlaylistIds})
+      ORDER BY v.position ASC
     `;
     videoList = videos as unknown as Video[];
   }
