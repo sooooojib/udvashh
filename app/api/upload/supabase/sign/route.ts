@@ -47,10 +47,13 @@ export async function POST(request: NextRequest) {
 
     if (error || !data) {
       console.error("Supabase signed upload URL error:", error);
+      const isFetchFailed = error?.message === "fetch failed";
       return NextResponse.json(
         {
           success: false,
-          message: error?.message || "Failed to create signed upload URL.",
+          message: isFetchFailed
+            ? "Cannot connect to Supabase. Check NEXT_PUBLIC_SUPABASE_URL & SUPABASE_SERVICE_ROLE_KEY in Vercel."
+            : error?.message || "Failed to create signed upload URL.",
         },
         { status: 500 }
       );
