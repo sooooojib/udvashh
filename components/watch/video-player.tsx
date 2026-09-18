@@ -918,6 +918,43 @@ export function VideoPlayer({
               ))}
             </div>
 
+            {/* Mobile Admin YouTube Privacy Toggle Button (Sits right beside speed control on small screens) */}
+            {isAdmin && (
+              <Button
+                type="button"
+                onClick={handleTogglePrivacy}
+                disabled={isTogglingPrivacy}
+                title={
+                  optimisticPrivacy === "public"
+                    ? "Privacy: Public (searchable on YouTube). Click to switch to Unlisted"
+                    : "Privacy: Unlisted (accessible via link only). Click to switch to Public"
+                }
+                className={cn(
+                  "sm:hidden h-10 rounded-xl gap-1.5 px-3 font-semibold shadow-xs transition-all duration-150 active:scale-[0.98] text-xs border shrink-0",
+                  optimisticPrivacy === "public"
+                    ? "border-emerald-500/40 text-emerald-700 bg-emerald-50/80 hover:bg-emerald-100/90 hover:border-emerald-500/60 dark:border-emerald-500/40 dark:bg-emerald-500/15 dark:text-emerald-300 dark:hover:bg-emerald-500/25 dark:hover:border-emerald-500/60"
+                    : "border-border/80 text-foreground/80 bg-card/90 hover:bg-muted/70 hover:text-foreground hover:border-border dark:border-[#1F2C34] dark:bg-[#141E28] dark:text-[#E8EDF0] dark:hover:bg-[#1B2631] dark:hover:text-white dark:hover:border-[#25A8A2]/40"
+                )}
+              >
+                {isTogglingPrivacy ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
+                    <span>Updating…</span>
+                  </>
+                ) : optimisticPrivacy === "public" ? (
+                  <>
+                    <Globe className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    <span>Public</span>
+                  </>
+                ) : (
+                  <>
+                    <Link2 className="h-3.5 w-3.5 text-zinc-500 dark:text-[#9AA7AE] shrink-0" />
+                    <span>Unlisted</span>
+                  </>
+                )}
+              </Button>
+            )}
+
             {/* Hold 2x Button: HIDDEN on small screens / mobile */}
             <button
               type="button"
@@ -945,7 +982,7 @@ export function VideoPlayer({
 
         {/* Bottom: Action Buttons (Admin Privacy Toggle, Mark as Watched, Next Video) */}
         <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 w-full pt-1 sm:pt-0 sm:justify-end">
-          {/* Admin YouTube Privacy Toggle Button */}
+          {/* Admin YouTube Privacy Toggle Button (Desktop / Tablet only) */}
           {isAdmin && (
             <Button
               type="button"
@@ -957,7 +994,7 @@ export function VideoPlayer({
                   : "Privacy: Unlisted (accessible via link only). Click to switch to Public"
               }
               className={cn(
-                "h-10 sm:h-11 rounded-xl gap-2 font-semibold shadow-xs transition-all duration-150 active:scale-[0.98] text-xs flex-1 sm:flex-initial min-w-0 border",
+                "hidden sm:inline-flex h-10 sm:h-11 rounded-xl gap-2 font-semibold shadow-xs transition-all duration-150 active:scale-[0.98] text-xs sm:flex-initial min-w-0 border",
                 optimisticPrivacy === "public"
                   ? "border-emerald-500/40 text-emerald-700 bg-emerald-50/80 hover:bg-emerald-100/90 hover:border-emerald-500/60 dark:border-emerald-500/40 dark:bg-emerald-500/15 dark:text-emerald-300 dark:hover:bg-emerald-500/25 dark:hover:border-emerald-500/60"
                   : "border-border/80 text-foreground/80 bg-card/90 hover:bg-muted/70 hover:text-foreground hover:border-border dark:border-[#1F2C34] dark:bg-[#141E28] dark:text-[#E8EDF0] dark:hover:bg-[#1B2631] dark:hover:text-white dark:hover:border-[#25A8A2]/40"
