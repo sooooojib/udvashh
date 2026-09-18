@@ -9,6 +9,11 @@ const SECRET = new TextEncoder().encode(
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
+  // Skip proxy for file upload routes to avoid body buffering (413 errors)
+  if (pathname.startsWith("/api/upload")) {
+    return NextResponse.next();
+  }
+
   const isProtectedPath =
     pathname.startsWith("/dashboard") ||
     pathname.startsWith("/watch") ||
