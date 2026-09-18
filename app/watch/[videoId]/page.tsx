@@ -47,28 +47,38 @@ export default async function WatchPage({ params }: WatchPageProps) {
   if (videoRows.length === 0) notFound();
   const video = videoRows[0];
 
-  // Sync live privacy status from YouTube in real time
-  const { syncSingleVideoPrivacy } = await import("@/lib/youtube/privacy-sync");
-  const livePrivacy = await syncSingleVideoPrivacy(
-    video.youtube_video_id,
-    video.privacy_status
-  );
-  const currentPrivacy = livePrivacy || video.privacy_status;
+  // Use cached DB privacy status immediately for instantaneous page delivery
+  const currentPrivacy = video.privacy_status;
 
-  // Fetch watched status for this video
-  const progressRows = await sql`
-    SELECT watched FROM watch_progress
-    WHERE user_id = ${session.id} AND video_id = ${video.id}
-    LIMIT 1
-  `;
+  // If admin, opportunistically refresh privacy in the background without blocking the user
+  if (isOwner) {
+    import("@/lib/youtube/privacy-sync")
+      .then(({ syncSingleVideoPrivacy }) =>
+        syncSingleVideoPrivacy(video.youtube_video_id, video.privacy_status)
+      )
+      .catch(() => {});
+  }
+
+  // Fetch watched status, playlist siblings, and PDFs concurrently in parallel
+  const [progressRows, playlistRows, pdfRowsRaw] = await Promise.all([
+    sql`
+      SELECT watched FROM watch_progress
+      WHERE user_id = ${session.id} AND video_id = ${video.id}
+      LIMIT 1
+    `,
+    sql`
+      SELECT youtube_video_id, title, position FROM videos
+      WHERE playlist_id = ${video.playlist_id}
+    `,
+    sql`
+      SELECT * FROM video_pdfs
+      WHERE video_id = ${video.id}
+      ORDER BY created_at ASC
+    `,
+  ]);
 
   const isWatched = progressRows[0]?.watched === true;
-
-  // Find all videos in the same playlist and sort naturally by class number
-  const playlistRows = await sql`
-    SELECT youtube_video_id, title, position FROM videos
-    WHERE playlist_id = ${video.playlist_id}
-  `;
+  const pdfRows = pdfRowsRaw as unknown as VideoPdfItem[];
 
   let nextVideoId: string | null = null;
   let videoPosition = video.position;
@@ -119,13 +129,6 @@ export default async function WatchPage({ params }: WatchPageProps) {
     moduleType = "subject-hacks";
     playlistName = getSubjectHacksPlaylistName(video.playlist_id);
   }
-
-  // Fetch attached lecture notes / PDFs for this video
-  const pdfRows = (await sql`
-    SELECT * FROM video_pdfs
-    WHERE video_id = ${video.id}
-    ORDER BY created_at ASC
-  `) as unknown as VideoPdfItem[];
 
   return (
     <main className="flex-1 w-full max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 md:py-10 min-h-[calc(100dvh-4rem)] animate-page-enter">

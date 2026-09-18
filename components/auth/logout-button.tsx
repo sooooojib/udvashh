@@ -20,12 +20,12 @@ export function LogoutButton() {
       size="sm"
       onClick={handleLogout}
       disabled={isPending}
-      className="min-h-[44px] min-w-[44px] gap-1.5 text-xs text-foreground/80 hover:text-red-600 hover:border-red-200 dark:border-[#1F2C34] dark:bg-[#111820] dark:text-[#9AA7AE] dark:hover:text-red-400 dark:hover:border-red-500/30 rounded-xl active:scale-95 transition-all duration-200 cursor-pointer"
+      className="group min-h-[44px] min-w-[44px] gap-1.5 text-xs text-foreground/80 hover:text-red-600 hover:border-red-200 hover:bg-red-50/60 dark:border-[#1F2C34] dark:bg-[#111820] dark:text-[#9AA7AE] dark:hover:text-red-400 dark:hover:border-red-500/30 dark:hover:bg-red-500/10 rounded-xl active:scale-95 transition-all duration-200 cursor-pointer"
     >
       {isPending ? (
         <Loader2 className="h-3.5 w-3.5 animate-spin text-red-500" />
       ) : (
-        <LogOut className="h-3.5 w-3.5 transition-transform duration-200 group-hover:-translate-x-0.5" />
+        <LogOut className="h-3.5 w-3.5 transition-transform duration-200 group-hover:-translate-x-0.5 text-muted-foreground group-hover:text-red-600 dark:text-[#9AA7AE] dark:group-hover:text-red-400" />
       )}
       <span className="hidden sm:inline">
         {isPending ? "Logging out..." : "Log out"}

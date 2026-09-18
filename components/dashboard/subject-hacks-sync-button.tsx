@@ -61,6 +61,7 @@ export function SubjectHacksSyncButton() {
       <div className="flex items-center gap-2">
         <Button
           type="button"
+          variant="outline"
           onClick={handleSyncPrivacy}
           disabled={isSyncingPrivacy || isPending}
           size="sm"

@@ -70,6 +70,12 @@ export default function RootLayout({
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="preconnect" href="https://www.youtube.com" />
+        <link rel="preconnect" href="https://s.ytimg.com" />
+        <link rel="preconnect" href="https://i.ytimg.com" />
+        <link rel="dns-prefetch" href="https://www.youtube.com" />
+        <link rel="dns-prefetch" href="https://s.ytimg.com" />
+        <link rel="dns-prefetch" href="https://i.ytimg.com" />
         <link
           href="https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@100..900&display=swap"
           rel="stylesheet"

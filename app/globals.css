@@ -285,3 +285,38 @@ textarea,
 .pb-safe {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
+
+/* ── Theater Mode Cinema Experience ── */
+body.theater-mode-active header {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+  transition: opacity 0.2s ease, visibility 0.2s ease;
+}
+
+body.theater-mode-active main > :not(.video-player-root) {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+  transition: opacity 0.2s ease, visibility 0.2s ease;
+}
+
+/* ── Fullscreen Display Overrides ── */
+:fullscreen,
+:-webkit-full-screen {
+  background-color: #000 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  max-width: none !important;
+  max-height: none !important;
+  top: 0 !important;
+  left: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  transform: none !important;
+  border-radius: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+

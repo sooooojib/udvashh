@@ -195,7 +195,7 @@ export function SignupForm() {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-3 text-muted-foreground hover:text-foreground focus:outline-none"
+                className="absolute right-3 top-3 text-muted-foreground hover:text-foreground dark:hover:text-[#E8EDF0] focus:outline-none transition-colors cursor-pointer"
                 tabIndex={-1}
                 aria-label={showPassword ? "Hide password" : "Show password"}
               >
@@ -226,7 +226,7 @@ export function SignupForm() {
               <button
                 type="button"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute right-3 top-3 text-muted-foreground hover:text-foreground focus:outline-none"
+                className="absolute right-3 top-3 text-muted-foreground hover:text-foreground dark:hover:text-[#E8EDF0] focus:outline-none transition-colors cursor-pointer"
                 tabIndex={-1}
                 aria-label={showConfirmPassword ? "Hide password" : "Show password"}
               >

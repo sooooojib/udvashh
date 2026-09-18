@@ -155,6 +155,7 @@ export function OwnerSyncButton({ playlists, moduleName }: OwnerSyncButtonProps)
           {/* Sync Privacy from YouTube */}
           <Button
             type="button"
+            variant="outline"
             onClick={handleSyncPrivacy}
             disabled={isSyncingPrivacy || isPending}
             title="Fast check: syncs public/unlisted statuses with YouTube for all videos"

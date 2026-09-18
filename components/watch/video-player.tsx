@@ -103,7 +103,13 @@ export function VideoPlayer({
   } | null>(null);
   const [isFullscreen, setIsFullscreen] = React.useState(false);
   const [isTheaterMode, setIsTheaterMode] = React.useState(false);
+  const [isPlayerReady, setIsPlayerReady] = React.useState(false);
   const seekTimerRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  // Reset player ready state when switching to a different video
+  React.useEffect(() => {
+    setIsPlayerReady(false);
+  }, [youtubeVideoId]);
 
   const { theme, setTheme, resolvedTheme } = useTheme();
   const previousThemeRef = React.useRef<string | null>(null);
@@ -130,9 +136,10 @@ export function VideoPlayer({
   // Scroll position store when toggling theater mode
   const scrollPositionRef = React.useRef<number>(0);
 
-  // Lock all scrolling when Theater Mode is active on big screens
+  // Lock all scrolling and style body when Theater Mode is active on big screens
   React.useEffect(() => {
     if (isTheaterMode && typeof window !== "undefined" && window.innerWidth >= 768) {
+      document.body.classList.add("theater-mode-active");
       const originalHtmlOverflow = document.documentElement.style.overflow;
       const originalHtmlOverscroll = document.documentElement.style.overscrollBehavior;
       const originalBodyOverflow = document.body.style.overflow;
@@ -145,6 +152,11 @@ export function VideoPlayer({
       document.body.style.overflow = "hidden";
       document.body.style.overscrollBehavior = "none";
       document.body.style.touchAction = "none";
+
+      // Focus player container so Escape and other keyboard controls respond immediately
+      setTimeout(() => {
+        containerRef.current?.focus();
+      }, 50);
 
       // Prevent wheel / trackpad momentum scrolling
       const handleWheel = (e: WheelEvent) => {
@@ -175,6 +187,7 @@ export function VideoPlayer({
       window.addEventListener("keydown", handleKeyDown);
 
       return () => {
+        document.body.classList.remove("theater-mode-active");
         document.documentElement.style.overflow = originalHtmlOverflow;
         document.documentElement.style.overscrollBehavior = originalHtmlOverscroll;
         document.body.style.overflow = originalBodyOverflow;
@@ -270,6 +283,7 @@ export function VideoPlayer({
   // Initialize YouTube player instance and enforce proper iframe attributes
   const handlePlayerReady = (event: any) => {
     playerRef.current = event.target;
+    setIsPlayerReady(true);
     try {
       const iframe = event.target.getIframe?.();
       if (iframe) {
@@ -405,30 +419,44 @@ export function VideoPlayer({
   // Reclaim focus from iframe so keyboard shortcuts always respond even after mouse clicks
   React.useEffect(() => {
     const reclaimFocus = () => {
+      // Only reclaim if the active element is the YouTube iframe itself
+      // Don't steal focus from inputs, textareas, buttons, modals, etc.
       if (
         document.activeElement &&
-        document.activeElement.tagName === "IFRAME"
+        document.activeElement.tagName === "IFRAME" &&
+        containerRef.current?.contains(document.activeElement)
       ) {
         containerRef.current?.focus();
-        window.focus();
       }
     };
 
-    window.addEventListener("blur", () => {
-      setTimeout(reclaimFocus, 50);
-      setTimeout(reclaimFocus, 150);
-      setTimeout(reclaimFocus, 350);
-    });
+    const handleBlur = () => {
+      setTimeout(reclaimFocus, 100);
+      setTimeout(reclaimFocus, 300);
+    };
 
-    const interval = setInterval(reclaimFocus, 300);
+    // When user clicks within the player container, reclaim focus from iframe
+    const handleContainerClick = () => {
+      setTimeout(reclaimFocus, 50);
+      setTimeout(reclaimFocus, 200);
+    };
+
+    window.addEventListener("blur", handleBlur);
+    containerRef.current?.addEventListener("click", handleContainerClick, true);
+    const containerEl = containerRef.current;
+
+    // Use a faster interval in fullscreen and theater mode (iframe steals focus on every click)
+    const intervalMs = isFullscreen || isTheaterMode ? 300 : 1000;
+    const interval = setInterval(reclaimFocus, intervalMs);
 
     return () => {
       clearInterval(interval);
-      window.removeEventListener("blur", reclaimFocus);
+      window.removeEventListener("blur", handleBlur);
+      containerEl?.removeEventListener("click", handleContainerClick, true);
     };
-  }, []);
+  }, [isFullscreen, isTheaterMode]);
 
-  // Listen for fullscreen changes to know when the player is in native fullscreen
+  // Listen for native fullscreen changes
   React.useEffect(() => {
     const handleFsChange = () => {
       const fs = Boolean(
@@ -437,6 +465,13 @@ export function VideoPlayer({
         (document as any).mozFullScreenElement
       );
       setIsFullscreen(fs);
+
+      if (fs) {
+        // Reclaim focus from iframe immediately in fullscreen so keyboard controls respond
+        setTimeout(() => {
+          containerRef.current?.focus();
+        }, 100);
+      }
     };
 
     document.addEventListener("fullscreenchange", handleFsChange);
@@ -546,6 +581,22 @@ export function VideoPlayer({
         return;
       }
 
+      // Escape key: Exit theater mode (when not in native fullscreen)
+      if (e.key === "Escape" || e.code === "Escape") {
+        const isFs = Boolean(
+          isFullscreen ||
+          document.fullscreenElement ||
+          (document as any).webkitFullscreenElement ||
+          (document as any).mozFullScreenElement
+        );
+        if (isTheaterMode && !isFs) {
+          e.preventDefault();
+          e.stopPropagation();
+          toggleTheaterMode();
+          return;
+        }
+      }
+
       // 'F' key: Toggle Fullscreen
       if (e.key === "f" || e.key === "F") {
         e.preventDefault();
@@ -617,6 +668,7 @@ export function VideoPlayer({
     handleSeek,
     toggleTheaterMode,
     toggleFullscreen,
+    isTheaterMode,
   ]);
 
   const handleTogglePrivacy = () => {
@@ -679,25 +731,28 @@ export function VideoPlayer({
   const isSubjectHacks = moduleType === "subject-hacks";
 
   return (
-    <div className="space-y-5 sm:space-y-6">
+    <div className="video-player-root space-y-5 sm:space-y-6">
       {/* ── Location / Navigation Breadcrumb ── */}
       <nav
         aria-label="Breadcrumb"
-        className="flex items-center flex-wrap gap-1.5 sm:gap-2 text-xs text-muted-foreground"
+        className={cn(
+          "flex items-center flex-wrap gap-1.5 sm:gap-2 text-xs text-muted-foreground",
+          isTheaterMode && "md:hidden"
+        )}
       >
         <Link
           href="/dashboard"
-          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-muted/60 transition-colors text-foreground/80 hover:text-foreground font-medium"
+          className="group inline-flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-muted/60 transition-colors text-foreground/80 hover:text-foreground dark:text-[#9AA7AE] dark:hover:text-white dark:hover:bg-[#141E28] font-medium"
         >
-          <LayoutGrid className="h-3.5 w-3.5 text-muted-foreground" />
+          <LayoutGrid className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground dark:text-[#9AA7AE] dark:group-hover:text-white transition-colors" />
           <span>Dashboard</span>
         </Link>
 
-        <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/40 shrink-0" />
+        <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/40 dark:text-[#5C6A72] shrink-0" />
 
         <Link
           href={moduleHref}
-          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-muted/60 transition-colors text-foreground/80 hover:text-foreground font-medium"
+          className="group inline-flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-muted/60 transition-colors text-foreground/80 hover:text-foreground dark:text-[#9AA7AE] dark:hover:text-white dark:hover:bg-[#141E28] font-medium"
         >
           {isIntensive ? (
             <Flame className="h-3.5 w-3.5 text-amber-500 shrink-0" />
@@ -729,7 +784,7 @@ export function VideoPlayer({
       </nav>
 
       {/* ── Video Title & Meta Bar ── */}
-      <div className="space-y-2.5">
+      <div className={cn("space-y-2.5", isTheaterMode && "md:hidden")}>
         <h1 className="font-heading text-xl font-extrabold tracking-tight text-foreground sm:text-2xl md:text-3xl leading-tight">
           {title}
         </h1>
@@ -821,7 +876,7 @@ export function VideoPlayer({
       {/* ── Theater Mode: Full-screen dark backdrop (big screens only) ── */}
       {isTheaterMode && (
         <div
-          className="hidden md:block fixed inset-0 z-40 bg-[#080b0e]/97 backdrop-blur-[2px] transition-opacity duration-300"
+          className="hidden md:block fixed inset-0 z-[60] bg-[#080b0e]/97 backdrop-blur-[2px] transition-opacity duration-300"
           aria-hidden="true"
         />
       )}
@@ -839,8 +894,10 @@ export function VideoPlayer({
         onMouseEnter={() => containerRef.current?.focus()}
         className={cn(
           "group relative bg-black outline-none select-none overflow-hidden",
-          isTheaterMode
-            ? "rounded-2xl border border-border/60 shadow-xl dark:border-[#1F2C34] md:border-0 md:fixed md:z-50 md:top-[calc(2rem+50dvh)] md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-[min(96vw,calc((100dvh-4rem-16px)*16/9))] md:shadow-[0_0_100px_rgba(0,0,0,0.95)] md:rounded-2xl md:ring-1 md:ring-white/10 md:transition-none"
+          isFullscreen
+            ? "!fixed !inset-0 !w-screen !h-screen !max-w-none !max-h-none !top-0 !left-0 !transform-none !rounded-none !border-0 !m-0 !p-0 z-[999999]"
+            : isTheaterMode
+            ? "rounded-2xl border border-border/60 shadow-xl dark:border-[#1F2C34] md:border-0 md:fixed md:inset-0 md:m-auto md:z-[70] md:w-[min(95vw,calc((100dvh-2.5rem)*16/9))] md:h-[min(calc(95vw*9/16),calc(100dvh-2.5rem))] md:aspect-video md:shadow-[0_0_100px_rgba(0,0,0,0.95)] md:rounded-2xl md:ring-1 md:ring-white/10 md:transition-none"
             : "rounded-2xl border border-border/60 shadow-xl dark:border-[#1F2C34] transition-all duration-300"
         )}
       >
@@ -911,7 +968,32 @@ export function VideoPlayer({
         )}
 
         {/* Video Frame: strictly keeps 16:9 aspect ratio */}
-        <div className="relative select-none w-full overflow-hidden aspect-video">
+        <div className="relative select-none w-full overflow-hidden aspect-video bg-black">
+          {/* Instant HD Thumbnail & Ambient Poster until YouTube Player is ready */}
+          {!isPlayerReady && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center overflow-hidden bg-[#0A0F12] select-none pointer-events-none transition-opacity duration-300">
+              {/* Background Poster Thumbnail */}
+              <img
+                src={`https://i.ytimg.com/vi/${youtubeVideoId}/hqdefault.jpg`}
+                alt={title}
+                className="absolute inset-0 h-full w-full object-cover opacity-60 scale-[1.03] blur-[1px]"
+                loading="eager"
+              />
+              <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" />
+
+              {/* Center Status Indicator */}
+              <div className="relative z-20 flex flex-col items-center gap-2.5">
+                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-black/70 text-white shadow-2xl backdrop-blur-md border border-white/20 animate-pulse">
+                  <Play className="h-6 w-6 ml-0.5 fill-white text-white" />
+                </div>
+                <div className="flex items-center gap-2 rounded-full bg-black/80 px-3.5 py-1 text-xs font-medium text-white/90 shadow-md backdrop-blur-md border border-white/10">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-[#25A8A2]" />
+                  <span>Preparing player…</span>
+                </div>
+              </div>
+            </div>
+          )}
+
           <YouTube
             videoId={youtubeVideoId}
             onReady={handlePlayerReady}
@@ -922,15 +1004,13 @@ export function VideoPlayer({
               height: "100%",
               playerVars: {
                 autoplay: 0,
-                modestbranding: 0,
+                modestbranding: 1,
                 rel: 0,
                 fs: 1,
                 enablejsapi: 1,
                 playsinline: 1,
-                origin:
-                  typeof window !== "undefined"
-                    ? window.location.origin
-                    : undefined,
+                iv_load_policy: 3,
+                cc_load_policy: 0,
               },
             }}
             className="w-full h-full [&>div]:!h-full [&>div]:!w-full [&_iframe]:!h-full [&_iframe]:!w-full pointer-events-auto"
@@ -945,16 +1025,13 @@ export function VideoPlayer({
       )}>
         {/* Top: Back to Module & Speed Presets */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
-          <Button
-            asChild
-            variant="outline"
-            className="h-10 sm:h-11 w-full sm:w-auto rounded-xl gap-2 text-xs font-semibold dark:border-[#1F2C34] dark:bg-[#141E28] dark:text-[#E8EDF0] dark:hover:bg-[#1F2C34] active:scale-[0.98] transition-all justify-center sm:justify-start"
+          <Link
+            href={moduleHref}
+            className="group inline-flex items-center justify-center sm:justify-start h-10 sm:h-11 w-full sm:w-auto rounded-xl gap-2 px-4 text-xs font-semibold border border-border/80 bg-card text-foreground/90 hover:bg-muted/80 hover:text-foreground dark:border-[#1F2C34] dark:bg-[#141E28] dark:text-[#E8EDF0] dark:hover:bg-[#1F2C34] dark:hover:text-white active:scale-[0.98] transition-all shadow-xs cursor-pointer"
           >
-            <Link href={moduleHref}>
-              <ArrowLeft className="h-4 w-4 shrink-0" />
-              <span className="truncate">Back to {moduleName}</span>
-            </Link>
-          </Button>
+            <ArrowLeft className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-foreground group-hover:-translate-x-0.5 dark:text-[#9AA7AE] dark:group-hover:text-white transition-all" />
+            <span className="truncate">Back to {moduleName}</span>
+          </Link>
 
           {/* Speed Presets & Desktop Hold 2x */}
           <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
@@ -976,7 +1053,7 @@ export function VideoPlayer({
                         : "bg-[#25A8A2] text-white shadow-sm"
                       : is2xSpeed && speed === 2
                       ? "bg-amber-500 text-white shadow-sm ring-1 ring-amber-400"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted/80 dark:text-[#9AA7AE] dark:hover:text-white"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/80 dark:text-[#9AA7AE] dark:hover:text-white dark:hover:bg-[#1F2C34]"
                   )}
                 >
                   {speed}x
@@ -986,7 +1063,7 @@ export function VideoPlayer({
 
             {/* Mobile Admin YouTube Privacy Toggle Button (Sits right beside speed control on small screens) */}
             {isAdmin && (
-              <Button
+              <button
                 type="button"
                 onClick={handleTogglePrivacy}
                 disabled={isTogglingPrivacy}
@@ -996,15 +1073,15 @@ export function VideoPlayer({
                     : "Privacy: Unlisted (accessible via link only). Click to switch to Public"
                 }
                 className={cn(
-                  "sm:hidden h-10 rounded-xl gap-1.5 px-3 font-semibold shadow-xs transition-all duration-150 active:scale-[0.98] text-xs border shrink-0",
+                  "sm:hidden inline-flex items-center justify-center h-10 rounded-xl gap-1.5 px-3 font-semibold shadow-xs transition-all duration-150 active:scale-[0.98] text-xs border shrink-0 cursor-pointer disabled:opacity-50 disabled:pointer-events-none group",
                   optimisticPrivacy === "public"
-                    ? "border-emerald-500/40 text-emerald-700 bg-emerald-50/80 hover:bg-emerald-100/90 hover:border-emerald-500/60 dark:border-emerald-500/40 dark:bg-emerald-500/15 dark:text-emerald-300 dark:hover:bg-emerald-500/25 dark:hover:border-emerald-500/60"
-                    : "border-border/80 text-foreground/80 bg-card/90 hover:bg-muted/70 hover:text-foreground hover:border-border dark:border-[#1F2C34] dark:bg-[#141E28] dark:text-[#E8EDF0] dark:hover:bg-[#1B2631] dark:hover:text-white dark:hover:border-[#25A8A2]/40"
+                    ? "border-emerald-500/40 text-emerald-700 bg-emerald-50/80 hover:bg-emerald-100/90 hover:border-emerald-500/60 dark:border-emerald-500/40 dark:bg-emerald-500/15 dark:text-emerald-300 dark:hover:bg-emerald-500/25 dark:hover:border-emerald-500/60 dark:hover:text-emerald-200"
+                    : "border-border/80 text-foreground/80 bg-card hover:bg-muted/80 hover:text-foreground hover:border-border dark:border-[#1F2C34] dark:bg-[#141E28] dark:text-[#E8EDF0] dark:hover:bg-[#1F2C34] dark:hover:text-white dark:hover:border-[#25A8A2]/40"
                 )}
               >
                 {isTogglingPrivacy ? (
                   <>
-                    <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
+                    <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0 text-current" />
                     <span>Updating…</span>
                   </>
                 ) : optimisticPrivacy === "public" ? (
@@ -1014,11 +1091,11 @@ export function VideoPlayer({
                   </>
                 ) : (
                   <>
-                    <Link2 className="h-3.5 w-3.5 text-zinc-500 dark:text-[#9AA7AE] shrink-0" />
+                    <Link2 className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground dark:text-[#9AA7AE] dark:group-hover:text-white transition-colors shrink-0" />
                     <span>Unlisted</span>
                   </>
                 )}
-              </Button>
+              </button>
             )}
 
             {/* Hold 2x Button: HIDDEN on small screens / mobile */}
@@ -1034,13 +1111,13 @@ export function VideoPlayer({
               onTouchEnd={stop2xSpeed}
               title="Hold Spacebar or hold this button for 2x speed"
               className={cn(
-                "hidden md:inline-flex h-11 items-center gap-1.5 rounded-xl border px-3 text-xs font-mono font-bold transition-all select-none cursor-pointer active:scale-95",
+                "group hidden md:inline-flex h-11 items-center gap-1.5 rounded-xl border px-3 text-xs font-mono font-bold transition-all select-none cursor-pointer active:scale-95",
                 is2xSpeed
                   ? "bg-amber-500 text-white border-amber-400 shadow-[0_0_12px_rgba(245,158,11,0.4)]"
-                  : "border-border/60 bg-muted/40 text-muted-foreground hover:border-amber-500/40 hover:text-amber-500 dark:border-[#1F2C34] dark:bg-[#141E28] dark:text-[#9AA7AE]"
+                  : "border-border/60 bg-muted/40 text-muted-foreground hover:border-amber-500/40 hover:text-amber-600 hover:bg-amber-500/10 dark:border-[#1F2C34] dark:bg-[#141E28] dark:text-[#9AA7AE] dark:hover:border-amber-500/50 dark:hover:text-amber-400 dark:hover:bg-amber-500/15"
               )}
             >
-              <Zap className={cn("h-3.5 w-3.5", is2xSpeed && "fill-white")} />
+              <Zap className={cn("h-3.5 w-3.5 transition-colors", is2xSpeed ? "fill-white text-white" : "text-muted-foreground group-hover:text-amber-500 dark:text-[#9AA7AE] dark:group-hover:text-amber-400")} />
               <span>Hold 2x</span>
             </button>
           </div>
@@ -1050,7 +1127,7 @@ export function VideoPlayer({
         <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 w-full pt-1 sm:pt-0 sm:justify-end">
           {/* Admin YouTube Privacy Toggle Button (Desktop / Tablet only) */}
           {isAdmin && (
-            <Button
+            <button
               type="button"
               onClick={handleTogglePrivacy}
               disabled={isTogglingPrivacy}
@@ -1060,15 +1137,15 @@ export function VideoPlayer({
                   : "Privacy: Unlisted (accessible via link only). Click to switch to Public"
               }
               className={cn(
-                "hidden sm:inline-flex h-10 sm:h-11 rounded-xl gap-2 font-semibold shadow-xs transition-all duration-150 active:scale-[0.98] text-xs sm:flex-initial min-w-0 border",
+                "hidden sm:inline-flex items-center justify-center h-10 sm:h-11 rounded-xl gap-2 font-semibold shadow-xs transition-all duration-150 active:scale-[0.98] text-xs sm:flex-initial min-w-0 border px-4 cursor-pointer disabled:opacity-50 disabled:pointer-events-none group",
                 optimisticPrivacy === "public"
-                  ? "border-emerald-500/40 text-emerald-700 bg-emerald-50/80 hover:bg-emerald-100/90 hover:border-emerald-500/60 dark:border-emerald-500/40 dark:bg-emerald-500/15 dark:text-emerald-300 dark:hover:bg-emerald-500/25 dark:hover:border-emerald-500/60"
-                  : "border-border/80 text-foreground/80 bg-card/90 hover:bg-muted/70 hover:text-foreground hover:border-border dark:border-[#1F2C34] dark:bg-[#141E28] dark:text-[#E8EDF0] dark:hover:bg-[#1B2631] dark:hover:text-white dark:hover:border-[#25A8A2]/40"
+                  ? "border-emerald-500/40 text-emerald-700 bg-emerald-50/80 hover:bg-emerald-100/90 hover:border-emerald-500/60 dark:border-emerald-500/40 dark:bg-emerald-500/15 dark:text-emerald-300 dark:hover:bg-emerald-500/25 dark:hover:border-emerald-500/60 dark:hover:text-emerald-200"
+                  : "border-border/80 text-foreground/80 bg-card hover:bg-muted/80 hover:text-foreground hover:border-border dark:border-[#1F2C34] dark:bg-[#141E28] dark:text-[#E8EDF0] dark:hover:bg-[#1F2C34] dark:hover:text-white dark:hover:border-[#25A8A2]/40"
               )}
             >
               {isTogglingPrivacy ? (
                 <>
-                  <Loader2 className="h-4 w-4 animate-spin shrink-0" />
+                  <Loader2 className="h-4 w-4 animate-spin shrink-0 text-current" />
                   <span className="truncate">Updating…</span>
                 </>
               ) : optimisticPrivacy === "public" ? (
@@ -1078,61 +1155,61 @@ export function VideoPlayer({
                 </>
               ) : (
                 <>
-                  <Link2 className="h-4 w-4 text-zinc-500 dark:text-[#9AA7AE] shrink-0" />
+                  <Link2 className="h-4 w-4 text-muted-foreground group-hover:text-foreground dark:text-[#9AA7AE] dark:group-hover:text-white transition-colors shrink-0" />
                   <span className="truncate">Unlisted</span>
                 </>
               )}
-            </Button>
+            </button>
           )}
 
           {/* Watched Toggle Button */}
-          <Button
-            variant={optimisticWatched ? "outline" : "default"}
+          <button
+            type="button"
             onClick={handleToggle}
             disabled={isPending}
-            className={`flex-1 sm:flex-initial h-10 sm:h-11 rounded-xl gap-2 font-semibold shadow-sm transition-all active:scale-[0.98] text-xs min-w-0 ${
+            className={cn(
+              "flex-1 sm:flex-initial inline-flex items-center justify-center h-10 sm:h-11 rounded-xl gap-2 font-semibold shadow-sm transition-all duration-150 active:scale-[0.98] text-xs min-w-0 px-4 cursor-pointer disabled:opacity-50 disabled:pointer-events-none border",
               optimisticWatched
                 ? isIntensive
-                  ? "border-amber-500/40 text-amber-600 bg-amber-500/10 hover:bg-amber-500/20 dark:border-amber-500/40 dark:bg-amber-500/15 dark:text-amber-400"
+                  ? "border-amber-500/40 text-amber-700 bg-amber-500/10 hover:bg-amber-500/20 hover:text-amber-800 dark:border-amber-500/40 dark:bg-amber-500/15 dark:text-amber-400 dark:hover:bg-amber-500/25 dark:hover:text-amber-300"
                   : isSubjectHacks
-                  ? "border-blue-500/40 text-blue-600 bg-blue-500/10 hover:bg-blue-500/20 dark:border-blue-500/40 dark:bg-blue-500/15 dark:text-blue-400"
-                  : "border-[#25A8A2]/40 text-[#25A8A2] bg-[#25A8A2]/10 hover:bg-[#25A8A2]/20 dark:border-[#25A8A2]/40 dark:bg-[#25A8A2]/15 dark:text-[#25A8A2]"
+                  ? "border-blue-500/40 text-blue-700 bg-blue-500/10 hover:bg-blue-500/20 hover:text-blue-800 dark:border-blue-500/40 dark:bg-blue-500/15 dark:text-blue-400 dark:hover:bg-blue-500/25 dark:hover:text-blue-300"
+                  : "border-[#25A8A2]/40 text-[#25A8A2] bg-[#25A8A2]/10 hover:bg-[#25A8A2]/20 hover:text-[#20928D] dark:border-[#25A8A2]/40 dark:bg-[#25A8A2]/15 dark:text-[#25A8A2] dark:hover:bg-[#25A8A2]/25 dark:hover:text-white"
                 : isIntensive
-                ? "bg-amber-500 text-white hover:bg-amber-600 shadow-[0_0_10px_rgba(245,158,11,0.3)]"
+                ? "bg-amber-500 text-white border-transparent hover:bg-amber-600 shadow-[0_0_10px_rgba(245,158,11,0.3)]"
                 : isSubjectHacks
-                ? "bg-blue-600 text-white hover:bg-blue-700 shadow-[0_0_10px_rgba(37,99,235,0.3)]"
-                : "bg-primary text-primary-foreground dark:bg-[#25A8A2] dark:text-white dark:hover:bg-[#20928D] dark:shadow-[0_0_10px_rgba(37,168,162,0.3)]"
-            }`}
+                ? "bg-blue-600 text-white border-transparent hover:bg-blue-700 shadow-[0_0_10px_rgba(37,99,235,0.3)]"
+                : "bg-primary text-primary-foreground border-transparent hover:bg-primary/90 dark:bg-[#25A8A2] dark:text-white dark:hover:bg-[#20928D] dark:shadow-[0_0_10px_rgba(37,168,162,0.3)]"
+            )}
           >
             {isPending ? (
-              <Loader2 className="h-4 w-4 animate-spin shrink-0" />
+              <Loader2 className="h-4 w-4 animate-spin shrink-0 text-current" />
             ) : optimisticWatched ? (
-              <Check className="h-4 w-4 stroke-[3] shrink-0" />
+              <Check className="h-4 w-4 stroke-[3] shrink-0 text-current" />
             ) : (
-              <Circle className="h-4 w-4 shrink-0" />
+              <Circle className="h-4 w-4 shrink-0 text-current" />
             )}
             <span className="truncate">
               {optimisticWatched ? "Watched" : "Mark as Watched"}
             </span>
-          </Button>
+          </button>
 
           {/* Next Video Button (if available) */}
           {nextVideoId && (
-            <Button
-              asChild
-              className={`flex-1 sm:flex-initial h-10 sm:h-11 rounded-xl gap-2 font-semibold shadow-sm text-xs active:scale-[0.98] transition-all min-w-0 ${
+            <Link
+              href={`/watch/${nextVideoId}`}
+              className={cn(
+                "group flex-1 sm:flex-initial inline-flex items-center justify-center h-10 sm:h-11 rounded-xl gap-2 font-semibold shadow-sm text-xs active:scale-[0.98] transition-all min-w-0 px-4 cursor-pointer",
                 isIntensive
-                  ? "bg-amber-500 text-white hover:bg-amber-600 dark:bg-amber-500 dark:hover:bg-amber-600"
+                  ? "bg-amber-500 text-white hover:bg-amber-600 dark:bg-amber-500 dark:text-white dark:hover:bg-amber-600"
                   : isSubjectHacks
-                  ? "bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500"
-                  : "bg-primary text-primary-foreground dark:bg-[#25A8A2] dark:text-white dark:hover:bg-[#20928D]"
-              }`}
+                  ? "bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-600 dark:text-white dark:hover:bg-blue-700"
+                  : "bg-primary text-primary-foreground hover:bg-primary/90 dark:bg-[#25A8A2] dark:text-white dark:hover:bg-[#20928D]"
+              )}
             >
-              <Link href={`/watch/${nextVideoId}`} className="min-w-0">
-                <span className="truncate">Next</span>
-                <SkipForward className="h-4 w-4 shrink-0" />
-              </Link>
-            </Button>
+              <span className="truncate">Next</span>
+              <SkipForward className="h-4 w-4 shrink-0 text-white transition-transform duration-200 group-hover:translate-x-0.5" />
+            </Link>
           )}
         </div>
       </div>

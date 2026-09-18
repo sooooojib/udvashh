@@ -529,7 +529,7 @@ export function VideoPdfSection({
                     type="button"
                     onClick={() => setPreviewPdf(pdf)}
                     title="Preview"
-                    className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 dark:text-[#9AA7AE] dark:hover:text-white dark:hover:bg-[#1F2C34] transition-all duration-150"
+                    className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 dark:text-[#9AA7AE] dark:hover:text-white dark:hover:bg-[#1F2C34] transition-all duration-150 cursor-pointer"
                   >
                     <Eye className="h-3.5 w-3.5" />
                   </button>
@@ -540,7 +540,7 @@ export function VideoPdfSection({
                     rel="noopener noreferrer"
                     download={!isDrive}
                     title="Download"
-                    className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 dark:text-[#9AA7AE] dark:hover:text-white dark:hover:bg-[#1F2C34] transition-all duration-150"
+                    className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 dark:text-[#9AA7AE] dark:hover:text-white dark:hover:bg-[#1F2C34] transition-all duration-150 cursor-pointer"
                   >
                     <Download className="h-3.5 w-3.5" />
                   </a>
@@ -551,7 +551,7 @@ export function VideoPdfSection({
                       onClick={() => handleDeletePdf(pdf.id)}
                       disabled={deletingId === pdf.id}
                       title="Delete"
-                      className="p-2 rounded-lg text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10 dark:text-[#9AA7AE] dark:hover:text-rose-400 transition-all duration-150 disabled:opacity-40"
+                      className="p-2 rounded-lg text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10 dark:text-[#9AA7AE] dark:hover:text-rose-400 dark:hover:bg-rose-500/15 transition-all duration-150 disabled:opacity-40 cursor-pointer"
                     >
                       {deletingId === pdf.id ? (
                         <Loader2 className="h-3.5 w-3.5 animate-spin text-rose-500" />
@@ -804,7 +804,7 @@ export function VideoPdfSection({
                             setSelectedFile(null);
                             setUploadTitle("");
                           }}
-                          className="text-[11px] text-muted-foreground hover:text-rose-500 transition-colors mt-1"
+                          className="text-[11px] text-muted-foreground hover:text-rose-500 dark:text-[#9AA7AE] dark:hover:text-rose-400 transition-colors mt-1 cursor-pointer"
                         >
                           Remove
                         </button>
@@ -873,16 +873,14 @@ export function VideoPdfSection({
 
                   {/* Actions */}
                   <div className="flex justify-end gap-2 pt-1">
-                    <Button
+                    <button
                       type="button"
-                      variant="ghost"
-                      size="sm"
                       onClick={closeAndResetModal}
                       disabled={isUploading}
-                      className="h-9 rounded-xl text-xs px-4"
+                      className="h-9 rounded-xl text-xs px-4 border border-border/70 bg-card text-muted-foreground hover:text-foreground hover:bg-muted/80 dark:border-[#1F2C34] dark:bg-[#141E28] dark:text-[#9AA7AE] dark:hover:bg-[#1F2C34] dark:hover:text-white font-medium transition-all active:scale-[0.98] cursor-pointer"
                     >
                       Cancel
-                    </Button>
+                    </button>
                     <button
                       type="submit"
                       disabled={!selectedFile || isUploading}
@@ -975,16 +973,14 @@ export function VideoPdfSection({
 
                   {/* Actions */}
                   <div className="flex justify-end gap-2 pt-1">
-                    <Button
+                    <button
                       type="button"
-                      variant="ghost"
-                      size="sm"
                       onClick={closeAndResetModal}
                       disabled={isAttachingDrive}
-                      className="h-9 rounded-xl text-xs px-4"
+                      className="h-9 rounded-xl text-xs px-4 border border-border/70 bg-card text-muted-foreground hover:text-foreground hover:bg-muted/80 dark:border-[#1F2C34] dark:bg-[#141E28] dark:text-[#9AA7AE] dark:hover:bg-[#1F2C34] dark:hover:text-white font-medium transition-all active:scale-[0.98] cursor-pointer"
                     >
                       Cancel
-                    </Button>
+                    </button>
                     <button
                       type="submit"
                       disabled={!driveTitle.trim() || !driveUrl.trim() || isAttachingDrive}

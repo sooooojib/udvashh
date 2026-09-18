@@ -201,7 +201,7 @@ export function VideoCard({
               "absolute right-2 top-2 z-10 flex h-6 items-center gap-1.5 rounded-md px-2 text-[11px] font-semibold tracking-wide shadow-xs backdrop-blur-md transition-all duration-150 cursor-pointer active:scale-[0.98] disabled:pointer-events-none disabled:opacity-60 border",
               optimisticPrivacy === "public"
                 ? "bg-emerald-600/90 hover:bg-emerald-500 text-white shadow-emerald-900/30 border-emerald-400/40 dark:bg-emerald-500/25 dark:text-emerald-300 dark:border-emerald-500/40 dark:hover:bg-emerald-500/35 dark:hover:border-emerald-500/60"
-                : "bg-white/90 hover:bg-white text-zinc-700 hover:text-zinc-900 border-zinc-200/80 shadow-xs dark:bg-[#141E28]/95 dark:text-[#9AA7AE] dark:border-[#1F2C34] dark:hover:bg-[#1B2631] dark:hover:text-[#E8EDF0] dark:hover:border-[#25A8A2]/40"
+                : "bg-card/90 hover:bg-card text-foreground/80 hover:text-foreground border-border/80 shadow-xs dark:bg-[#141E28]/95 dark:text-[#9AA7AE] dark:border-[#1F2C34] dark:hover:bg-[#1B2631] dark:hover:text-white dark:hover:border-[#25A8A2]/40"
             )}
           >
             {isTogglingPrivacy ? (
@@ -213,7 +213,7 @@ export function VideoCard({
               </>
             ) : (
               <>
-                <Link2 className="h-3 w-3 text-zinc-500 dark:text-[#9AA7AE] shrink-0" />
+                <Link2 className="h-3 w-3 text-muted-foreground dark:text-[#9AA7AE] shrink-0" />
                 <span>Unlisted</span>
               </>
             )}
