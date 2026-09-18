@@ -151,6 +151,21 @@ export async function uploadPdfToGoogleDrive({
   const fileId = fileData.id;
 
   // 2. Set file permissions to 'anyone with the link can view'
+  if (fileId) {
+    await setDriveFilePublic(fileId);
+  }
+
+  return {
+    fileId,
+    webViewLink: fileData.webViewLink || `https://drive.google.com/file/d/${fileId}/view`,
+  };
+}
+
+/**
+ * Sets public view permissions on a Drive file
+ */
+export async function setDriveFilePublic(fileId: string): Promise<void> {
+  const accessToken = await getDriveAccessToken();
   try {
     await fetch(
       `https://www.googleapis.com/drive/v3/files/${fileId}/permissions`,
@@ -169,11 +184,6 @@ export async function uploadPdfToGoogleDrive({
   } catch (permErr) {
     console.warn("Could not set public permission on Drive file:", permErr);
   }
-
-  return {
-    fileId,
-    webViewLink: fileData.webViewLink || `https://drive.google.com/file/d/${fileId}/view`,
-  };
 }
 
 /**
@@ -200,3 +210,115 @@ export async function deleteFileFromGoogleDrive(fileId: string): Promise<void> {
     );
   }
 }
+
+/**
+ * Initiates a Google Drive Resumable Upload session.
+ * Returns the session URL (Location header) where chunks can be PUT.
+ */
+export async function createDriveResumableSession({
+  fileName,
+  fileSize,
+}: {
+  fileName: string;
+  fileSize: number;
+}): Promise<string> {
+  const accessToken = await getDriveAccessToken();
+
+  const metadata: Record<string, unknown> = {
+    name: fileName.endsWith(".pdf") ? fileName : `${fileName}.pdf`,
+    mimeType: "application/pdf",
+  };
+
+  if (FOLDER_ID) {
+    metadata.parents = [FOLDER_ID];
+  }
+
+  const res = await fetch(
+    "https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&fields=id,name,webViewLink",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json; charset=UTF-8",
+        "X-Upload-Content-Type": "application/pdf",
+        "X-Upload-Content-Length": String(fileSize),
+      },
+      body: JSON.stringify(metadata),
+    }
+  );
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(
+      `Failed to initiate Drive upload: ${(data as { error?: { message?: string } })?.error?.message || `HTTP ${res.status}`}`
+    );
+  }
+
+  const sessionUrl = res.headers.get("location");
+  if (!sessionUrl) {
+    throw new Error("Google Drive did not return a resumable session URL.");
+  }
+
+  return sessionUrl;
+}
+
+/**
+ * Sends a single chunk to the Google Drive resumable session URL.
+ */
+export async function sendDriveChunk({
+  sessionUrl,
+  chunkBuffer,
+  rangeStart,
+  rangeEnd,
+  totalSize,
+}: {
+  sessionUrl: string;
+  chunkBuffer: Buffer;
+  rangeStart: number;
+  rangeEnd: number;
+  totalSize: number;
+}): Promise<{
+  done: boolean;
+  fileId?: string;
+  webViewLink?: string;
+}> {
+  if (!sessionUrl.startsWith("https://www.googleapis.com/upload/drive/v3/files")) {
+    throw new Error("Invalid Drive upload session URL.");
+  }
+
+  const res = await fetch(sessionUrl, {
+    method: "PUT",
+    headers: {
+      "Content-Range": `bytes ${rangeStart}-${rangeEnd}/${totalSize}`,
+      "Content-Length": String(chunkBuffer.length),
+      "Content-Type": "application/pdf",
+    },
+    body: new Uint8Array(chunkBuffer),
+  });
+
+  // 308 Resume Incomplete = chunk received, more chunks needed
+  if (res.status === 308) {
+    return { done: false };
+  }
+
+  // 200 or 201 = upload finished successfully
+  if (res.ok) {
+    const fileData = await res.json();
+    const fileId = fileData.id;
+    if (fileId) {
+      await setDriveFilePublic(fileId);
+    }
+    return {
+      done: true,
+      fileId,
+      webViewLink:
+        fileData.webViewLink || `https://drive.google.com/file/d/${fileId}/view`,
+    };
+  }
+
+  const errData = await res.json().catch(() => ({}));
+  throw new Error(
+    `Drive chunk upload failed: ${(errData as { error?: { message?: string } })?.error?.message || `HTTP ${res.status}`}`
+  );
+}
+

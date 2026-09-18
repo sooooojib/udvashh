@@ -59,6 +59,8 @@ export function VideoPdfSection({
   const [selectedFile, setSelectedFile] = React.useState<File | null>(null);
   const [uploadTitle, setUploadTitle] = React.useState("");
   const [isUploading, setIsUploading] = React.useState(false);
+  const [uploadProgress, setUploadProgress] = React.useState<number | null>(null);
+  const [uploadStatusText, setUploadStatusText] = React.useState<string>("");
   const [isDragOver, setIsDragOver] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -151,7 +153,7 @@ export function VideoPdfSection({
     if (droppedFile) handleFileChange(droppedFile);
   };
 
-  // Handle direct file upload (to Google Drive or Supabase)
+  // Handle direct file upload (to Google Drive via resumable chunks or Supabase via signed upload URL)
   const handleFileUpload = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedFile) {
@@ -160,49 +162,153 @@ export function VideoPdfSection({
     }
 
     setIsUploading(true);
-    const formData = new FormData();
-    formData.append("videoId", videoId);
-    formData.append("file", selectedFile);
-    formData.append("title", uploadTitle.trim() || selectedFile.name);
-    formData.append("destination", uploadMode === "supabase" ? "supabase" : "drive");
+    setUploadProgress(0);
+    const title =
+      uploadTitle.trim() ||
+      selectedFile.name.replace(/\.pdf$/i, "").replace(/[_-]+/g, " ");
 
     try {
-      const response = await fetch("/api/upload/pdf", {
-        method: "POST",
-        body: formData,
-      });
+      if (uploadMode === "supabase") {
+        setUploadStatusText("Authorizing upload...");
+        // 1. Get signed upload URL (tiny JSON request, bypasses Vercel 4.5MB limit)
+        const signRes = await fetch("/api/upload/supabase/sign", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ videoId, fileName: selectedFile.name }),
+        });
 
-      const text = await response.text();
-      let res: { success?: boolean; message?: string; pdf?: VideoPdfItem };
-      try {
-        res = JSON.parse(text);
-      } catch {
-        console.error("Non-JSON response from /api/upload/pdf:", text.slice(0, 300));
-        toast.error(
-          response.ok
-            ? "Upload may have succeeded but got an invalid response. Refresh the page."
-            : `Upload failed (HTTP ${response.status}). Check server logs.`
-        );
-        return;
-      }
+        if (!signRes.ok) {
+          const errData = await signRes.json().catch(() => ({}));
+          throw new Error(errData.message || "Failed to initialize Supabase upload.");
+        }
 
-      if (res.success && res.pdf) {
-        toast.success(
-          uploadMode === "supabase"
-            ? "PDF uploaded to Supabase!"
-            : "PDF uploaded to Google Drive!"
-        );
-        setPdfs((prev) => [...prev, res.pdf!]);
+        const { signedUrl, storagePath } = await signRes.json();
+
+        setUploadStatusText("Uploading directly to Supabase Storage...");
+        setUploadProgress(40);
+
+        // 2. Upload file directly to Supabase Storage (Client -> Supabase, zero Vercel limits!)
+        const uploadRes = await fetch(signedUrl, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/pdf",
+          },
+          body: selectedFile,
+        });
+
+        if (!uploadRes.ok) {
+          throw new Error(`Supabase upload failed (status ${uploadRes.status}).`);
+        }
+
+        setUploadProgress(85);
+        setUploadStatusText("Finalizing PDF record...");
+
+        // 3. Record metadata in database
+        const completeRes = await fetch("/api/upload/supabase/complete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            videoId,
+            title,
+            storagePath,
+            fileSize: selectedFile.size,
+          }),
+        });
+
+        const completeData = await completeRes.json();
+        if (!completeRes.ok || !completeData.success) {
+          throw new Error(completeData.message || "Failed to finalize PDF record.");
+        }
+
+        setUploadProgress(100);
+        toast.success("PDF uploaded to Supabase!");
+        setPdfs((prev) => [...prev, completeData.pdf]);
         closeAndResetModal();
       } else {
-        toast.error(res.message || "Upload failed.");
+        // GOOGLE DRIVE RESUMABLE CHUNKED UPLOAD
+        setUploadStatusText("Creating Google Drive session...");
+        setUploadProgress(5);
+
+        // 1. Start resumable session
+        const startRes = await fetch("/api/upload/drive/start", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            videoId,
+            fileName: selectedFile.name,
+            fileSize: selectedFile.size,
+          }),
+        });
+
+        if (!startRes.ok) {
+          const startData = await startRes.json().catch(() => ({}));
+          throw new Error(startData.message || "Failed to initiate Drive upload.");
+        }
+
+        const { sessionUrl } = await startRes.json();
+
+        // 2. Upload in 2MB chunks (safe from Vercel's 4.5MB payload limit)
+        const CHUNK_SIZE = 2 * 1024 * 1024; // 2MB (multiple of 256KB)
+        const totalSize = selectedFile.size;
+        let start = 0;
+        let chunkIndex = 1;
+        const totalChunks = Math.ceil(totalSize / CHUNK_SIZE);
+        let createdPdf: VideoPdfItem | null = null;
+
+        while (start < totalSize) {
+          const end = Math.min(start + CHUNK_SIZE, totalSize) - 1;
+          const chunkBlob = selectedFile.slice(start, end + 1);
+
+          setUploadStatusText(`Uploading chunk ${chunkIndex} of ${totalChunks}...`);
+
+          const chunkRes = await fetch(
+            `/api/upload/drive/chunk?rangeStart=${start}&rangeEnd=${end}&totalSize=${totalSize}&videoId=${encodeURIComponent(videoId)}&title=${encodeURIComponent(title)}`,
+            {
+              method: "POST",
+              headers: {
+                "x-session-url": sessionUrl,
+                "Content-Type": "application/octet-stream",
+              },
+              body: chunkBlob,
+            }
+          );
+
+          if (!chunkRes.ok) {
+            const errData = await chunkRes.json().catch(() => ({}));
+            throw new Error(errData.message || `Chunk ${chunkIndex} upload failed.`);
+          }
+
+          const chunkData = await chunkRes.json();
+          const percent = Math.round(((end + 1) / totalSize) * 100);
+          setUploadProgress(percent);
+
+          if (chunkData.done && chunkData.pdf) {
+            createdPdf = chunkData.pdf;
+            break;
+          }
+
+          start = end + 1;
+          chunkIndex++;
+        }
+
+        if (createdPdf) {
+          setUploadProgress(100);
+          toast.success("PDF uploaded to Google Drive!");
+          setPdfs((prev) => [...prev, createdPdf!]);
+          closeAndResetModal();
+        } else {
+          throw new Error("Upload completed without receiving confirmation.");
+        }
       }
     } catch (err: unknown) {
+      console.error("Upload error:", err);
       const msg =
         err instanceof Error ? err.message : "Upload failed. Please try again.";
       toast.error(msg);
     } finally {
       setIsUploading(false);
+      setUploadProgress(null);
+      setUploadStatusText("");
     }
   };
 
@@ -271,6 +377,8 @@ export function VideoPdfSection({
     setDriveTitle("");
     setDriveUrl("");
     setUploadMode("drive");
+    setUploadProgress(null);
+    setUploadStatusText("");
   };
 
   return (
@@ -716,6 +824,25 @@ export function VideoPdfSection({
                     />
                   </div>
 
+                  {/* Progress Bar during upload */}
+                  {isUploading && uploadProgress !== null && (
+                    <div className="space-y-1.5 pt-1">
+                      <div className="flex items-center justify-between text-[11px] text-muted-foreground dark:text-[#9AA7AE]">
+                        <span className="truncate pr-2">{uploadStatusText || "Uploading..."}</span>
+                        <span className="font-mono font-medium shrink-0">{uploadProgress}%</span>
+                      </div>
+                      <div className="w-full h-1.5 bg-muted/40 dark:bg-[#1A232A] rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all duration-300"
+                          style={{
+                            width: `${uploadProgress}%`,
+                            backgroundColor: accentColor,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
                   {/* Actions */}
                   <div className="flex justify-end gap-2 pt-1">
                     <Button
@@ -741,7 +868,7 @@ export function VideoPdfSection({
                       {isUploading ? (
                         <>
                           <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          Uploading…
+                          {uploadProgress !== null ? `${uploadProgress}%` : "Uploading…"}
                         </>
                       ) : (
                         <>
