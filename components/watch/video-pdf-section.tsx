@@ -172,7 +172,19 @@ export function VideoPdfSection({
         body: formData,
       });
 
-      const res = await response.json();
+      const text = await response.text();
+      let res: { success?: boolean; message?: string; pdf?: VideoPdfItem };
+      try {
+        res = JSON.parse(text);
+      } catch {
+        console.error("Non-JSON response from /api/upload/pdf:", text.slice(0, 300));
+        toast.error(
+          response.ok
+            ? "Upload may have succeeded but got an invalid response. Refresh the page."
+            : `Upload failed (HTTP ${response.status}). Check server logs.`
+        );
+        return;
+      }
 
       if (res.success && res.pdf) {
         toast.success(
@@ -180,7 +192,7 @@ export function VideoPdfSection({
             ? "PDF uploaded to Supabase!"
             : "PDF uploaded to Google Drive!"
         );
-        setPdfs((prev) => [...prev, res.pdf]);
+        setPdfs((prev) => [...prev, res.pdf!]);
         closeAndResetModal();
       } else {
         toast.error(res.message || "Upload failed.");
