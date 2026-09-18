@@ -127,9 +127,9 @@ export function VideoPlayer({
     }
   }, [isTheaterMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Lock body scroll when Theater Mode is active so the dark overlay covers everything cleanly
+  // Lock body scroll when Theater Mode is active on big screens so the dark overlay covers everything cleanly
   React.useEffect(() => {
-    if (isTheaterMode) {
+    if (isTheaterMode && typeof window !== "undefined" && window.innerWidth >= 768) {
       document.body.style.overflow = "hidden";
     } else {
       document.body.style.overflow = "";
@@ -138,6 +138,17 @@ export function VideoPlayer({
       document.body.style.overflow = "";
     };
   }, [isTheaterMode]);
+
+  // Auto-exit theater mode if screen is resized to small screen (< 768px)
+  React.useEffect(() => {
+    const handleResize = () => {
+      if (typeof window !== "undefined" && window.innerWidth < 768) {
+        setIsTheaterMode((prev) => (prev ? false : prev));
+      }
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   // Restore theme on unmount if left in Theater Mode
   React.useEffect(() => {
@@ -159,6 +170,10 @@ export function VideoPlayer({
   const is2xActiveFromSpaceRef = React.useRef<boolean>(false);
 
   const toggleTheaterMode = React.useCallback(() => {
+    // Theater mode is strictly for big screens (>= 768px)
+    if (typeof window !== "undefined" && window.innerWidth < 768) {
+      return;
+    }
     setIsTheaterMode((prev) => !prev);
   }, []);
 
@@ -456,10 +471,12 @@ export function VideoPlayer({
         return;
       }
 
-      // 'T' key: Toggle YouTube Theater Mode
+      // 'T' key: Toggle YouTube Theater Mode (big screens only)
       if (e.key === "t" || e.key === "T") {
         e.preventDefault();
-        toggleTheaterMode();
+        if (typeof window !== "undefined" && window.innerWidth >= 768) {
+          toggleTheaterMode();
+        }
         return;
       }
 
@@ -735,10 +752,10 @@ export function VideoPlayer({
         )}
       </div>
 
-      {/* ── Theater Mode: Full-screen dark backdrop ── */}
+      {/* ── Theater Mode: Full-screen dark backdrop (big screens only) ── */}
       {isTheaterMode && (
         <div
-          className="fixed inset-0 z-40 bg-[#080b0e]/97 backdrop-blur-[2px] transition-opacity duration-300"
+          className="hidden md:block fixed inset-0 z-40 bg-[#080b0e]/97 backdrop-blur-[2px] transition-opacity duration-300"
           aria-hidden="true"
         />
       )}
@@ -746,7 +763,7 @@ export function VideoPlayer({
       {/* ── YouTube Player Container ── */}
       {/* Spacer: keeps page layout stable when player is fixed in theater mode */}
       {isTheaterMode && (
-        <div className="w-full aspect-video" aria-hidden="true" />
+        <div className="hidden md:block w-full aspect-video" aria-hidden="true" />
       )}
 
       <div
@@ -757,17 +774,17 @@ export function VideoPlayer({
         className={cn(
           "group relative bg-black outline-none select-none overflow-hidden",
           isTheaterMode
-            ? "fixed z-50 top-[calc(2rem+50dvh)] left-1/2 -translate-x-1/2 -translate-y-1/2 w-[min(96vw,calc((100dvh-4rem-16px)*16/9))] shadow-[0_0_100px_rgba(0,0,0,0.95)] rounded-2xl ring-1 ring-white/10 transition-none"
+            ? "rounded-2xl border border-border/60 shadow-xl dark:border-[#1F2C34] md:border-0 md:fixed md:z-50 md:top-[calc(2rem+50dvh)] md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-[min(96vw,calc((100dvh-4rem-16px)*16/9))] md:shadow-[0_0_100px_rgba(0,0,0,0.95)] md:rounded-2xl md:ring-1 md:ring-white/10 md:transition-none"
             : "rounded-2xl border border-border/60 shadow-xl dark:border-[#1F2C34] transition-all duration-300"
         )}
       >
-        {/* Theater Mode Toggle Button on Player (Appears on hover like YouTube) */}
+        {/* Theater Mode Toggle Button on Player (Hidden on small screens, visible on big screens only) */}
         {!isFullscreen && (
           <button
             type="button"
             onClick={toggleTheaterMode}
             title={isTheaterMode ? "Default view (t)" : "Theater mode (t)"}
-            className="absolute top-3 right-3 z-30 flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-xl bg-black/75 text-white/85 hover:text-white hover:bg-black/95 backdrop-blur-md border border-white/15 transition-all opacity-0 group-hover:opacity-100 focus:opacity-100 active:scale-95 cursor-pointer shadow-lg"
+            className="absolute top-3 right-3 z-30 hidden md:flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-xl bg-black/75 text-white/85 hover:text-white hover:bg-black/95 backdrop-blur-md border border-white/15 transition-all opacity-0 group-hover:opacity-100 focus:opacity-100 active:scale-95 cursor-pointer shadow-lg"
           >
             {isTheaterMode ? (
               <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
@@ -855,10 +872,10 @@ export function VideoPlayer({
         </div>
       </div>
 
-      {/* ── Action Control Bar (hidden in theater mode) ── */}
+      {/* ── Action Control Bar (hidden in theater mode on big screens) ── */}
       <div className={cn(
         "flex flex-col gap-3 rounded-2xl border border-border/60 bg-card/90 p-3 sm:p-4 shadow-sm backdrop-blur-md dark:border-[#1F2C34] dark:bg-[#111820]",
-        isTheaterMode && "hidden"
+        isTheaterMode && "md:hidden"
       )}>
         {/* Top: Back to Module & Speed Presets */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
@@ -1017,9 +1034,12 @@ export function VideoPlayer({
         </div>
       </div>
 
-      {/* ── Description Box (hidden in theater mode) ── */}
-      {description && !isTheaterMode && (
-        <div className="rounded-2xl border border-border/60 bg-card/90 p-4 sm:p-5 shadow-sm backdrop-blur-md dark:border-[#1F2C34] dark:bg-[#111820]">
+      {/* ── Description Box (hidden in theater mode on big screens) ── */}
+      {description && (
+        <div className={cn(
+          "rounded-2xl border border-border/60 bg-card/90 p-4 sm:p-5 shadow-sm backdrop-blur-md dark:border-[#1F2C34] dark:bg-[#111820]",
+          isTheaterMode && "md:hidden"
+        )}>
           <div className="mb-2.5 flex items-center gap-2 font-heading font-bold text-sm tracking-tight text-foreground dark:text-[#E8EDF0]">
             <FileText
               className={`h-4 w-4 ${
