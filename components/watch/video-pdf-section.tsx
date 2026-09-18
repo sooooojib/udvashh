@@ -87,6 +87,28 @@ export function VideoPdfSection({
     }
   }, [isAddModalOpen, isAdmin]);
 
+  // Lock background scrolling when PDF preview modal (or add modal) is open
+  React.useEffect(() => {
+    if (previewPdf || isAddModalOpen) {
+      const originalHtmlOverflow = document.documentElement.style.overflow;
+      const originalHtmlOverscroll = document.documentElement.style.overscrollBehavior;
+      const originalBodyOverflow = document.body.style.overflow;
+      const originalBodyOverscroll = document.body.style.overscrollBehavior;
+
+      document.documentElement.style.overflow = "hidden";
+      document.documentElement.style.overscrollBehavior = "none";
+      document.body.style.overflow = "hidden";
+      document.body.style.overscrollBehavior = "none";
+
+      return () => {
+        document.documentElement.style.overflow = originalHtmlOverflow;
+        document.documentElement.style.overscrollBehavior = originalHtmlOverscroll;
+        document.body.style.overflow = originalBodyOverflow;
+        document.body.style.overscrollBehavior = originalBodyOverscroll;
+      };
+    }
+  }, [previewPdf, isAddModalOpen]);
+
   // Handle ESC key to close open modals
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -548,9 +570,12 @@ export function VideoPdfSection({
       {/* ── Document Preview Modal ── */}
       {previewPdf && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-sm overscroll-contain"
           onClick={(e) => {
             if (e.target === e.currentTarget) setPreviewPdf(null);
+          }}
+          onWheel={(e) => {
+            if (e.target === e.currentTarget) e.preventDefault();
           }}
         >
           <div className="relative flex flex-col w-full max-w-5xl h-[88vh] rounded-2xl border border-border/40 bg-card shadow-2xl overflow-hidden dark:border-[#1F2C34] dark:bg-[#0D1318] animate-in fade-in zoom-in-95 duration-200">
@@ -605,9 +630,12 @@ export function VideoPdfSection({
       {/* ── Add PDF Modal ── */}
       {isAddModalOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm overscroll-contain"
           onClick={(e) => {
             if (e.target === e.currentTarget) closeAndResetModal();
+          }}
+          onWheel={(e) => {
+            if (e.target === e.currentTarget) e.preventDefault();
           }}
         >
           <div className="relative w-full max-w-[420px] rounded-2xl border border-border/50 bg-card shadow-2xl dark:border-[#1F2C34] dark:bg-[#0D1318] animate-in fade-in zoom-in-95 duration-200 overflow-hidden">
