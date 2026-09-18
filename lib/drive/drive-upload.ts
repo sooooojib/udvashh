@@ -2,9 +2,31 @@
  * Google Drive API Client & Direct Uploader
  */
 
-const CLIENT_ID = process.env.YT_OAUTH_CLIENT_ID;
-const CLIENT_SECRET = process.env.YT_OAUTH_CLIENT_SECRET;
-const FOLDER_ID = process.env.GOOGLE_DRIVE_FOLDER_ID;
+function cleanEnv(val?: string): string {
+  if (!val) return "";
+  return val.trim().replace(/^["']|["']$/g, "");
+}
+
+export function getDriveConfig() {
+  const clientId = cleanEnv(
+    process.env.GOOGLE_DRIVE_CLIENT_ID ||
+      process.env.YT_OAUTH_CLIENT_ID ||
+      process.env.GOOGLE_CLIENT_ID
+  );
+  const clientSecret = cleanEnv(
+    process.env.GOOGLE_DRIVE_CLIENT_SECRET ||
+      process.env.YT_OAUTH_CLIENT_SECRET ||
+      process.env.GOOGLE_CLIENT_SECRET
+  );
+  const refreshToken = cleanEnv(
+    process.env.GOOGLE_DRIVE_REFRESH_TOKEN ||
+      process.env.YT_OAUTH_REFRESH_TOKEN
+  );
+  const folderId = cleanEnv(process.env.GOOGLE_DRIVE_FOLDER_ID);
+
+  return { clientId, clientSecret, refreshToken, folderId };
+}
+
 const REDIRECT_URI = "http://localhost:3000/api/oauth/callback";
 const SCOPE = "https://www.googleapis.com/auth/drive.file";
 
@@ -12,9 +34,10 @@ const SCOPE = "https://www.googleapis.com/auth/drive.file";
  * Generates the Google OAuth authorization URL for Drive permissions
  */
 export function getGoogleDriveAuthUrl(): string {
-  if (!CLIENT_ID) throw new Error("Missing YT_OAUTH_CLIENT_ID");
+  const { clientId } = getDriveConfig();
+  if (!clientId) throw new Error("Missing Google OAuth Client ID");
   const authUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth");
-  authUrl.searchParams.set("client_id", CLIENT_ID);
+  authUrl.searchParams.set("client_id", clientId);
   authUrl.searchParams.set("redirect_uri", REDIRECT_URI);
   authUrl.searchParams.set("response_type", "code");
   authUrl.searchParams.set("scope", SCOPE);
@@ -30,7 +53,8 @@ export async function exchangeGoogleCodeForTokens(code: string): Promise<{
   refreshToken?: string;
   accessToken: string;
 }> {
-  if (!CLIENT_ID || !CLIENT_SECRET) {
+  const { clientId, clientSecret } = getDriveConfig();
+  if (!clientId || !clientSecret) {
     throw new Error("Missing Google OAuth credentials");
   }
 
@@ -39,8 +63,8 @@ export async function exchangeGoogleCodeForTokens(code: string): Promise<{
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
       code,
-      client_id: CLIENT_ID,
-      client_secret: CLIENT_SECRET,
+      client_id: clientId,
+      client_secret: clientSecret,
       redirect_uri: REDIRECT_URI,
       grant_type: "authorization_code",
     }),
@@ -61,13 +85,12 @@ export async function exchangeGoogleCodeForTokens(code: string): Promise<{
  * Gets a fresh access token using the stored refresh token
  */
 export async function getDriveAccessToken(): Promise<string> {
-  const refreshToken =
-    process.env.GOOGLE_DRIVE_REFRESH_TOKEN || process.env.YT_OAUTH_REFRESH_TOKEN;
+  const { clientId, clientSecret, refreshToken } = getDriveConfig();
 
   if (!refreshToken) {
     throw new Error("Missing Google Drive Refresh Token. Please authorize first.");
   }
-  if (!CLIENT_ID || !CLIENT_SECRET) {
+  if (!clientId || !clientSecret) {
     throw new Error("Missing Google OAuth Client ID or Secret");
   }
 
@@ -75,8 +98,8 @@ export async function getDriveAccessToken(): Promise<string> {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
-      client_id: CLIENT_ID,
-      client_secret: CLIENT_SECRET,
+      client_id: clientId,
+      client_secret: clientSecret,
       refresh_token: refreshToken,
       grant_type: "refresh_token",
     }),
@@ -84,6 +107,12 @@ export async function getDriveAccessToken(): Promise<string> {
 
   const data = await res.json();
   if (!res.ok) {
+    console.error("Failed to refresh Google token:", {
+      status: res.status,
+      data,
+      clientIdPrefix: clientId.slice(0, 15),
+      clientIdLength: clientId.length,
+    });
     throw new Error(`Failed to refresh token: ${data.error_description || data.error}`);
   }
 
@@ -108,8 +137,9 @@ export async function uploadPdfToGoogleDrive({
     mimeType: "application/pdf",
   };
 
-  if (FOLDER_ID) {
-    metadata.parents = [FOLDER_ID];
+  const { folderId } = getDriveConfig();
+  if (folderId) {
+    metadata.parents = [folderId];
   }
 
   const boundary = "-------314159265358979323846";
@@ -229,8 +259,9 @@ export async function createDriveResumableSession({
     mimeType: "application/pdf",
   };
 
-  if (FOLDER_ID) {
-    metadata.parents = [FOLDER_ID];
+  const { folderId } = getDriveConfig();
+  if (folderId) {
+    metadata.parents = [folderId];
   }
 
   const res = await fetch(
