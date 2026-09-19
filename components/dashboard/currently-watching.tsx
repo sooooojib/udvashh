@@ -120,13 +120,13 @@ export function CurrentlyWatching({ videos }: CurrentlyWatchingProps) {
         </span>
       </div>
 
-      {/* ── Cards Grid (Compact ~50% scaled width & height) ── */}
+      {/* ── Cards Grid (Full width on small screen, compact on larger screens) ── */}
       <div
         className={cn(
-          "grid gap-3.5",
-          videoList.length === 1 && "grid-cols-1 max-w-[340px]",
-          videoList.length === 2 && "grid-cols-1 sm:grid-cols-2 max-w-[700px]",
-          videoList.length >= 3 && "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 max-w-[1050px]"
+          "grid gap-3.5 w-full",
+          videoList.length === 1 && "grid-cols-1 w-full sm:max-w-[340px]",
+          videoList.length === 2 && "grid-cols-1 sm:grid-cols-2 w-full sm:max-w-[700px]",
+          videoList.length >= 3 && "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 w-full sm:max-w-[1050px]"
         )}
       >
         {videoList.map((video) => {
@@ -149,7 +149,7 @@ export function CurrentlyWatching({ videos }: CurrentlyWatchingProps) {
             <div
               key={video.id}
               className={cn(
-                "group relative flex flex-col justify-between overflow-hidden rounded-xl border border-border/60 bg-card/90 shadow-2xs backdrop-blur-md transition-all duration-200 ease-in-out hover:shadow-sm dark:border-[#1F2C34] dark:bg-[#111820]",
+                "group relative flex flex-col justify-between overflow-hidden rounded-xl border border-border/60 bg-card/90 shadow-2xs backdrop-blur-md transition-all duration-200 ease-in-out hover:shadow-sm dark:border-[#1F2C34] dark:bg-[#111820] w-full",
                 isIntensive
                   ? "hover:border-amber-500/40 dark:hover:border-amber-500/50"
                   : isSubjectHacks
