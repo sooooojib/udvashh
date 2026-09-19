@@ -6,16 +6,24 @@ import { getSession } from "@/lib/auth/session";
 
 export async function toggleWatched(
   videoId: string,
-  watched: boolean
+  watched: boolean,
+  progressSeconds?: number
 ): Promise<void> {
   const session = await getSession();
   if (!session) throw new Error("Unauthorized");
+
+  const hasProgress =
+    typeof progressSeconds === "number" &&
+    !isNaN(progressSeconds) &&
+    progressSeconds >= 0;
+  const cleanSeconds = hasProgress ? Math.floor(progressSeconds) : undefined;
 
   await sql`
     INSERT INTO watch_progress (
       user_id,
       video_id,
       watched,
+      progress_seconds,
       watched_at,
       last_watched_at,
       updated_at
@@ -24,6 +32,7 @@ export async function toggleWatched(
       ${session.id},
       ${videoId},
       ${watched},
+      ${cleanSeconds !== undefined ? cleanSeconds : 0},
       ${watched ? new Date().toISOString() : null},
       NOW(),
       NOW()
@@ -32,7 +41,12 @@ export async function toggleWatched(
       watched = EXCLUDED.watched,
       watched_at = EXCLUDED.watched_at,
       last_watched_at = EXCLUDED.last_watched_at,
-      updated_at = EXCLUDED.updated_at
+      updated_at = EXCLUDED.updated_at,
+      progress_seconds = ${
+        cleanSeconds !== undefined
+          ? cleanSeconds
+          : sql`watch_progress.progress_seconds`
+      }
   `;
 
   revalidatePath("/dashboard");

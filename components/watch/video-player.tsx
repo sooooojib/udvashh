@@ -250,6 +250,12 @@ export function VideoPlayer({
     hasResumedRef.current = false;
   }, [videoId]);
 
+  const isNearEnd = React.useMemo(() => {
+    return Boolean(
+      duration && duration > 0 && initialProgressSeconds >= duration - 15
+    );
+  }, [duration, initialProgressSeconds]);
+
   const playerOpts = React.useMemo(
     () => ({
       width: "100%",
@@ -257,7 +263,7 @@ export function VideoPlayer({
       playerVars: {
         autoplay: 0,
         start:
-          initialProgressSeconds && initialProgressSeconds > 5 && !initialWatched
+          initialProgressSeconds && initialProgressSeconds > 5 && !isNearEnd
             ? Math.floor(initialProgressSeconds)
             : undefined,
         modestbranding: 1,
@@ -269,7 +275,7 @@ export function VideoPlayer({
         cc_load_policy: 0,
       },
     }),
-    [initialProgressSeconds, initialWatched]
+    [initialProgressSeconds, isNearEnd]
   );
 
   const toggleTheaterMode = React.useCallback(() => {
@@ -354,8 +360,8 @@ export function VideoPlayer({
         setIsMuted(initialMuted);
       }
 
-      // Resume from previous progress if > 5 seconds (deduplicated: exactly once per video)
-      if (initialProgressSeconds > 5 && !initialWatched && !hasResumedRef.current) {
+      // Resume from previous progress if > 5 seconds and not at end (deduplicated: exactly once per video)
+      if (initialProgressSeconds > 5 && !isNearEnd && !hasResumedRef.current) {
         hasResumedRef.current = true;
         event.target.seekTo?.(initialProgressSeconds, true);
         toast.info(`Resumed from ${formatDuration(initialProgressSeconds)}`, {
@@ -820,6 +826,17 @@ export function VideoPlayer({
 
   const handleToggle = () => {
     const nextWatched = !optimisticWatched;
+
+    // Capture current playback position to keep watch progress intact
+    let currentSec: number | undefined = undefined;
+    try {
+      const current = playerRef.current?.getCurrentTime?.();
+      if (typeof current === "number" && current >= 0) {
+        currentSec = Math.floor(current);
+        lastSyncedSecondsRef.current = currentSec;
+      }
+    } catch {}
+
     startTransition(async () => {
       setOptimisticWatched(nextWatched);
       if (nextWatched) {
@@ -831,7 +848,7 @@ export function VideoPlayer({
           description: title,
         });
       }
-      await toggleWatched(videoId, nextWatched);
+      await toggleWatched(videoId, nextWatched, currentSec);
     });
   };
 
