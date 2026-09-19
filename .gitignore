@@ -47,4 +47,7 @@ next-env.d.ts
 neon_migration.sql
 scripts/
 
+# private accounts reference
+accounts.md
+
 

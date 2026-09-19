@@ -32,6 +32,9 @@ import {
   Play,
   SkipForward,
   Tv,
+  Volume1,
+  Volume2,
+  VolumeX,
   Zap,
 } from "lucide-react";
 
@@ -106,7 +109,16 @@ export function VideoPlayer({
   const [isFullscreen, setIsFullscreen] = React.useState(false);
   const [isTheaterMode, setIsTheaterMode] = React.useState(false);
   const [isPlayerReady, setIsPlayerReady] = React.useState(false);
+  const [currentVolume, setCurrentVolume] = React.useState<number>(100);
+  const [isMuted, setIsMuted] = React.useState<boolean>(false);
+  const [volumeFeedback, setVolumeFeedback] = React.useState<{
+    volume: number;
+    isMuted: boolean;
+    key: number;
+  } | null>(null);
   const seekTimerRef = React.useRef<NodeJS.Timeout | null>(null);
+  const volumeTimerRef = React.useRef<NodeJS.Timeout | null>(null);
+  const volumePopoverRef = React.useRef<HTMLDivElement>(null);
 
   // Reset player ready state when switching to a different video
   React.useEffect(() => {
@@ -231,6 +243,34 @@ export function VideoPlayer({
   const spaceDownTimeRef = React.useRef<number>(0);
   const spaceHoldTimerRef = React.useRef<NodeJS.Timeout | null>(null);
   const is2xActiveFromSpaceRef = React.useRef<boolean>(false);
+  const hasResumedRef = React.useRef<boolean>(false);
+
+  // Reset resume guard whenever the video changes
+  React.useEffect(() => {
+    hasResumedRef.current = false;
+  }, [videoId]);
+
+  const playerOpts = React.useMemo(
+    () => ({
+      width: "100%",
+      height: "100%",
+      playerVars: {
+        autoplay: 0,
+        start:
+          initialProgressSeconds && initialProgressSeconds > 5 && !initialWatched
+            ? Math.floor(initialProgressSeconds)
+            : undefined,
+        modestbranding: 1,
+        rel: 0,
+        fs: 1,
+        enablejsapi: 1,
+        playsinline: 1,
+        iv_load_policy: 3,
+        cc_load_policy: 0,
+      },
+    }),
+    [initialProgressSeconds, initialWatched]
+  );
 
   const toggleTheaterMode = React.useCallback(() => {
     // Theater mode is strictly for big screens (>= 768px)
@@ -286,6 +326,9 @@ export function VideoPlayer({
   const handlePlayerReady = (event: any) => {
     playerRef.current = event.target;
     setIsPlayerReady(true);
+    setTimeout(() => {
+      containerRef.current?.focus();
+    }, 50);
     try {
       const iframe = event.target.getIframe?.();
       if (iframe) {
@@ -302,11 +345,21 @@ export function VideoPlayer({
         setCurrentRate(initialRate);
         previousRateRef.current = initialRate;
       }
+      const initialVol = event.target.getVolume?.();
+      if (typeof initialVol === "number" && initialVol >= 0) {
+        setCurrentVolume(initialVol);
+      }
+      const initialMuted = event.target.isMuted?.();
+      if (typeof initialMuted === "boolean") {
+        setIsMuted(initialMuted);
+      }
 
-      // Resume from previous progress if > 5 seconds
-      if (initialProgressSeconds > 5 && !initialWatched) {
+      // Resume from previous progress if > 5 seconds (deduplicated: exactly once per video)
+      if (initialProgressSeconds > 5 && !initialWatched && !hasResumedRef.current) {
+        hasResumedRef.current = true;
         event.target.seekTo?.(initialProgressSeconds, true);
         toast.info(`Resumed from ${formatDuration(initialProgressSeconds)}`, {
+          id: `video-resume-${videoId}`,
           duration: 3000,
         });
       }
@@ -420,79 +473,71 @@ export function VideoPlayer({
     [seekPlayer]
   );
 
-  const handleContainerMouseMove = () => {
-    if (document.activeElement?.tagName === "IFRAME") {
-      containerRef.current?.focus();
-    }
-  };
-
-  // Reclaim focus from iframe so keyboard shortcuts always respond even after mouse clicks
-  React.useEffect(() => {
-    const reclaimFocus = () => {
-      // Only reclaim if the active element is the YouTube iframe itself
-      // Don't steal focus from inputs, textareas, buttons, modals, etc.
-      if (
-        document.activeElement &&
-        document.activeElement.tagName === "IFRAME" &&
-        containerRef.current?.contains(document.activeElement)
-      ) {
-        containerRef.current?.focus();
+  // Dedicated volume modifiers
+  const changeVolume = React.useCallback((delta: number) => {
+    if (!playerRef.current) return;
+    try {
+      let currentVol = playerRef.current.getVolume?.();
+      if (typeof currentVol !== "number" || isNaN(currentVol)) {
+        currentVol = currentVolume;
       }
-    };
-
-    const handleBlur = () => {
-      setTimeout(reclaimFocus, 100);
-      setTimeout(reclaimFocus, 300);
-    };
-
-    // When user clicks within the player container, reclaim focus from iframe
-    const handleContainerClick = () => {
-      setTimeout(reclaimFocus, 50);
-      setTimeout(reclaimFocus, 200);
-    };
-
-    window.addEventListener("blur", handleBlur);
-    containerRef.current?.addEventListener("click", handleContainerClick, true);
-    const containerEl = containerRef.current;
-
-    // Use a faster interval in fullscreen and theater mode (iframe steals focus on every click)
-    const intervalMs = isFullscreen || isTheaterMode ? 300 : 1000;
-    const interval = setInterval(reclaimFocus, intervalMs);
-
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener("blur", handleBlur);
-      containerEl?.removeEventListener("click", handleContainerClick, true);
-    };
-  }, [isFullscreen, isTheaterMode]);
-
-  // Listen for native fullscreen changes
-  React.useEffect(() => {
-    const handleFsChange = () => {
-      const fs = Boolean(
-        document.fullscreenElement ||
-        (document as any).webkitFullscreenElement ||
-        (document as any).mozFullScreenElement
-      );
-      setIsFullscreen(fs);
-
-      if (fs) {
-        // Reclaim focus from iframe immediately in fullscreen so keyboard controls respond
-        setTimeout(() => {
-          containerRef.current?.focus();
-        }, 100);
+      const wasMuted = playerRef.current.isMuted?.();
+      if (wasMuted && delta > 0) {
+        playerRef.current.unMute?.();
+        setIsMuted(false);
       }
-    };
+      const newVol = Math.min(100, Math.max(0, Math.round(currentVol + delta)));
+      playerRef.current.setVolume?.(newVol);
+      setCurrentVolume(newVol);
+      const isNowMuted = newVol === 0;
+      setIsMuted(isNowMuted);
 
-    document.addEventListener("fullscreenchange", handleFsChange);
-    document.addEventListener("webkitfullscreenchange", handleFsChange);
-    document.addEventListener("mozfullscreenchange", handleFsChange);
+      setVolumeFeedback({
+        volume: newVol,
+        isMuted: isNowMuted,
+        key: Date.now(),
+      });
 
-    return () => {
-      document.removeEventListener("fullscreenchange", handleFsChange);
-      document.removeEventListener("webkitfullscreenchange", handleFsChange);
-      document.removeEventListener("mozfullscreenchange", handleFsChange);
-    };
+      if (volumeTimerRef.current) {
+        clearTimeout(volumeTimerRef.current);
+      }
+      volumeTimerRef.current = setTimeout(() => {
+        setVolumeFeedback(null);
+      }, 1200);
+    } catch {}
+  }, [currentVolume]);
+
+  const toggleMute = React.useCallback(() => {
+    if (!playerRef.current) return;
+    try {
+      const muted = playerRef.current.isMuted?.();
+      if (muted) {
+        playerRef.current.unMute?.();
+        setIsMuted(false);
+        const vol = playerRef.current.getVolume?.() || 100;
+        setCurrentVolume(vol);
+        setVolumeFeedback({
+          volume: vol,
+          isMuted: false,
+          key: Date.now(),
+        });
+      } else {
+        playerRef.current.mute?.();
+        setIsMuted(true);
+        setVolumeFeedback({
+          volume: 0,
+          isMuted: true,
+          key: Date.now(),
+        });
+      }
+
+      if (volumeTimerRef.current) {
+        clearTimeout(volumeTimerRef.current);
+      }
+      volumeTimerRef.current = setTimeout(() => {
+        setVolumeFeedback(null);
+      }, 1200);
+    } catch {}
   }, []);
 
   // Manage Top-Layer Popover for 2x speed in fullscreen mode
@@ -541,7 +586,58 @@ export function VideoPlayer({
     } catch {}
   }, [seekFeedback, isFullscreen]);
 
-  // Global Keyboard Shortcuts: Spacebar (tap play/pause, hold 2x), Left/Right arrows (seek), 'T' (Theater), 'F' (Fullscreen)
+  // Manage Top-Layer Popover for Volume Feedback in fullscreen mode
+  React.useEffect(() => {
+    const el = volumePopoverRef.current as any;
+    if (!el || typeof el.showPopover !== "function") return;
+    const isFs = Boolean(
+      isFullscreen ||
+      document.fullscreenElement ||
+      (document as any).webkitFullscreenElement
+    );
+
+    try {
+      if (volumeFeedback && isFs) {
+        if (!el.matches?.(":popover-open")) {
+          el.showPopover();
+        }
+      } else {
+        if (el.matches?.(":popover-open")) {
+          el.hidePopover();
+        }
+      }
+    } catch {}
+  }, [volumeFeedback, isFullscreen]);
+
+  const handlersRef = React.useRef({
+    start2xSpeed,
+    stop2xSpeed,
+    togglePlayPause,
+    handleSeek,
+    changeVolume,
+    toggleMute,
+    toggleTheaterMode,
+    toggleFullscreen,
+    isTheaterMode,
+    isFullscreen,
+  });
+
+  React.useEffect(() => {
+    handlersRef.current = {
+      start2xSpeed,
+      stop2xSpeed,
+      togglePlayPause,
+      handleSeek,
+      changeVolume,
+      toggleMute,
+      toggleTheaterMode,
+      toggleFullscreen,
+      isTheaterMode,
+      isFullscreen,
+    };
+  });
+
+  // Global Keyboard Shortcuts: Spacebar (tap play/pause, hold 2x), Arrows (seek / volume), 'M' (mute), 'T' (Theater), 'F' (Fullscreen)
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
@@ -553,6 +649,18 @@ export function VideoPlayer({
       ) {
         return;
       }
+
+      const {
+        start2xSpeed,
+        togglePlayPause,
+        handleSeek,
+        changeVolume,
+        toggleMute,
+        toggleTheaterMode,
+        toggleFullscreen,
+        isTheaterMode,
+        isFullscreen,
+      } = handlersRef.current;
 
       // Spacebar: Hold for ~500ms to 2x speed, tap for play/pause
       if (e.code === "Space" || e.key === " ") {
@@ -627,6 +735,27 @@ export function VideoPlayer({
         handleSeek(-5);
         return;
       }
+
+      // ArrowUp: Volume +5%
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        changeVolume(5);
+        return;
+      }
+
+      // ArrowDown: Volume -5%
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        changeVolume(-5);
+        return;
+      }
+
+      // 'M' or 'm': Toggle Mute
+      if (e.key === "m" || e.key === "M") {
+        e.preventDefault();
+        toggleMute();
+        return;
+      }
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
@@ -639,6 +768,8 @@ export function VideoPlayer({
       ) {
         return;
       }
+
+      const { stop2xSpeed, togglePlayPause } = handlersRef.current;
 
       if (e.code === "Space" || e.key === " ") {
         e.preventDefault();
@@ -671,15 +802,7 @@ export function VideoPlayer({
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
     };
-  }, [
-    start2xSpeed,
-    stop2xSpeed,
-    togglePlayPause,
-    handleSeek,
-    toggleTheaterMode,
-    toggleFullscreen,
-    isTheaterMode,
-  ]);
+  }, []);
 
   const handleTogglePrivacy = () => {
     const nextStatus = optimisticPrivacy === "public" ? "unlisted" : "public";
@@ -772,9 +895,16 @@ export function VideoPlayer({
     const state = event.data;
     if (state === 1) {
       setIsPlaying(true);
+      // As soon as video starts playing, ensure container has focus so 'T' (theater) and 'Esc' work immediately
+      setTimeout(() => {
+        containerRef.current?.focus();
+      }, 50);
     } else if (state === 2) {
       setIsPlaying(false);
       syncProgress();
+      setTimeout(() => {
+        containerRef.current?.focus();
+      }, 50);
     }
     if (state === 0) {
       handleVideoEnd();
@@ -941,11 +1071,50 @@ export function VideoPlayer({
         )}
       </div>
 
+      {/* Top-layer Popover for Volume Feedback in Native Fullscreen */}
+      <div
+        ref={volumePopoverRef}
+        popover="manual"
+        className="fixed top-6 left-1/2 -translate-x-1/2 m-0 p-0 border-none bg-transparent shadow-none pointer-events-none z-[999999] overflow-visible [&::backdrop]:hidden outline-none"
+      >
+        {volumeFeedback && (
+          <div className="flex items-center gap-2.5 rounded-full bg-black/85 px-4 py-2 text-white shadow-2xl backdrop-blur-md border border-white/15 animate-in fade-in zoom-in-90 duration-150 select-none">
+            {volumeFeedback.isMuted ? (
+              <VolumeX className="h-4 w-4 text-red-400 shrink-0" />
+            ) : volumeFeedback.volume <= 50 ? (
+              <Volume1 className="h-4 w-4 text-white shrink-0" />
+            ) : (
+              <Volume2 className="h-4 w-4 text-white shrink-0" />
+            )}
+            <div className="w-20 h-1.5 bg-white/20 rounded-full overflow-hidden">
+              <div
+                className={cn(
+                  "h-full rounded-full transition-all duration-100",
+                  volumeFeedback.isMuted
+                    ? "bg-red-400"
+                    : isIntensive
+                    ? "bg-amber-500"
+                    : isSubjectHacks
+                    ? "bg-blue-500"
+                    : "bg-emerald-400"
+                )}
+                style={{ width: `${volumeFeedback.isMuted ? 0 : volumeFeedback.volume}%` }}
+              />
+            </div>
+            <span className="font-mono text-xs font-bold tracking-wider">
+              {volumeFeedback.isMuted ? "Muted" : `${volumeFeedback.volume}%`}
+            </span>
+          </div>
+        )}
+      </div>
+
       {/* ── Theater Mode: Full-screen dark backdrop (big screens only) ── */}
       {isTheaterMode && (
         <div
-          className="hidden md:block fixed inset-0 z-[60] bg-[#080b0e]/97 backdrop-blur-[2px] transition-opacity duration-300"
-          aria-hidden="true"
+          onClick={toggleTheaterMode}
+          title="Click to exit theater mode (Esc)"
+          className="hidden md:block fixed inset-0 z-[60] bg-[#080b0e]/97 backdrop-blur-[2px] transition-opacity duration-300 cursor-pointer"
+          aria-label="Exit theater mode"
         />
       )}
 
@@ -958,7 +1127,7 @@ export function VideoPlayer({
       <div
         ref={containerRef}
         tabIndex={0}
-        onMouseMove={handleContainerMouseMove}
+        onClick={() => containerRef.current?.focus()}
         onMouseEnter={() => containerRef.current?.focus()}
         className={cn(
           "group relative bg-black outline-none select-none overflow-hidden",
@@ -1006,6 +1175,40 @@ export function VideoPlayer({
           </span>
           <ChevronsRight className="h-4 w-4 fill-white text-white" />
         </div>
+
+        {/* On-Screen Volume Indicator Overlay */}
+        {volumeFeedback && (
+          <div
+            key={volumeFeedback.key}
+            className="pointer-events-none absolute top-4 sm:top-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2.5 rounded-full bg-black/85 px-4 py-2 text-white shadow-2xl backdrop-blur-md border border-white/15 animate-in fade-in zoom-in-90 duration-150 select-none"
+          >
+            {volumeFeedback.isMuted ? (
+              <VolumeX className="h-4 w-4 text-red-400 shrink-0" />
+            ) : volumeFeedback.volume <= 50 ? (
+              <Volume1 className="h-4 w-4 text-white shrink-0" />
+            ) : (
+              <Volume2 className="h-4 w-4 text-white shrink-0" />
+            )}
+            <div className="w-16 sm:w-20 h-1.5 bg-white/20 rounded-full overflow-hidden">
+              <div
+                className={cn(
+                  "h-full rounded-full transition-all duration-100",
+                  volumeFeedback.isMuted
+                    ? "bg-red-400"
+                    : isIntensive
+                    ? "bg-amber-500"
+                    : isSubjectHacks
+                    ? "bg-blue-500"
+                    : "bg-emerald-400"
+                )}
+                style={{ width: `${volumeFeedback.isMuted ? 0 : volumeFeedback.volume}%` }}
+              />
+            </div>
+            <span className="font-mono text-xs font-bold tracking-wider">
+              {volumeFeedback.isMuted ? "Muted" : `${volumeFeedback.volume}%`}
+            </span>
+          </div>
+        )}
 
         {/* Native YouTube-style On-Screen Seek Ripple Animation */}
         {seekFeedback && (
@@ -1067,24 +1270,7 @@ export function VideoPlayer({
             onReady={handlePlayerReady}
             onEnd={handleVideoEnd}
             onStateChange={handlePlayerStateChange}
-            opts={{
-              width: "100%",
-              height: "100%",
-              playerVars: {
-                autoplay: 0,
-                start:
-                  initialProgressSeconds && initialProgressSeconds > 5 && !initialWatched
-                    ? Math.floor(initialProgressSeconds)
-                    : undefined,
-                modestbranding: 1,
-                rel: 0,
-                fs: 1,
-                enablejsapi: 1,
-                playsinline: 1,
-                iv_load_policy: 3,
-                cc_load_policy: 0,
-              },
-            }}
+            opts={playerOpts}
             className="w-full h-full [&>div]:!h-full [&>div]:!w-full [&_iframe]:!h-full [&_iframe]:!w-full pointer-events-auto"
           />
         </div>

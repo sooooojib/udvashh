@@ -15,15 +15,21 @@ interface WatchPageProps {
 export async function generateMetadata({
   params,
 }: WatchPageProps): Promise<Metadata> {
-  const { videoId } = await params;
-  const rows = await sql`
-    SELECT title FROM videos WHERE youtube_video_id = ${videoId} LIMIT 1
-  `;
-  const video = rows[0];
+  try {
+    const { videoId } = await params;
+    const rows = await sql`
+      SELECT title FROM videos WHERE youtube_video_id = ${videoId} LIMIT 1
+    `;
+    const video = rows[0];
 
-  return {
-    title: video ? `${video.title} | অবনতি` : "Watch | অবনতি",
-  };
+    return {
+      title: video ? `${video.title} | অবনতি` : "Watch | অবনতি",
+    };
+  } catch {
+    return {
+      title: "Watch | অবনতি",
+    };
+  }
 }
 
 export default async function WatchPage({ params, searchParams }: WatchPageProps) {
@@ -62,8 +68,8 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
       .catch(() => {});
   }
 
-  // Fetch watched status, playlist siblings, and PDFs concurrently in parallel
-  const [progressRows, playlistRows, pdfRowsRaw] = await Promise.all([
+  // Fetch watched status, playlist siblings, and PDFs in a single batched HTTP round-trip
+  const [progressRows, playlistRows, pdfRowsRaw] = await sql.transaction([
     sql`
       SELECT watched, progress_seconds FROM watch_progress
       WHERE user_id = ${session.id} AND video_id = ${video.id}
@@ -140,11 +146,6 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
 
   return (
     <main className="flex-1 w-full max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 md:py-10 min-h-[calc(100dvh-4rem)] animate-page-enter">
-      <script
-        dangerouslySetInnerHTML={{
-          __html: `document.documentElement.dataset.currentModule = "${moduleType}";`,
-        }}
-      />
       <VideoPlayer
         videoId={video.id}
         youtubeVideoId={video.youtube_video_id}
