@@ -12,7 +12,6 @@ export default function IntensiveClassesLoading() {
 
       {/* Owner Sync Panel Skeleton */}
       <div className="overflow-hidden rounded-2xl border border-border/60 bg-card/90 shadow-sm backdrop-blur-md dark:border-[#1F2C34] dark:bg-[#111820]">
-        <div className="h-1 w-full bg-gradient-to-r from-amber-500 via-amber-400 to-orange-500" />
         <div className="p-6 pb-3">
           <div className="flex items-center gap-3">
             <div className="h-9 w-9 shrink-0 rounded-xl bg-amber-500/20 animate-pulse" />

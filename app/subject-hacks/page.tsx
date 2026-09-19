@@ -73,7 +73,6 @@ export default async function SubjectHacksPage() {
       {/* ── Owner Sync Panel — compact inline row ── */}
       {isOwner && (
         <div className="overflow-hidden rounded-2xl border border-blue-500/20 bg-card/90 shadow-sm dark:border-blue-500/15 dark:bg-[#111820]">
-          <div className="h-[3px] w-full bg-gradient-to-r from-blue-700 via-blue-500 to-indigo-600" />
           <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
             <div className="flex items-center gap-3 min-w-0">
               <div className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-[0_0_10px_rgba(37,99,235,0.4)]">

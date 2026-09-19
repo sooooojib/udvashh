@@ -6,7 +6,9 @@ create table if not exists public.watch_progress (
   user_id uuid references auth.users(id) on delete cascade not null,
   video_id uuid references public.videos(id) on delete cascade not null,
   watched boolean default false,
+  progress_seconds integer default 0,
   watched_at timestamptz,
+  last_watched_at timestamptz default now(),
   created_at timestamptz default now(),
   updated_at timestamptz default now(),
   unique(user_id, video_id)

@@ -4,7 +4,7 @@ import { Progress } from "@/components/ui/progress";
 import { CheckCircle2, PlayCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export type ProgressTheme = "teal" | "amber" | "blue";
+export type ProgressTheme = "teal" | "emerald" | "amber" | "blue";
 
 interface WatchProgressBarProps {
   total: number;
@@ -14,25 +14,32 @@ interface WatchProgressBarProps {
 
 const themeStyles = {
   teal: {
-    glow: "bg-[radial-gradient(circle_at_top_right,rgba(37,168,162,0.08),transparent_65%)]",
-    progressIcon: "bg-[#25A8A2]/10 text-[#25A8A2] dark:bg-[#25A8A2]/15 dark:text-[#25A8A2]",
-    completedIcon: "bg-emerald-50 text-emerald-600 dark:bg-[#25A8A2]/15 dark:text-[#25A8A2]",
-    percentDone: "text-emerald-600 dark:text-[#25A8A2] dark:drop-shadow-[0_0_8px_rgba(37,168,162,0.4)]",
-    progressFill: "[\&>div]:bg-emerald-600 dark:[\&>div]:bg-[#25A8A2] dark:[\&>div]:shadow-[0_0_10px_rgba(37,168,162,0.4)]",
+    glow: "bg-[radial-gradient(circle_at_top_right,rgba(37,168,162,0.12),transparent_65%)]",
+    progressIcon: "bg-teal-500/15 text-teal-600 ring-1 ring-teal-500/30 dark:bg-[#25A8A2]/15 dark:text-[#25A8A2] dark:ring-[#25A8A2]/30",
+    completedIcon: "bg-teal-500/15 text-teal-600 ring-1 ring-teal-500/30 dark:bg-[#25A8A2]/15 dark:text-[#25A8A2] dark:ring-[#25A8A2]/30",
+    percentDone: "text-teal-600 dark:text-[#25A8A2] dark:drop-shadow-[0_0_8px_rgba(37,168,162,0.4)]",
+    progressFill: "bg-teal-600 dark:bg-[#25A8A2] dark:shadow-[0_0_10px_rgba(37,168,162,0.4)]",
+  },
+  emerald: {
+    glow: "bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.12),transparent_65%)]",
+    progressIcon: "bg-emerald-500/15 text-emerald-600 ring-1 ring-emerald-500/30 dark:bg-emerald-500/15 dark:text-emerald-400 dark:ring-emerald-500/30",
+    completedIcon: "bg-emerald-500/15 text-emerald-600 ring-1 ring-emerald-500/30 dark:bg-emerald-500/15 dark:text-emerald-400 dark:ring-emerald-500/30",
+    percentDone: "text-emerald-600 dark:text-emerald-400 dark:drop-shadow-[0_0_8px_rgba(16,185,129,0.4)]",
+    progressFill: "bg-emerald-600 dark:bg-emerald-500 dark:shadow-[0_0_10px_rgba(16,185,129,0.4)]",
   },
   amber: {
-    glow: "bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.08),transparent_65%)]",
-    progressIcon: "bg-amber-500/10 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400",
-    completedIcon: "bg-amber-50 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400",
+    glow: "bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.12),transparent_65%)]",
+    progressIcon: "bg-amber-500/15 text-amber-600 ring-1 ring-amber-500/30 dark:bg-amber-500/15 dark:text-amber-400 dark:ring-amber-500/30",
+    completedIcon: "bg-amber-500/15 text-amber-600 ring-1 ring-amber-500/30 dark:bg-amber-500/15 dark:text-amber-400 dark:ring-amber-500/30",
     percentDone: "text-amber-600 dark:text-amber-400 dark:drop-shadow-[0_0_8px_rgba(245,158,11,0.4)]",
-    progressFill: "[\&>div]:bg-amber-500 dark:[\&>div]:bg-amber-500 dark:[\&>div]:shadow-[0_0_10px_rgba(245,158,11,0.4)]",
+    progressFill: "bg-amber-500 dark:bg-amber-500 dark:shadow-[0_0_10px_rgba(245,158,11,0.4)]",
   },
   blue: {
-    glow: "bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,0.08),transparent_65%)]",
-    progressIcon: "bg-blue-500/10 text-blue-600 dark:bg-blue-500/15 dark:text-blue-400",
-    completedIcon: "bg-blue-50 text-blue-600 dark:bg-blue-500/15 dark:text-blue-400",
+    glow: "bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,0.12),transparent_65%)]",
+    progressIcon: "bg-blue-500/15 text-blue-600 ring-1 ring-blue-500/30 dark:bg-blue-500/15 dark:text-blue-400 dark:ring-blue-500/30",
+    completedIcon: "bg-blue-500/15 text-blue-600 ring-1 ring-blue-500/30 dark:bg-blue-500/15 dark:text-blue-400 dark:ring-blue-500/30",
     percentDone: "text-blue-600 dark:text-blue-400 dark:drop-shadow-[0_0_8px_rgba(59,130,246,0.4)]",
-    progressFill: "[\&>div]:bg-blue-600 dark:[\&>div]:bg-blue-600 dark:[\&>div]:shadow-[0_0_10px_rgba(59,130,246,0.4)]",
+    progressFill: "bg-blue-600 dark:bg-blue-600 dark:shadow-[0_0_10px_rgba(59,130,246,0.4)]",
   },
 } as const;
 
@@ -49,7 +56,7 @@ export function WatchProgressBar({
       {/* Radial glow */}
       <div
         className={cn(
-          "pointer-events-none absolute inset-0 dark:opacity-100 opacity-0",
+          "pointer-events-none absolute inset-0 opacity-60 dark:opacity-100 transition-opacity",
           t.glow
         )}
       />
@@ -59,7 +66,7 @@ export function WatchProgressBar({
           {watched === total && total > 0 ? (
             <div
               className={cn(
-                "flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600",
+                "flex h-8 w-8 items-center justify-center rounded-lg shadow-2xs",
                 t.completedIcon
               )}
             >
@@ -68,7 +75,7 @@ export function WatchProgressBar({
           ) : (
             <div
               className={cn(
-                "flex h-8 w-8 items-center justify-center rounded-lg",
+                "flex h-8 w-8 items-center justify-center rounded-lg shadow-2xs",
                 t.progressIcon
               )}
             >
@@ -89,10 +96,10 @@ export function WatchProgressBar({
 
         <span
           className={cn(
-            "font-mono text-2xl font-extrabold tabular-nums tracking-tight",
-            percent === 100
+            "font-mono text-2xl font-extrabold tabular-nums tracking-tight transition-colors",
+            percent > 0
               ? t.percentDone
-              : "text-foreground dark:text-[#E8EDF0]"
+              : "text-muted-foreground dark:text-[#9AA7AE]"
           )}
         >
           {percent}%
@@ -102,10 +109,8 @@ export function WatchProgressBar({
       <div className="relative">
         <Progress
           value={percent}
-          className={cn(
-            "h-2 rounded-full bg-muted/60 dark:bg-[#141E28] [\&>div]:transition-all [\&>div]:duration-500",
-            t.progressFill
-          )}
+          className="h-2 rounded-full bg-muted/60 dark:bg-[#141E28]"
+          indicatorClassName={cn("transition-all duration-500", t.progressFill)}
           aria-label={`${watched} of ${total} videos watched`}
         />
       </div>

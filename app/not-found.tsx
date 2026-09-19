@@ -36,7 +36,7 @@ export default function NotFound() {
 
           <Button
             asChild
-            className="flex-1 h-10 rounded-xl gap-2 text-xs font-semibold shadow-sm bg-primary text-primary-foreground dark:bg-[#25A8A2] dark:text-white dark:hover:bg-[#20928D]"
+            className="flex-1 h-10 rounded-xl gap-2 text-xs font-semibold shadow-sm bg-teal-600 text-white hover:bg-teal-700 dark:bg-[#25A8A2] dark:text-white dark:hover:bg-[#20928D]"
           >
             <Link href="/live-classes">
               <Tv className="h-4 w-4" />

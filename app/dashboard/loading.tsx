@@ -3,7 +3,6 @@ export default function DashboardLoading() {
     <main className="flex-1 p-3.5 sm:p-5 md:py-6 md:px-6 lg:px-8 max-w-[1680px] mx-auto w-full space-y-8 min-h-[calc(100dvh-4rem)] animate-page-enter overflow-x-hidden">
       {/* Owner Sync Panel Skeleton */}
       <div className="overflow-hidden rounded-2xl border border-border/60 bg-card/90 shadow-sm backdrop-blur-md dark:border-[#1F2C34] dark:bg-[#111820]">
-        <div className="h-1 w-full bg-gradient-to-r from-[#25A8A2] via-teal-500 to-emerald-500" />
         <div className="p-6 pb-3">
           <div className="flex items-center gap-3">
             <div className="h-9 w-9 shrink-0 rounded-xl bg-muted/60 dark:bg-[#141E28] animate-pulse" />
@@ -44,8 +43,8 @@ export default function DashboardLoading() {
           {/* Card 1: Live Classes */}
           <div className="flex flex-col justify-between overflow-hidden rounded-2xl border border-border/60 bg-card/90 p-5 shadow-sm backdrop-blur-md dark:border-[#1F2C34] dark:bg-[#111820] min-h-[180px]">
             <div className="flex items-center justify-between gap-2">
-              <div className="h-11 w-11 rounded-xl bg-[#25A8A2]/15 animate-pulse" />
-              <div className="h-5 w-16 rounded-full bg-[#25A8A2]/15 animate-pulse" />
+              <div className="h-11 w-11 rounded-xl bg-emerald-500/15 animate-pulse" />
+              <div className="h-5 w-16 rounded-full bg-emerald-500/15 animate-pulse" />
             </div>
 
             <div className="mt-4">

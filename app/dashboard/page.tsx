@@ -5,9 +5,10 @@ import { sql } from "@/lib/db";
 import { getSession } from "@/lib/auth/session";
 import { WatchProgressBar } from "@/components/dashboard/progress-bar";
 import { OwnerSyncButton } from "@/components/dashboard/sync-button";
-import { KNOWN_PLAYLISTS } from "@/lib/youtube/playlists";
-import { INTENSIVE_PLAYLISTS } from "@/lib/youtube/intensive-playlists";
-import { SUBJECT_HACKS_PLAYLISTS } from "@/lib/youtube/subject-hacks-playlists";
+import { KNOWN_PLAYLISTS, getPlaylistName } from "@/lib/youtube/playlists";
+import { INTENSIVE_PLAYLISTS, getIntensivePlaylistName } from "@/lib/youtube/intensive-playlists";
+import { SUBJECT_HACKS_PLAYLISTS, getSubjectHacksPlaylistName } from "@/lib/youtube/subject-hacks-playlists";
+import { CurrentlyWatching, type CurrentlyWatchingVideo } from "@/components/dashboard/currently-watching";
 import {
   Card,
   CardContent,
@@ -94,13 +95,71 @@ export default async function DashboardPage() {
     ...SUBJECT_HACKS_PLAYLISTS.map((p) => ({ ...p, category: "Subject Hacks" })),
   ];
 
+  // Fetch up to 3 currently watching videos (in-progress, not marked watched, > 10s progress)
+  const currentlyWatchingRows = await sql`
+    SELECT 
+      v.id,
+      v.youtube_video_id,
+      v.title,
+      v.thumbnail_url,
+      v.duration,
+      v.playlist_id,
+      wp.progress_seconds,
+      wp.last_watched_at,
+      wp.updated_at
+    FROM watch_progress wp
+    JOIN videos v ON v.id = wp.video_id
+    WHERE wp.user_id = ${session.id}
+      AND wp.watched = false
+      AND wp.progress_seconds > 10
+    ORDER BY COALESCE(wp.last_watched_at, wp.updated_at) DESC
+    LIMIT 3
+  `;
+
+  const currentlyWatchingVideos: CurrentlyWatchingVideo[] = currentlyWatchingRows.map((row) => {
+    const isIntensive = intensivePlaylistIds.includes(row.playlist_id || "");
+    const isSubjectHacks = subjectHacksPlaylistIds.includes(row.playlist_id || "");
+
+    let moduleName = "Live Classes";
+    let moduleHref = "/live-classes";
+    let moduleType: "live" | "intensive" | "subject-hacks" = "live";
+    let playlistName = getPlaylistName(row.playlist_id || "");
+
+    if (isIntensive) {
+      moduleName = "Intensive Classes";
+      moduleHref = "/intensive-classes";
+      moduleType = "intensive";
+      playlistName = getIntensivePlaylistName(row.playlist_id || "");
+    } else if (isSubjectHacks) {
+      moduleName = "Subject Hacks";
+      moduleHref = "/subject-hacks";
+      moduleType = "subject-hacks";
+      playlistName = getSubjectHacksPlaylistName(row.playlist_id || "");
+    }
+
+    return {
+      id: row.id,
+      youtube_video_id: row.youtube_video_id,
+      title: row.title,
+      thumbnail_url: row.thumbnail_url,
+      duration: row.duration,
+      playlist_id: row.playlist_id,
+      progress_seconds: row.progress_seconds,
+      last_watched_at: row.last_watched_at,
+      updated_at: row.updated_at,
+      moduleName,
+      moduleHref,
+      moduleType,
+      playlistName,
+    };
+  });
+
 
   return (
     <main className="flex-1 p-3.5 sm:p-5 md:py-6 md:px-6 lg:px-8 max-w-[1680px] mx-auto w-full space-y-8 min-h-[calc(100dvh-4rem)] animate-page-enter overflow-x-hidden">
       {/* Owner Sync Panel */}
       {isOwner && (
         <Card className="overflow-hidden rounded-2xl border border-border/60 bg-card/90 shadow-sm backdrop-blur-md dark:border-[#1F2C34] dark:bg-[#111820]">
-          <div className="h-1 w-full bg-gradient-to-r from-[#25A8A2] via-teal-500 to-emerald-500" />
           <CardHeader className="pb-3">
             <div className="flex items-center gap-3">
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#25A8A2] text-white shadow-[0_0_10px_rgba(37,168,162,0.4)]">
@@ -133,6 +192,11 @@ export default async function DashboardPage() {
         />
       )}
 
+      {/* Currently Watching Shelf (Up to 3 in-progress videos) */}
+      {currentlyWatchingVideos.length > 0 && (
+        <CurrentlyWatching videos={currentlyWatchingVideos} />
+      )}
+
       {/* Hub Modules Grid */}
       <div className="space-y-3.5">
         <h2 className="font-heading text-base font-bold tracking-tight text-foreground dark:text-[#E8EDF0]">
@@ -143,22 +207,22 @@ export default async function DashboardPage() {
           {/* Module 1: Live Classes (ACTIVE) */}
           <Link
             href="/live-classes"
-            className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border/60 bg-card/90 p-5 shadow-sm backdrop-blur-md transition-all duration-200 ease-in-out hover:scale-[1.01] active:scale-[0.99] hover:border-primary/50 dark:border-[#1F2C34] dark:bg-[#111820] dark:hover:border-[#25A8A2]/60 hover:shadow-md min-h-[180px]"
+            className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border/60 bg-card/90 p-5 shadow-sm backdrop-blur-md transition-all duration-200 ease-in-out hover:scale-[1.01] active:scale-[0.99] hover:border-emerald-500/50 dark:border-[#1F2C34] dark:bg-[#111820] dark:hover:border-emerald-500/60 hover:shadow-md min-h-[180px]"
           >
             {/* Top Badge */}
             <div className="flex items-center justify-between gap-2">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#25A8A2]/15 text-[#25A8A2] ring-1 ring-[#25A8A2]/30 shadow-sm transition-transform duration-200 group-hover:scale-105">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-500/30 shadow-sm transition-transform duration-200 group-hover:scale-105">
                 <Tv className="h-5.5 w-5.5" />
               </div>
-              <span className="flex items-center gap-1.5 rounded-full bg-[#25A8A2]/15 px-2.5 py-0.5 text-xs font-bold text-[#25A8A2] border border-[#25A8A2]/30">
-                <span className="h-1.5 w-1.5 rounded-full bg-[#25A8A2] animate-pulse" />
+              <span className="flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 Active
               </span>
             </div>
 
             {/* Title */}
             <div className="mt-4">
-              <h3 className="font-heading text-lg font-bold tracking-tight text-foreground transition-colors group-hover:text-primary dark:text-[#E8EDF0] dark:group-hover:text-[#25A8A2]">
+              <h3 className="font-heading text-lg font-bold tracking-tight text-foreground transition-colors group-hover:text-emerald-600 dark:text-[#E8EDF0] dark:group-hover:text-emerald-400">
                 Live Classes
               </h3>
             </div>
@@ -177,7 +241,7 @@ export default async function DashboardPage() {
                 <span className="block text-[10px] font-medium text-muted-foreground uppercase tracking-wider dark:text-[#5C6A72]">
                   Completed
                 </span>
-                <span className="font-mono text-sm font-bold text-emerald-600 dark:text-[#25A8A2]">
+                <span className="font-mono text-sm font-bold text-emerald-600 dark:text-emerald-400">
                   {watchedCount} <span className="text-[10px] font-normal text-muted-foreground">done</span>
                 </span>
               </div>
@@ -196,7 +260,7 @@ export default async function DashboardPage() {
               <span className="font-medium text-muted-foreground font-mono text-[11px] dark:text-[#9AA7AE]">
                 {KNOWN_PLAYLISTS.length} subjects
               </span>
-              <span className="flex items-center gap-1 font-bold text-primary dark:text-[#25A8A2] transition-transform group-hover:translate-x-0.5">
+              <span className="flex items-center gap-1 font-bold text-emerald-600 dark:text-emerald-400 transition-transform group-hover:translate-x-0.5">
                 <span>View Classes</span>
                 <ArrowRight className="h-3.5 w-3.5" />
               </span>

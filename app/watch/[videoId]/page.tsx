@@ -9,6 +9,7 @@ import { getPlaylistName } from "@/lib/youtube/playlists";
 
 interface WatchPageProps {
   params: Promise<{ videoId: string }>;
+  searchParams?: Promise<{ t?: string }>;
 }
 
 export async function generateMetadata({
@@ -25,8 +26,10 @@ export async function generateMetadata({
   };
 }
 
-export default async function WatchPage({ params }: WatchPageProps) {
+export default async function WatchPage({ params, searchParams }: WatchPageProps) {
   const { videoId } = await params;
+  const resolvedSearchParams = searchParams ? await searchParams : {};
+  const urlTimestamp = resolvedSearchParams.t ? parseInt(resolvedSearchParams.t, 10) : undefined;
   const session = await getSession();
   if (!session) redirect(`/login?redirectTo=/watch/${videoId}`);
 
@@ -62,7 +65,7 @@ export default async function WatchPage({ params }: WatchPageProps) {
   // Fetch watched status, playlist siblings, and PDFs concurrently in parallel
   const [progressRows, playlistRows, pdfRowsRaw] = await Promise.all([
     sql`
-      SELECT watched FROM watch_progress
+      SELECT watched, progress_seconds FROM watch_progress
       WHERE user_id = ${session.id} AND video_id = ${video.id}
       LIMIT 1
     `,
@@ -78,6 +81,11 @@ export default async function WatchPage({ params }: WatchPageProps) {
   ]);
 
   const isWatched = progressRows[0]?.watched === true;
+  const dbProgressSeconds = Number(progressRows[0]?.progress_seconds) || 0;
+  const initialProgressSeconds =
+    typeof urlTimestamp === "number" && !isNaN(urlTimestamp) && urlTimestamp > 0
+      ? urlTimestamp
+      : dbProgressSeconds;
   const pdfRows = pdfRowsRaw as unknown as VideoPdfItem[];
 
   let nextVideoId: string | null = null;
@@ -132,6 +140,11 @@ export default async function WatchPage({ params }: WatchPageProps) {
 
   return (
     <main className="flex-1 w-full max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 md:py-10 min-h-[calc(100dvh-4rem)] animate-page-enter">
+      <script
+        dangerouslySetInnerHTML={{
+          __html: `document.documentElement.dataset.currentModule = "${moduleType}";`,
+        }}
+      />
       <VideoPlayer
         videoId={video.id}
         youtubeVideoId={video.youtube_video_id}
@@ -144,6 +157,7 @@ export default async function WatchPage({ params }: WatchPageProps) {
         moduleHref={moduleHref}
         moduleType={moduleType}
         initialWatched={isWatched}
+        initialProgressSeconds={initialProgressSeconds}
         nextVideoId={nextVideoId}
         isAdmin={isOwner}
         privacyStatus={currentPrivacy}

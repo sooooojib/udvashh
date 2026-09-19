@@ -12,20 +12,20 @@
     --card-foreground: 220 20% 10%;
     --popover: 0 0% 100%;
     --popover-foreground: 220 20% 10%;
-    --primary: 152 45% 15%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 145 15% 94%;
+    --primary: 177 64% 38%;             /* #1F9690 cohesive brand teal in light mode */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 177 15% 95%;
     --secondary-foreground: 220 20% 12%;
-    --muted: 145 12% 94.5%;
+    --muted: 177 12% 95%;
     --muted-foreground: 220 12% 40%;
-    --accent: 148 18% 92%;
-    --accent-foreground: 220 20% 12%;
+    --accent: 177 25% 92%;
+    --accent-foreground: 177 64% 20%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
     /* Vivid, crisp black-type border */
     --border: 220 18% 78%;
     --input: 220 18% 78%;
-    --ring: 152 42% 25%;
+    --ring: 177 64% 40.2%;
     --radius: 0.875rem;
   }
 

@@ -68,7 +68,7 @@ export default async function LiveClassesPage() {
     <main className="flex-1 p-3.5 sm:p-5 md:py-6 md:px-6 lg:px-8 max-w-[1680px] mx-auto w-full space-y-8 min-h-[calc(100dvh-4rem)] animate-page-enter overflow-x-hidden">
       {/* Clean Page Header with SevenGrid Accent */}
       <div className="flex items-center gap-3.5">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#25A8A2]/15 text-[#25A8A2] ring-1 ring-[#25A8A2]/30 shadow-sm">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-500/30 shadow-sm">
           <Tv className="h-5.5 w-5.5" />
         </div>
         <h1 className="font-heading text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground dark:text-[#E8EDF0]">
@@ -79,10 +79,9 @@ export default async function LiveClassesPage() {
       {/* Owner Sync Panel */}
       {isOwner && (
         <Card className="overflow-hidden rounded-2xl border border-border/60 bg-card/90 shadow-sm backdrop-blur-md dark:border-[#1F2C34] dark:bg-[#111820]">
-          <div className="h-1 w-full bg-gradient-to-r from-[#25A8A2] via-teal-500 to-emerald-500" />
           <CardHeader className="pb-3">
             <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#25A8A2] text-white shadow-[0_0_10px_rgba(37,168,162,0.4)]">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-[0_0_10px_rgba(16,185,129,0.4)]">
                 <PlaySquare className="h-4.5 w-4.5" />
               </div>
               <div>
@@ -103,7 +102,7 @@ export default async function LiveClassesPage() {
 
       {/* Progress Bar */}
       {videoList.length > 0 && (
-        <WatchProgressBar total={videoList.length} watched={watchedCount} />
+        <WatchProgressBar total={videoList.length} watched={watchedCount} theme="emerald" />
       )}
 
       {/* Video Content Grouped by Playlist */}

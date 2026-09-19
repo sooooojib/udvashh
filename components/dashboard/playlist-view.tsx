@@ -143,7 +143,7 @@ export function PlaylistView({
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           {/* Section Indicator Label */}
           <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#25A8A2]/15 text-[#25A8A2] ring-1 ring-[#25A8A2]/30">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-500/30">
               <Filter className="h-4 w-4" />
             </div>
             <div>
@@ -168,19 +168,19 @@ export function PlaylistView({
                 aria-haspopup="listbox"
                 className={`flex w-full items-center justify-between gap-3 rounded-xl border px-3.5 py-2.5 text-xs font-medium transition-all duration-200 min-h-[46px] select-none text-left active:scale-[0.99] ${
                   isDropdownOpen
-                    ? "border-[#25A8A2] bg-card shadow-[0_0_15px_rgba(37,168,162,0.15)] ring-2 ring-[#25A8A2]/20 dark:border-[#25A8A2] dark:bg-[#111820]"
+                    ? "border-emerald-500 bg-card shadow-[0_0_15px_rgba(16,185,129,0.15)] ring-2 ring-emerald-500/20 dark:border-emerald-500 dark:bg-[#111820]"
                     : filterPlaylistId !== "all"
-                    ? "border-[#25A8A2]/50 bg-[#25A8A2]/5 text-foreground dark:border-[#25A8A2]/40 dark:bg-[#111820] shadow-sm"
-                    : "border-border/70 bg-card/90 hover:border-[#25A8A2]/50 hover:bg-card dark:border-[#1F2C34] dark:bg-[#111820] dark:hover:border-[#25A8A2]/50 shadow-sm"
+                    ? "border-emerald-500/50 bg-emerald-500/5 text-foreground dark:border-emerald-500/40 dark:bg-[#111820] shadow-sm"
+                    : "border-border/70 bg-card/90 hover:border-emerald-500/50 hover:bg-card dark:border-[#1F2C34] dark:bg-[#111820] dark:hover:border-emerald-500/50 shadow-sm"
                 }`}
               >
                 <div className="flex items-center gap-2.5 min-w-0 flex-1">
                   {filterPlaylistId === "all" ? (
-                    <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-[#25A8A2]/15 text-[#25A8A2]">
+                    <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
                       <Layers className="h-3.5 w-3.5" />
                     </div>
                   ) : (
-                    <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-[#25A8A2]/15 text-[#25A8A2]">
+                    <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
                       <BookOpen className="h-3.5 w-3.5" />
                     </div>
                   )}
@@ -200,7 +200,7 @@ export function PlaylistView({
 
                 <ChevronDown
                   className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 ${
-                    isDropdownOpen ? "rotate-180 text-[#25A8A2]" : ""
+                    isDropdownOpen ? "rotate-180 text-emerald-600 dark:text-emerald-400" : ""
                   }`}
                 />
               </button>
@@ -219,12 +219,12 @@ export function PlaylistView({
                     onClick={() => handleSelectPlaylist("all")}
                     className={`flex w-full items-center justify-between gap-2.5 rounded-xl px-3 py-2.5 text-xs transition-all duration-150 text-left min-h-[42px] ${
                       filterPlaylistId === "all"
-                        ? "bg-[#25A8A2]/15 text-[#25A8A2] font-semibold border border-[#25A8A2]/30"
+                        ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-semibold border border-emerald-500/30"
                         : "text-foreground hover:bg-accent/60 dark:text-[#E8EDF0] dark:hover:bg-[#141E28]"
                     }`}
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <Layers className="h-3.5 w-3.5 shrink-0 text-[#25A8A2]" />
+                      <Layers className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
                       <span className="truncate">All Subjects</span>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
@@ -232,7 +232,7 @@ export function PlaylistView({
                         ({groups.length} subjects • {totalVideosCount} classes)
                       </span>
                       {filterPlaylistId === "all" && (
-                        <Check className="h-3.5 w-3.5 text-[#25A8A2]" />
+                        <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
                       )}
                     </div>
                   </button>
@@ -258,13 +258,13 @@ export function PlaylistView({
                         onClick={() => handleSelectPlaylist(group.id)}
                         className={`flex w-full items-center justify-between gap-2.5 rounded-xl px-3 py-2.5 text-xs transition-all duration-150 text-left min-h-[42px] ${
                           isSelected
-                            ? "bg-[#25A8A2]/15 text-[#25A8A2] font-semibold border border-[#25A8A2]/30"
+                            ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-semibold border border-emerald-500/30"
                             : "text-foreground hover:bg-accent/60 dark:text-[#E8EDF0] dark:hover:bg-[#141E28]"
                         }`}
                       >
                         <div className="flex items-center gap-2.5 min-w-0 flex-1">
                           {isComplete ? (
-                            <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-[#25A8A2]" />
+                            <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
                           ) : (
                             <BookOpen className="h-3.5 w-3.5 shrink-0 opacity-60" />
                           )}
@@ -275,7 +275,7 @@ export function PlaylistView({
                             ({group.videos.length})
                           </span>
                           {isSelected && (
-                            <Check className="h-3.5 w-3.5 text-[#25A8A2]" />
+                            <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
                           )}
                         </div>
                       </button>
@@ -291,7 +291,7 @@ export function PlaylistView({
                 type="button"
                 onClick={() => handleSelectPlaylist("all")}
                 title="Show all subjects"
-                className="inline-flex h-[46px] items-center gap-1.5 rounded-xl border border-border/70 bg-card/80 px-3 text-xs font-semibold text-muted-foreground transition-all duration-200 hover:border-[#25A8A2]/50 hover:text-foreground active:scale-95 dark:border-[#1F2C34] dark:bg-[#111820] dark:text-[#9AA7AE] dark:hover:border-[#25A8A2]/50 dark:hover:text-[#E8EDF0] shrink-0"
+                className="inline-flex h-[46px] items-center gap-1.5 rounded-xl border border-border/70 bg-card/80 px-3 text-xs font-semibold text-muted-foreground transition-all duration-200 hover:border-emerald-500/50 hover:text-foreground active:scale-95 dark:border-[#1F2C34] dark:bg-[#111820] dark:text-[#9AA7AE] dark:hover:border-emerald-500/50 dark:hover:text-[#E8EDF0] shrink-0"
               >
                 <RotateCcw className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">Reset</span>
@@ -320,7 +320,7 @@ export function PlaylistView({
           return (
             <div
               key={group.id}
-              className="overflow-hidden rounded-2xl border border-border/60 bg-card/90 shadow-sm backdrop-blur-md transition-all duration-200 ease-in-out dark:border-[#1F2C34] dark:bg-[#111820] dark:hover:border-[#25A8A2]/50 hover:shadow-md"
+              className="overflow-hidden rounded-2xl border border-border/60 bg-card/90 shadow-sm backdrop-blur-md transition-all duration-200 ease-in-out dark:border-[#1F2C34] dark:bg-[#111820] dark:hover:border-emerald-500/50 hover:shadow-md"
             >
               {/* Interactive Playlist Header Card */}
               <div
@@ -332,8 +332,8 @@ export function PlaylistView({
                   <div
                     className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl shadow-sm transition-transform duration-200 group-hover:scale-105 ${
                       isComplete
-                        ? "bg-[#25A8A2] text-white shadow-[0_0_12px_rgba(37,168,162,0.4)]"
-                        : "bg-[#25A8A2]/15 text-[#25A8A2] ring-1 ring-[#25A8A2]/30 dark:bg-[#25A8A2]/15 dark:text-[#25A8A2]"
+                        ? "bg-emerald-600 text-white shadow-[0_0_12px_rgba(16,185,129,0.4)]"
+                        : "bg-emerald-500/15 text-emerald-600 ring-1 ring-emerald-500/30 dark:bg-emerald-500/15 dark:text-emerald-400"
                     }`}
                   >
                     {isComplete ? (
@@ -345,7 +345,7 @@ export function PlaylistView({
 
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <h2 className="font-heading text-base font-bold tracking-tight text-foreground dark:text-[#E8EDF0] truncate transition-colors group-hover:text-primary dark:group-hover:text-[#25A8A2]">
+                      <h2 className="font-heading text-base font-bold tracking-tight text-foreground dark:text-[#E8EDF0] truncate transition-colors group-hover:text-emerald-600 dark:group-hover:text-emerald-400">
                         {group.name}
                       </h2>
                     </div>
@@ -381,7 +381,7 @@ export function PlaylistView({
                   <div className="flex items-center gap-3 flex-1 sm:w-48 sm:flex-initial">
                     <Progress
                       value={groupPercent}
-                      className="h-2 flex-1 rounded-full bg-muted/60 dark:bg-[#141E28] [&>div]:bg-[#25A8A2] [&>div]:transition-all [&>div]:duration-500"
+                      className="h-2 flex-1 rounded-full bg-muted/60 dark:bg-[#141E28] [&>div]:bg-emerald-600 dark:[&>div]:bg-emerald-500 [&>div]:transition-all [&>div]:duration-500"
                     />
                     <span className="text-xs font-bold tabular-nums text-foreground dark:text-[#E8EDF0] w-9 text-right font-mono">
                       {groupPercent}%
@@ -392,7 +392,7 @@ export function PlaylistView({
                   <div
                     className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-border/60 bg-muted/40 transition-transform duration-200 dark:border-[#1F2C34] dark:bg-[#141E28] ${
                       isExpanded
-                        ? "rotate-180 bg-muted dark:bg-[#1F2C34] text-foreground dark:text-[#25A8A2]"
+                        ? "rotate-180 bg-muted dark:bg-[#1F2C34] text-foreground dark:text-emerald-400"
                         : "text-muted-foreground dark:text-[#9AA7AE]"
                     }`}
                   >
@@ -423,6 +423,7 @@ export function PlaylistView({
                             video={video}
                             initialWatched={watchedSet.has(video.id)}
                             index={idx}
+                            theme="emerald"
                             isAdmin={isAdmin}
                           />
                         ))}

@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useTheme } from "next-themes";
 import { useOptimistic, useTransition } from "react";
-import { toggleWatched } from "@/app/actions/progress";
+import { toggleWatched, updatePlaybackProgress } from "@/app/actions/progress";
 import { toggleVideoPrivacy } from "@/app/actions/toggle-privacy";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -64,6 +64,7 @@ interface VideoPlayerProps {
   moduleHref?: string;
   moduleType?: "live" | "intensive" | "subject-hacks";
   initialWatched: boolean;
+  initialProgressSeconds?: number;
   nextVideoId: string | null;
   isAdmin?: boolean;
   privacyStatus?: string | null;
@@ -81,6 +82,7 @@ export function VideoPlayer({
   moduleHref = "/live-classes",
   moduleType = "live",
   initialWatched,
+  initialProgressSeconds = 0,
   nextVideoId,
   isAdmin = false,
   privacyStatus,
@@ -299,6 +301,14 @@ export function VideoPlayer({
       if (typeof initialRate === "number" && initialRate > 0) {
         setCurrentRate(initialRate);
         previousRateRef.current = initialRate;
+      }
+
+      // Resume from previous progress if > 5 seconds
+      if (initialProgressSeconds > 5 && !initialWatched) {
+        event.target.seekTo?.(initialProgressSeconds, true);
+        toast.info(`Resumed from ${formatDuration(initialProgressSeconds)}`, {
+          duration: 3000,
+        });
       }
     } catch {}
   };
@@ -715,12 +725,56 @@ export function VideoPlayer({
     }
   };
 
+  // Heartbeat to update playback progress while playing
+  const lastSyncedSecondsRef = React.useRef<number>(initialProgressSeconds || 0);
+
+  const syncProgress = React.useCallback(() => {
+    if (!playerRef.current) return;
+    try {
+      const current = playerRef.current.getCurrentTime?.();
+      if (typeof current === "number" && current >= 0) {
+        const floorSec = Math.floor(current);
+        // Only update if changed by at least 3 seconds
+        if (Math.abs(floorSec - lastSyncedSecondsRef.current) >= 3) {
+          lastSyncedSecondsRef.current = floorSec;
+          updatePlaybackProgress(videoId, floorSec, duration);
+        }
+      }
+    } catch {}
+  }, [videoId, duration]);
+
+  React.useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+    if (isPlaying) {
+      // Sync every 10 seconds while playing
+      interval = setInterval(() => {
+        syncProgress();
+      }, 10000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isPlaying, syncProgress]);
+
+  // Sync on unmount & beforeunload
+  React.useEffect(() => {
+    const handleBeforeUnload = () => {
+      syncProgress();
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      syncProgress();
+    };
+  }, [syncProgress]);
+
   const handlePlayerStateChange = (event: any) => {
     const state = event.data;
     if (state === 1) {
       setIsPlaying(true);
     } else if (state === 2) {
       setIsPlaying(false);
+      syncProgress();
     }
     if (state === 0) {
       handleVideoEnd();
@@ -729,6 +783,20 @@ export function VideoPlayer({
 
   const isIntensive = moduleType === "intensive";
   const isSubjectHacks = moduleType === "subject-hacks";
+  const isLive = moduleType === "live" || (!isIntensive && !isSubjectHacks);
+
+  React.useEffect(() => {
+    const currentModule = isIntensive
+      ? "intensive"
+      : isSubjectHacks
+      ? "subject-hacks"
+      : "live";
+    window.dispatchEvent(new CustomEvent("app:module", { detail: currentModule }));
+    document.documentElement.dataset.currentModule = currentModule;
+    return () => {
+      delete document.documentElement.dataset.currentModule;
+    };
+  }, [isIntensive, isSubjectHacks]);
 
   return (
     <div className="video-player-root space-y-5 sm:space-y-6">
@@ -759,7 +827,7 @@ export function VideoPlayer({
           ) : isSubjectHacks ? (
             <Lightbulb className="h-3.5 w-3.5 text-blue-500 shrink-0" />
           ) : (
-            <Tv className="h-3.5 w-3.5 text-[#25A8A2] shrink-0" />
+            <Tv className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
           )}
           <span>{moduleName}</span>
         </Link>
@@ -987,7 +1055,7 @@ export function VideoPlayer({
                   <Play className="h-6 w-6 ml-0.5 fill-white text-white" />
                 </div>
                 <div className="flex items-center gap-2 rounded-full bg-black/80 px-3.5 py-1 text-xs font-medium text-white/90 shadow-md backdrop-blur-md border border-white/10">
-                  <Loader2 className="h-3.5 w-3.5 animate-spin text-[#25A8A2]" />
+                  <Loader2 className={cn("h-3.5 w-3.5 animate-spin", isIntensive ? "text-amber-500" : isSubjectHacks ? "text-blue-500" : "text-emerald-400")} />
                   <span>Preparing player…</span>
                 </div>
               </div>
@@ -1004,6 +1072,10 @@ export function VideoPlayer({
               height: "100%",
               playerVars: {
                 autoplay: 0,
+                start:
+                  initialProgressSeconds && initialProgressSeconds > 5 && !initialWatched
+                    ? Math.floor(initialProgressSeconds)
+                    : undefined,
                 modestbranding: 1,
                 rel: 0,
                 fs: 1,
@@ -1050,6 +1122,8 @@ export function VideoPlayer({
                         ? "bg-amber-500 text-white shadow-sm"
                         : isSubjectHacks
                         ? "bg-blue-600 text-white shadow-sm"
+                        : isLive
+                        ? "bg-emerald-600 text-white shadow-sm"
                         : "bg-[#25A8A2] text-white shadow-sm"
                       : is2xSpeed && speed === 2
                       ? "bg-amber-500 text-white shadow-sm ring-1 ring-amber-400"
@@ -1076,7 +1150,10 @@ export function VideoPlayer({
                   "sm:hidden inline-flex items-center justify-center h-10 rounded-xl gap-1.5 px-3 font-semibold shadow-xs transition-all duration-150 active:scale-[0.98] text-xs border shrink-0 cursor-pointer disabled:opacity-50 disabled:pointer-events-none group",
                   optimisticPrivacy === "public"
                     ? "border-emerald-500/40 text-emerald-700 bg-emerald-50/80 hover:bg-emerald-100/90 hover:border-emerald-500/60 dark:border-emerald-500/40 dark:bg-emerald-500/15 dark:text-emerald-300 dark:hover:bg-emerald-500/25 dark:hover:border-emerald-500/60 dark:hover:text-emerald-200"
-                    : "border-border/80 text-foreground/80 bg-card hover:bg-muted/80 hover:text-foreground hover:border-border dark:border-[#1F2C34] dark:bg-[#141E28] dark:text-[#E8EDF0] dark:hover:bg-[#1F2C34] dark:hover:text-white dark:hover:border-[#25A8A2]/40"
+                    : cn(
+                        "border-border/80 text-foreground/80 bg-card hover:bg-muted/80 hover:text-foreground hover:border-border dark:border-[#1F2C34] dark:bg-[#141E28] dark:text-[#E8EDF0] dark:hover:bg-[#1F2C34] dark:hover:text-white",
+                        isLive ? "dark:hover:border-emerald-500/40" : "dark:hover:border-[#25A8A2]/40"
+                      )
                 )}
               >
                 {isTogglingPrivacy ? (
@@ -1140,7 +1217,10 @@ export function VideoPlayer({
                 "hidden sm:inline-flex items-center justify-center h-10 sm:h-11 rounded-xl gap-2 font-semibold shadow-xs transition-all duration-150 active:scale-[0.98] text-xs sm:flex-initial min-w-0 border px-4 cursor-pointer disabled:opacity-50 disabled:pointer-events-none group",
                 optimisticPrivacy === "public"
                   ? "border-emerald-500/40 text-emerald-700 bg-emerald-50/80 hover:bg-emerald-100/90 hover:border-emerald-500/60 dark:border-emerald-500/40 dark:bg-emerald-500/15 dark:text-emerald-300 dark:hover:bg-emerald-500/25 dark:hover:border-emerald-500/60 dark:hover:text-emerald-200"
-                  : "border-border/80 text-foreground/80 bg-card hover:bg-muted/80 hover:text-foreground hover:border-border dark:border-[#1F2C34] dark:bg-[#141E28] dark:text-[#E8EDF0] dark:hover:bg-[#1F2C34] dark:hover:text-white dark:hover:border-[#25A8A2]/40"
+                  : cn(
+                      "border-border/80 text-foreground/80 bg-card hover:bg-muted/80 hover:text-foreground hover:border-border dark:border-[#1F2C34] dark:bg-[#141E28] dark:text-[#E8EDF0] dark:hover:bg-[#1F2C34] dark:hover:text-white",
+                      isLive ? "dark:hover:border-emerald-500/40" : "dark:hover:border-[#25A8A2]/40"
+                    )
               )}
             >
               {isTogglingPrivacy ? (
@@ -1174,12 +1254,12 @@ export function VideoPlayer({
                   ? "border-amber-500/40 text-amber-700 bg-amber-500/10 hover:bg-amber-500/20 hover:text-amber-800 dark:border-amber-500/40 dark:bg-amber-500/15 dark:text-amber-400 dark:hover:bg-amber-500/25 dark:hover:text-amber-300"
                   : isSubjectHacks
                   ? "border-blue-500/40 text-blue-700 bg-blue-500/10 hover:bg-blue-500/20 hover:text-blue-800 dark:border-blue-500/40 dark:bg-blue-500/15 dark:text-blue-400 dark:hover:bg-blue-500/25 dark:hover:text-blue-300"
-                  : "border-[#25A8A2]/40 text-[#25A8A2] bg-[#25A8A2]/10 hover:bg-[#25A8A2]/20 hover:text-[#20928D] dark:border-[#25A8A2]/40 dark:bg-[#25A8A2]/15 dark:text-[#25A8A2] dark:hover:bg-[#25A8A2]/25 dark:hover:text-white"
+                  : "border-emerald-500/40 text-emerald-700 bg-emerald-500/10 hover:bg-emerald-500/20 hover:text-emerald-800 dark:border-emerald-500/40 dark:bg-emerald-500/15 dark:text-emerald-400 dark:hover:bg-emerald-500/25 dark:hover:text-white"
                 : isIntensive
                 ? "bg-amber-500 text-white border-transparent hover:bg-amber-600 shadow-[0_0_10px_rgba(245,158,11,0.3)]"
                 : isSubjectHacks
                 ? "bg-blue-600 text-white border-transparent hover:bg-blue-700 shadow-[0_0_10px_rgba(37,99,235,0.3)]"
-                : "bg-primary text-primary-foreground border-transparent hover:bg-primary/90 dark:bg-[#25A8A2] dark:text-white dark:hover:bg-[#20928D] dark:shadow-[0_0_10px_rgba(37,168,162,0.3)]"
+                : "bg-emerald-600 text-white border-transparent hover:bg-emerald-700 shadow-[0_0_10px_rgba(16,185,129,0.3)] dark:bg-emerald-600 dark:text-white dark:hover:bg-emerald-500"
             )}
           >
             {isPending ? (
@@ -1204,7 +1284,7 @@ export function VideoPlayer({
                   ? "bg-amber-500 text-white hover:bg-amber-600 dark:bg-amber-500 dark:text-white dark:hover:bg-amber-600"
                   : isSubjectHacks
                   ? "bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-600 dark:text-white dark:hover:bg-blue-700"
-                  : "bg-primary text-primary-foreground hover:bg-primary/90 dark:bg-[#25A8A2] dark:text-white dark:hover:bg-[#20928D]"
+                  : "bg-emerald-600 text-white hover:bg-emerald-700 dark:bg-emerald-600 dark:text-white dark:hover:bg-emerald-500"
               )}
             >
               <span className="truncate">Next</span>
@@ -1227,7 +1307,7 @@ export function VideoPlayer({
                   ? "text-amber-500"
                   : isSubjectHacks
                   ? "text-blue-500"
-                  : "text-muted-foreground dark:text-[#25A8A2]"
+                  : "text-emerald-600 dark:text-emerald-400"
               }`}
             />
             <span>Description</span>

@@ -22,9 +22,15 @@ export interface Playlist {
 interface OwnerSyncButtonProps {
   playlists?: Playlist[];
   moduleName?: string;
+  theme?: "teal" | "emerald";
 }
 
-export function OwnerSyncButton({ playlists, moduleName }: OwnerSyncButtonProps) {
+export function OwnerSyncButton({
+  playlists,
+  moduleName,
+  theme,
+}: OwnerSyncButtonProps) {
+  const isEmerald = theme === "emerald" || moduleName === "Live Classes";
   const [isPending, setIsPending] = React.useState(false);
   const [isSyncingPrivacy, setIsSyncingPrivacy] = React.useState(false);
   const [selectedPlaylist, setSelectedPlaylist] = React.useState<string>("all");
@@ -122,7 +128,11 @@ export function OwnerSyncButton({ playlists, moduleName }: OwnerSyncButtonProps)
                 setResult(null);
               }}
               disabled={isPending}
-              className="w-full h-11 rounded-xl border border-border/80 bg-card/80 pl-3.5 pr-8 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1 disabled:opacity-50 dark:border-[#1F2C34] dark:bg-[#0A0F12]/60 dark:text-[#E8EDF0] dark:focus:ring-[#25A8A2]"
+              className={`w-full h-11 rounded-xl border border-border/80 bg-card/80 pl-3.5 pr-8 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-offset-1 disabled:opacity-50 dark:border-[#1F2C34] dark:bg-[#0A0F12]/60 dark:text-[#E8EDF0] ${
+                isEmerald
+                  ? "focus:ring-emerald-500 dark:focus:ring-emerald-500"
+                  : "focus:ring-teal-500 dark:focus:ring-[#25A8A2]"
+              }`}
             >
               <option value="all">
                 {moduleName
@@ -159,16 +169,28 @@ export function OwnerSyncButton({ playlists, moduleName }: OwnerSyncButtonProps)
             onClick={handleSyncPrivacy}
             disabled={isSyncingPrivacy || isPending}
             title="Fast check: syncs public/unlisted statuses with YouTube for all videos"
-            className="gap-1.5 sm:gap-2 font-semibold shadow-xs border border-border/80 bg-card/90 text-foreground/80 hover:bg-muted/70 hover:text-foreground hover:border-border dark:border-[#1F2C34] dark:bg-[#141E28] dark:text-[#E8EDF0] dark:hover:bg-[#1B2631] dark:hover:border-[#25A8A2]/50 dark:hover:text-white active:scale-[0.98] transition-all text-xs sm:text-sm w-full sm:w-auto justify-center px-2.5 sm:px-4"
+            className={`gap-1.5 sm:gap-2 font-semibold shadow-xs border border-border/80 bg-card/90 text-foreground/80 hover:bg-muted/70 hover:text-foreground hover:border-border dark:border-[#1F2C34] dark:bg-[#141E28] dark:text-[#E8EDF0] dark:hover:bg-[#1B2631] dark:hover:text-white active:scale-[0.98] transition-all text-xs sm:text-sm w-full sm:w-auto justify-center px-2.5 sm:px-4 ${
+              isEmerald
+                ? "dark:hover:border-emerald-500/50 hover:border-emerald-500/40"
+                : "dark:hover:border-[#25A8A2]/50 hover:border-teal-500/40"
+            }`}
           >
             {isSyncingPrivacy ? (
               <>
-                <Loader2 className="h-4 w-4 animate-spin text-[#25A8A2]" />
+                <Loader2
+                  className={`h-4 w-4 animate-spin ${
+                    isEmerald ? "text-emerald-600 dark:text-emerald-400" : "text-teal-600 dark:text-[#25A8A2]"
+                  }`}
+                />
                 <span className="truncate">Checking…</span>
               </>
             ) : (
               <>
-                <ShieldCheck className="h-4 w-4 text-[#25A8A2]" />
+                <ShieldCheck
+                  className={`h-4 w-4 ${
+                    isEmerald ? "text-emerald-600 dark:text-emerald-400" : "text-teal-600 dark:text-[#25A8A2]"
+                  }`}
+                />
                 <span className="truncate">Sync Privacy</span>
               </>
             )}
@@ -178,7 +200,11 @@ export function OwnerSyncButton({ playlists, moduleName }: OwnerSyncButtonProps)
           <Button
             onClick={handleSync}
             disabled={isPending || isSyncingPrivacy}
-            className="gap-1.5 sm:gap-2 font-semibold shadow-sm bg-primary text-primary-foreground dark:bg-[#25A8A2] dark:text-white dark:hover:bg-[#20928D] dark:shadow-[0_0_10px_rgba(37,168,162,0.3)] transition-all active:scale-95 text-xs sm:text-sm w-full sm:w-auto justify-center px-2.5 sm:px-4"
+            className={`gap-1.5 sm:gap-2 font-semibold shadow-sm transition-all active:scale-95 text-xs sm:text-sm w-full sm:w-auto justify-center px-2.5 sm:px-4 ${
+              isEmerald
+                ? "bg-emerald-600 text-white hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-500 dark:shadow-[0_0_10px_rgba(16,185,129,0.3)]"
+                : "bg-teal-600 text-white hover:bg-teal-700 shadow-sm dark:bg-[#25A8A2] dark:text-white dark:hover:bg-[#20928D] dark:shadow-[0_0_10px_rgba(37,168,162,0.3)]"
+            }`}
           >
             {isPending ? (
               <>
@@ -201,12 +227,20 @@ export function OwnerSyncButton({ playlists, moduleName }: OwnerSyncButtonProps)
           role={result.success ? "status" : "alert"}
           className={`flex items-start gap-2.5 rounded-xl border px-4 py-3 text-sm transition-all animate-in fade-in slide-in-from-bottom-2 duration-300 ${
             result.success
-              ? "border-emerald-200 bg-emerald-50/80 text-emerald-800 dark:border-[#25A8A2]/30 dark:bg-[#25A8A2]/10 dark:text-[#25A8A2]"
+              ? isEmerald
+                ? "border-emerald-200 bg-emerald-50/80 text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-400"
+                : "border-emerald-200 bg-emerald-50/80 text-emerald-800 dark:border-[#25A8A2]/30 dark:bg-[#25A8A2]/10 dark:text-[#25A8A2]"
               : "border-red-200 bg-red-50/80 text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300"
           }`}
         >
           {result.success ? (
-            <CheckCircle2 className="h-5 w-5 shrink-0 mt-px text-emerald-600 dark:text-[#25A8A2]" />
+            <CheckCircle2
+              className={`h-5 w-5 shrink-0 mt-px ${
+                isEmerald
+                  ? "text-emerald-600 dark:text-emerald-400"
+                  : "text-emerald-600 dark:text-[#25A8A2]"
+              }`}
+            />
           ) : (
             <AlertCircle className="h-5 w-5 shrink-0 mt-px text-red-600 dark:text-red-400" />
           )}

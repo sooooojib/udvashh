@@ -126,21 +126,21 @@ export function VideoPdfSection({
       ? "#F59E0B"
       : moduleType === "subject-hacks"
       ? "#3B82F6"
-      : "#25A8A2";
+      : "#10B981";
 
   const buttonAccent =
     moduleType === "intensive"
       ? "bg-amber-500 hover:bg-amber-600 text-white"
       : moduleType === "subject-hacks"
       ? "bg-blue-600 hover:bg-blue-700 text-white"
-      : "bg-[#25A8A2] hover:bg-[#20928D] text-white";
+      : "bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white";
 
   const iconAccent =
     moduleType === "intensive"
       ? "text-amber-500"
       : moduleType === "subject-hacks"
       ? "text-blue-500"
-      : "text-[#25A8A2]";
+      : "text-emerald-600 dark:text-emerald-400";
 
   // Handle file selection
   const handleFileChange = (file: File | null) => {

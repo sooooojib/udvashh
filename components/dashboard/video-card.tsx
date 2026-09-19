@@ -14,7 +14,7 @@ import { formatDuration, extractClassNumber } from "@/lib/utils/format";
 import { Check, Clock, FileText, Globe, Link2, Loader2, Play } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export type VideoTheme = "teal" | "amber" | "blue";
+export type VideoTheme = "teal" | "emerald" | "amber" | "blue";
 
 export interface Video {
   id: string;
@@ -43,16 +43,29 @@ interface VideoCardProps {
 const themeStyles = {
   teal: {
     watchedCard:
-      "border-[#25A8A2]/30 bg-[#25A8A2]/5 dark:border-[#25A8A2]/40 dark:bg-[#25A8A2]/10 shadow-[0_0_15px_rgba(37,168,162,0.08)]",
+      "border-teal-500/30 bg-teal-500/5 dark:border-[#25A8A2]/40 dark:bg-[#25A8A2]/10 shadow-[0_0_15px_rgba(37,168,162,0.08)]",
     defaultCard:
-      "border-border/60 bg-card/90 backdrop-blur-md dark:border-[#1F2C34] dark:bg-[#111820] dark:hover:border-[#25A8A2]/50 hover:border-primary/40",
+      "border-border/60 bg-card/90 backdrop-blur-md dark:border-[#1F2C34] dark:bg-[#111820] dark:hover:border-[#25A8A2]/50 hover:border-teal-500/40",
     overlayRing: "bg-[#25A8A2] shadow-[0_0_12px_rgba(37,168,162,0.6)]",
-    titleHover: "dark:group-hover:text-[#25A8A2]",
+    titleHover: "group-hover:text-teal-600 dark:group-hover:text-[#25A8A2]",
     checkboxChecked:
-      "data-[state=checked]:bg-[#25A8A2] data-[state=checked]:border-[#25A8A2]",
-    watchedLabel: "text-[#25A8A2]",
+      "data-[state=checked]:bg-teal-600 data-[state=checked]:border-teal-600 dark:data-[state=checked]:bg-[#25A8A2] dark:data-[state=checked]:border-[#25A8A2]",
+    watchedLabel: "text-teal-600 dark:text-[#25A8A2]",
     watchButton:
-      "bg-primary text-primary-foreground hover:opacity-90 dark:bg-[#25A8A2] dark:text-white dark:hover:bg-[#20928D] dark:shadow-[0_0_10px_rgba(37,168,162,0.3)]",
+      "bg-teal-600 text-white hover:bg-teal-700 shadow-sm dark:bg-[#25A8A2] dark:text-white dark:hover:bg-[#20928D] dark:shadow-[0_0_10px_rgba(37,168,162,0.3)]",
+  },
+  emerald: {
+    watchedCard:
+      "border-emerald-500/30 bg-emerald-500/5 dark:border-emerald-500/40 dark:bg-emerald-500/10 shadow-[0_0_15px_rgba(16,185,129,0.08)]",
+    defaultCard:
+      "border-border/60 bg-card/90 backdrop-blur-md dark:border-[#1F2C34] dark:bg-[#111820] dark:hover:border-emerald-500/50 hover:border-emerald-500/40",
+    overlayRing: "bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.6)]",
+    titleHover: "group-hover:text-emerald-600 dark:group-hover:text-emerald-400",
+    checkboxChecked:
+      "data-[state=checked]:bg-emerald-600 data-[state=checked]:border-emerald-600 dark:data-[state=checked]:bg-emerald-500 dark:data-[state=checked]:border-emerald-500",
+    watchedLabel: "text-emerald-600 dark:text-emerald-400",
+    watchButton:
+      "bg-emerald-600 text-white hover:bg-emerald-700 dark:bg-emerald-600 dark:text-white dark:hover:bg-emerald-500 dark:shadow-[0_0_10px_rgba(16,185,129,0.3)]",
   },
   amber: {
     watchedCard:
@@ -201,7 +214,7 @@ export function VideoCard({
               "absolute right-2 top-2 z-10 flex h-6 items-center gap-1.5 rounded-md px-2 text-[11px] font-semibold tracking-wide shadow-xs backdrop-blur-md transition-all duration-150 cursor-pointer active:scale-[0.98] disabled:pointer-events-none disabled:opacity-60 border",
               optimisticPrivacy === "public"
                 ? "bg-emerald-600/90 hover:bg-emerald-500 text-white shadow-emerald-900/30 border-emerald-400/40 dark:bg-emerald-500/25 dark:text-emerald-300 dark:border-emerald-500/40 dark:hover:bg-emerald-500/35 dark:hover:border-emerald-500/60"
-                : "bg-card/90 hover:bg-card text-foreground/80 hover:text-foreground border-border/80 shadow-xs dark:bg-[#141E28]/95 dark:text-[#9AA7AE] dark:border-[#1F2C34] dark:hover:bg-[#1B2631] dark:hover:text-white dark:hover:border-[#25A8A2]/40"
+                : "bg-card/90 hover:bg-card text-foreground/80 hover:text-foreground border-border/80 shadow-xs dark:bg-[#141E28]/95 dark:text-[#9AA7AE] dark:border-[#1F2C34] dark:hover:bg-[#1B2631] dark:hover:text-white dark:hover:border-border/80"
             )}
           >
             {isTogglingPrivacy ? (
