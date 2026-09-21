@@ -28,8 +28,12 @@ import {
   Loader2,
   Lock,
   Link2,
+  Maximize,
+  Minimize,
   Pause,
   Play,
+  RotateCcw,
+  RotateCw,
   SkipForward,
   Tv,
   Volume1,
@@ -118,12 +122,32 @@ export function VideoPlayer({
   } | null>(null);
   const seekTimerRef = React.useRef<NodeJS.Timeout | null>(null);
   const volumeTimerRef = React.useRef<NodeJS.Timeout | null>(null);
-  const volumePopoverRef = React.useRef<HTMLDivElement>(null);
 
   // Reset player ready state when switching to a different video
   React.useEffect(() => {
     setIsPlayerReady(false);
   }, [youtubeVideoId]);
+
+  // Sync document fullscreen state
+  React.useEffect(() => {
+    const handleFullscreenChange = () => {
+      const isFs = Boolean(
+        document.fullscreenElement ||
+        (document as any).webkitFullscreenElement ||
+        (document as any).mozFullScreenElement
+      );
+      setIsFullscreen(isFs);
+    };
+
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
+    document.addEventListener("mozfullscreenchange", handleFullscreenChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+      document.removeEventListener("webkitfullscreenchange", handleFullscreenChange);
+      document.removeEventListener("mozfullscreenchange", handleFullscreenChange);
+    };
+  }, []);
 
   const { theme, setTheme, resolvedTheme } = useTheme();
   const previousThemeRef = React.useRef<string | null>(null);
@@ -236,8 +260,6 @@ export function VideoPlayer({
 
   const playerRef = React.useRef<any>(null);
   const containerRef = React.useRef<HTMLDivElement>(null);
-  const speedPopoverRef = React.useRef<HTMLDivElement>(null);
-  const seekPopoverRef = React.useRef<HTMLDivElement>(null);
   const previousRateRef = React.useRef<number>(1);
   const isHoldingSpaceRef = React.useRef<boolean>(false);
   const spaceDownTimeRef = React.useRef<number>(0);
@@ -256,6 +278,11 @@ export function VideoPlayer({
     );
   }, [duration, initialProgressSeconds]);
 
+  const initialStartSecondsRef = React.useRef(initialProgressSeconds);
+  React.useEffect(() => {
+    initialStartSecondsRef.current = initialProgressSeconds;
+  }, [youtubeVideoId]);
+
   const playerOpts = React.useMemo(
     () => ({
       width: "100%",
@@ -263,19 +290,20 @@ export function VideoPlayer({
       playerVars: {
         autoplay: 0,
         start:
-          initialProgressSeconds && initialProgressSeconds > 5 && !isNearEnd
-            ? Math.floor(initialProgressSeconds)
+          initialStartSecondsRef.current && initialStartSecondsRef.current > 5 && !isNearEnd
+            ? Math.floor(initialStartSecondsRef.current)
             : undefined,
+        controls: 1,
         modestbranding: 1,
         rel: 0,
-        fs: 1,
+        fs: 0,
         enablejsapi: 1,
         playsinline: 1,
         iv_load_policy: 3,
         cc_load_policy: 0,
       },
     }),
-    [initialProgressSeconds, isNearEnd]
+    [youtubeVideoId, isNearEnd]
   );
 
   const toggleTheaterMode = React.useCallback(() => {
@@ -304,29 +332,40 @@ export function VideoPlayer({
     });
   }, []);
 
-  const toggleFullscreen = React.useCallback(() => {
+  const toggleFullscreen = React.useCallback(async () => {
     const fsEl =
       document.fullscreenElement ||
       (document as any).webkitFullscreenElement ||
       (document as any).mozFullScreenElement;
 
-    if (!fsEl) {
+    if (!fsEl && !isFullscreen) {
       const container = containerRef.current as any;
       if (container) {
-        if (container.requestFullscreen) {
-          container.requestFullscreen().catch(() => {});
-        } else if (container.webkitRequestFullscreen) {
-          container.webkitRequestFullscreen();
+        try {
+          if (container.requestFullscreen) {
+            await container.requestFullscreen();
+          } else if (container.webkitRequestFullscreen) {
+            container.webkitRequestFullscreen();
+          } else {
+            setIsFullscreen(true);
+          }
+        } catch {
+          setIsFullscreen(true);
         }
+      } else {
+        setIsFullscreen(true);
       }
     } else {
-      if (document.exitFullscreen) {
-        document.exitFullscreen().catch(() => {});
-      } else if ((document as any).webkitExitFullscreen) {
-        (document as any).webkitExitFullscreen();
-      }
+      try {
+        if (document.exitFullscreen && document.fullscreenElement) {
+          await document.exitFullscreen();
+        } else if ((document as any).webkitExitFullscreen && (document as any).webkitFullscreenElement) {
+          (document as any).webkitExitFullscreen();
+        }
+      } catch {}
+      setIsFullscreen(false);
     }
-  }, []);
+  }, [isFullscreen]);
 
   // Initialize YouTube player instance and enforce proper iframe attributes
   const handlePlayerReady = (event: any) => {
@@ -394,7 +433,7 @@ export function VideoPlayer({
 
   // Start 2x speed (Spacebar hold or touch/click hold)
   const start2xSpeed = React.useCallback(() => {
-    if (!playerRef.current || isHoldingSpaceRef.current) return;
+    if (!playerRef.current) return;
     isHoldingSpaceRef.current = true;
     setIs2xSpeed(true);
 
@@ -414,10 +453,11 @@ export function VideoPlayer({
 
   // Stop 2x speed (Revert to previous rate)
   const stop2xSpeed = React.useCallback(() => {
-    if (!playerRef.current || !isHoldingSpaceRef.current) return;
     isHoldingSpaceRef.current = false;
+    is2xActiveFromSpaceRef.current = false;
     setIs2xSpeed(false);
 
+    if (!playerRef.current) return;
     const restoreRate = previousRateRef.current || 1;
     try {
       playerRef.current.setPlaybackRate?.(restoreRate);
@@ -444,9 +484,10 @@ export function VideoPlayer({
   const seekPlayer = React.useCallback((deltaSeconds: number) => {
     if (!playerRef.current) return;
     try {
-      const currentTime = playerRef.current.getCurrentTime?.();
-      if (typeof currentTime === "number") {
-        playerRef.current.seekTo?.(Math.max(0, currentTime + deltaSeconds), true);
+      const currentTimeVal = playerRef.current.getCurrentTime?.();
+      if (typeof currentTimeVal === "number") {
+        const nextTime = Math.max(0, currentTimeVal + deltaSeconds);
+        playerRef.current.seekTo?.(nextTime, true);
       }
     } catch {}
   }, []);
@@ -546,74 +587,7 @@ export function VideoPlayer({
     } catch {}
   }, []);
 
-  // Manage Top-Layer Popover for 2x speed in fullscreen mode
-  React.useEffect(() => {
-    const el = speedPopoverRef.current as any;
-    if (!el || typeof el.showPopover !== "function") return;
-    const isFs = Boolean(
-      isFullscreen ||
-      document.fullscreenElement ||
-      (document as any).webkitFullscreenElement
-    );
 
-    try {
-      if (is2xSpeed && isFs) {
-        if (!el.matches?.(":popover-open")) {
-          el.showPopover();
-        }
-      } else {
-        if (el.matches?.(":popover-open")) {
-          el.hidePopover();
-        }
-      }
-    } catch {}
-  }, [is2xSpeed, isFullscreen]);
-
-  // Manage Top-Layer Popover for Seek Feedback in fullscreen mode
-  React.useEffect(() => {
-    const el = seekPopoverRef.current as any;
-    if (!el || typeof el.showPopover !== "function") return;
-    const isFs = Boolean(
-      isFullscreen ||
-      document.fullscreenElement ||
-      (document as any).webkitFullscreenElement
-    );
-
-    try {
-      if (seekFeedback && isFs) {
-        if (!el.matches?.(":popover-open")) {
-          el.showPopover();
-        }
-      } else {
-        if (el.matches?.(":popover-open")) {
-          el.hidePopover();
-        }
-      }
-    } catch {}
-  }, [seekFeedback, isFullscreen]);
-
-  // Manage Top-Layer Popover for Volume Feedback in fullscreen mode
-  React.useEffect(() => {
-    const el = volumePopoverRef.current as any;
-    if (!el || typeof el.showPopover !== "function") return;
-    const isFs = Boolean(
-      isFullscreen ||
-      document.fullscreenElement ||
-      (document as any).webkitFullscreenElement
-    );
-
-    try {
-      if (volumeFeedback && isFs) {
-        if (!el.matches?.(":popover-open")) {
-          el.showPopover();
-        }
-      } else {
-        if (el.matches?.(":popover-open")) {
-          el.hidePopover();
-        }
-      }
-    } catch {}
-  }, [volumeFeedback, isFullscreen]);
 
   const handlersRef = React.useRef({
     start2xSpeed,
@@ -658,7 +632,6 @@ export function VideoPlayer({
 
       const {
         start2xSpeed,
-        togglePlayPause,
         handleSeek,
         changeVolume,
         toggleMute,
@@ -781,25 +754,37 @@ export function VideoPlayer({
         e.preventDefault();
         e.stopPropagation();
 
+        const wasHeld = is2xActiveFromSpaceRef.current;
+
         // Clear the hold timer immediately
         if (spaceHoldTimerRef.current) {
           clearTimeout(spaceHoldTimerRef.current);
           spaceHoldTimerRef.current = null;
         }
 
-        if (is2xActiveFromSpaceRef.current) {
-          // Space was held long enough to activate 2x fast-forward -> revert speed, don't toggle play/pause
-          is2xActiveFromSpaceRef.current = false;
-          stop2xSpeed();
-        } else {
+        is2xActiveFromSpaceRef.current = false;
+        stop2xSpeed();
+
+        if (!wasHeld) {
           // Released before hold threshold (quick tap) -> pure play/pause toggle without 2x ever triggering!
           togglePlayPause();
         }
       }
     };
 
+    const handleSafetyBlur = () => {
+      if (spaceHoldTimerRef.current) {
+        clearTimeout(spaceHoldTimerRef.current);
+        spaceHoldTimerRef.current = null;
+      }
+      is2xActiveFromSpaceRef.current = false;
+      handlersRef.current.stop2xSpeed();
+    };
+
     window.addEventListener("keydown", handleKeyDown, { passive: false });
     window.addEventListener("keyup", handleKeyUp, { passive: false });
+    window.addEventListener("blur", handleSafetyBlur);
+    document.addEventListener("visibilitychange", handleSafetyBlur);
 
     return () => {
       if (spaceHoldTimerRef.current) {
@@ -807,6 +792,8 @@ export function VideoPlayer({
       }
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
+      window.removeEventListener("blur", handleSafetyBlur);
+      document.removeEventListener("visibilitychange", handleSafetyBlur);
     };
   }, []);
 
@@ -912,7 +899,6 @@ export function VideoPlayer({
     const state = event.data;
     if (state === 1) {
       setIsPlaying(true);
-      // As soon as video starts playing, ensure container has focus so 'T' (theater) and 'Esc' work immediately
       setTimeout(() => {
         containerRef.current?.focus();
       }, 50);
@@ -1045,85 +1031,7 @@ export function VideoPlayer({
         </div>
       </div>
 
-      {/* Top-layer Popover for 2X Speed Indicator in Native Fullscreen */}
-      <div
-        ref={speedPopoverRef}
-        popover="manual"
-        className="fixed top-6 sm:top-10 left-1/2 -translate-x-1/2 m-0 p-0 border-none bg-transparent shadow-none pointer-events-none z-[999999] overflow-visible [&::backdrop]:hidden outline-none"
-      >
-        <div className="flex items-center gap-1.5 rounded-full px-4 py-1.5 shadow-2xl backdrop-blur-md border border-white/10 bg-black/85 text-white select-none">
-          <span className="text-xs sm:text-sm font-semibold tracking-wide text-white">
-            2x
-          </span>
-          <ChevronsRight className="h-4 w-4 fill-white text-white" />
-        </div>
-      </div>
 
-      {/* Top-layer Popover for Seek Feedback in Native Fullscreen */}
-      <div
-        ref={seekPopoverRef}
-        popover="manual"
-        style={
-          seekFeedback?.direction === "forward"
-            ? { left: "auto", right: "3.5rem" }
-            : { right: "auto", left: "3.5rem" }
-        }
-        className="fixed top-1/2 -translate-y-1/2 m-0 p-0 border-none bg-transparent shadow-none pointer-events-none z-[999999] overflow-visible [&::backdrop]:hidden outline-none"
-      >
-        {seekFeedback && (
-          <div className="flex flex-col items-center justify-center rounded-full bg-black/80 px-5 py-4 text-white shadow-2xl backdrop-blur-md border border-white/10 animate-in fade-in zoom-in-75 duration-150 select-none">
-            {seekFeedback.direction === "forward" ? (
-              <div className="flex items-center text-white mb-1">
-                <ChevronsRight className="h-7 w-7 fill-white stroke-none animate-pulse" />
-              </div>
-            ) : (
-              <div className="flex items-center text-white mb-1">
-                <ChevronsLeft className="h-7 w-7 fill-white stroke-none animate-pulse" />
-              </div>
-            )}
-            <span className="font-mono text-xs font-bold tracking-wider">
-              {seekFeedback.seconds} seconds
-            </span>
-          </div>
-        )}
-      </div>
-
-      {/* Top-layer Popover for Volume Feedback in Native Fullscreen */}
-      <div
-        ref={volumePopoverRef}
-        popover="manual"
-        className="fixed top-6 left-1/2 -translate-x-1/2 m-0 p-0 border-none bg-transparent shadow-none pointer-events-none z-[999999] overflow-visible [&::backdrop]:hidden outline-none"
-      >
-        {volumeFeedback && (
-          <div className="flex items-center gap-2.5 rounded-full bg-black/85 px-4 py-2 text-white shadow-2xl backdrop-blur-md border border-white/15 animate-in fade-in zoom-in-90 duration-150 select-none">
-            {volumeFeedback.isMuted ? (
-              <VolumeX className="h-4 w-4 text-red-400 shrink-0" />
-            ) : volumeFeedback.volume <= 50 ? (
-              <Volume1 className="h-4 w-4 text-white shrink-0" />
-            ) : (
-              <Volume2 className="h-4 w-4 text-white shrink-0" />
-            )}
-            <div className="w-20 h-1.5 bg-white/20 rounded-full overflow-hidden">
-              <div
-                className={cn(
-                  "h-full rounded-full transition-all duration-100",
-                  volumeFeedback.isMuted
-                    ? "bg-red-400"
-                    : isIntensive
-                    ? "bg-amber-500"
-                    : isSubjectHacks
-                    ? "bg-blue-500"
-                    : "bg-emerald-400"
-                )}
-                style={{ width: `${volumeFeedback.isMuted ? 0 : volumeFeedback.volume}%` }}
-              />
-            </div>
-            <span className="font-mono text-xs font-bold tracking-wider">
-              {volumeFeedback.isMuted ? "Muted" : `${volumeFeedback.volume}%`}
-            </span>
-          </div>
-        )}
-      </div>
 
       {/* ── Theater Mode: Full-screen dark backdrop (big screens only) ── */}
       {isTheaterMode && (
@@ -1149,33 +1057,13 @@ export function VideoPlayer({
         className={cn(
           "group relative bg-black outline-none select-none overflow-hidden",
           isFullscreen
-            ? "!fixed !inset-0 !w-screen !h-screen !max-w-none !max-h-none !top-0 !left-0 !transform-none !rounded-none !border-0 !m-0 !p-0 z-[999999]"
+            ? "!fixed !inset-0 !w-screen !h-screen !max-w-none !max-h-none !top-0 !left-0 !transform-none !rounded-none !border-0 !m-0 !p-0 z-[999999] flex items-center justify-center bg-black"
             : isTheaterMode
             ? "rounded-2xl border border-border/60 shadow-xl dark:border-[#1F2C34] md:border-0 md:fixed md:inset-0 md:m-auto md:z-[70] md:w-[min(95vw,calc((100dvh-2.5rem)*16/9))] md:h-[min(calc(95vw*9/16),calc(100dvh-2.5rem))] md:aspect-video md:shadow-[0_0_100px_rgba(0,0,0,0.95)] md:rounded-2xl md:ring-1 md:ring-white/10 md:transition-none"
             : "rounded-2xl border border-border/60 shadow-xl dark:border-[#1F2C34] transition-all duration-300"
         )}
       >
-        {/* Theater Mode Toggle Button on Player (Hidden on small screens, visible on big screens only) */}
-        {!isFullscreen && (
-          <button
-            type="button"
-            onClick={toggleTheaterMode}
-            title={isTheaterMode ? "Default view (t)" : "Theater mode (t)"}
-            className="absolute top-3 right-3 z-30 hidden md:flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-xl bg-black/75 text-white/85 hover:text-white hover:bg-black/95 backdrop-blur-md border border-white/15 transition-all opacity-0 group-hover:opacity-100 focus:opacity-100 active:scale-95 cursor-pointer shadow-lg"
-          >
-            {isTheaterMode ? (
-              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="2" y="4" width="20" height="16" rx="2" />
-                <rect x="6" y="7" width="12" height="10" rx="1" fill="currentColor" opacity="0.6" />
-              </svg>
-            ) : (
-              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="2" y="4" width="20" height="16" rx="2" />
-                <rect x="4" y="6" width="16" height="12" rx="1" fill="currentColor" opacity="0.6" />
-              </svg>
-            )}
-          </button>
-        )}
+
 
         {/* Floating 2X Speed Indicator Overlay (YouTube Style) */}
         <div
@@ -1256,7 +1144,14 @@ export function VideoPlayer({
         )}
 
         {/* Video Frame: strictly keeps 16:9 aspect ratio */}
-        <div className="relative select-none w-full overflow-hidden aspect-video bg-black">
+        <div
+          className={cn(
+            "relative select-none overflow-hidden aspect-video bg-black",
+            isFullscreen
+              ? "w-full h-full max-w-[calc(100vh*16/9)] max-h-screen"
+              : "w-full"
+          )}
+        >
           {/* Instant HD Thumbnail & Ambient Poster until YouTube Player is ready */}
           {!isPlayerReady && (
             <div className="absolute inset-0 z-10 flex items-center justify-center overflow-hidden bg-[#0A0F12] select-none pointer-events-none transition-opacity duration-300">
@@ -1282,6 +1177,7 @@ export function VideoPlayer({
             </div>
           )}
 
+          {/* Native YouTube Player with Native 60fps Controls */}
           <YouTube
             videoId={youtubeVideoId}
             onReady={handlePlayerReady}
@@ -1290,6 +1186,132 @@ export function VideoPlayer({
             opts={playerOpts}
             className="w-full h-full [&>div]:!h-full [&>div]:!w-full [&_iframe]:!h-full [&_iframe]:!w-full pointer-events-auto"
           />
+
+          {/* ── Invisible Click Shields: Blocks YouTube & Channel Navigation ── */}
+          {/* 1. Top Header Shield: Covers channel avatar, channel name, and title on the left; leaves CC & Settings on the right 100% accessible */}
+          <div
+            onClick={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              togglePlayPause();
+            }}
+            onMouseDown={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+            }}
+            onTouchStart={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              togglePlayPause();
+            }}
+            title="Channel details"
+            className="absolute top-0 left-0 right-48 sm:right-56 h-16 sm:h-20 z-20 cursor-pointer pointer-events-auto bg-transparent"
+            aria-hidden="true"
+          />
+
+          {/* 2. Bottom Right Shield: Covers 'Watch on YouTube' pill or 'YouTube' logo firmly at bottom-0 */}
+          <div
+            onClick={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              togglePlayPause();
+            }}
+            onMouseDown={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+            }}
+            onTouchStart={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              togglePlayPause();
+            }}
+            title="Toggle playback"
+            className={cn(
+              "absolute bottom-0 right-0 z-30 cursor-pointer pointer-events-auto bg-transparent transition-all",
+              isPlaying
+                ? "w-44 h-14"
+                : "w-72 sm:w-84 h-20 sm:h-24"
+            )}
+            aria-hidden="true"
+          />
+
+          {/* 3. Bottom Left Shield: Covers 'Copy link' button when paused/stopped */}
+          {!isPlaying && (
+            <div
+              onClick={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                togglePlayPause();
+              }}
+              onMouseDown={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+              }}
+              onTouchStart={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                togglePlayPause();
+              }}
+              title="Toggle playback"
+              className="absolute bottom-0 left-0 w-28 sm:w-32 h-20 sm:h-24 z-30 cursor-pointer pointer-events-auto bg-transparent"
+              aria-hidden="true"
+            />
+          )}
+
+          {/* ── Theater & Fullscreen Toggle Buttons on Video Frame Bottom-Right (Idea B - Classic Spot) ── */}
+          <div className="absolute bottom-2.5 right-2.5 sm:bottom-3 sm:right-3 z-40 flex items-center gap-1.5 opacity-90 sm:opacity-0 sm:group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-200 pointer-events-auto">
+            {/* Theater Mode Button (desktop / tablet only) */}
+            {!isFullscreen && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleTheaterMode();
+                }}
+                onMouseDown={(e) => e.stopPropagation()}
+                onTouchStart={(e) => {
+                  e.stopPropagation();
+                  toggleTheaterMode();
+                }}
+                title={isTheaterMode ? "Default view (t)" : "Theater mode (t)"}
+                className="hidden md:flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-xl bg-black/80 text-white/90 hover:text-white hover:bg-black/95 backdrop-blur-md border border-white/20 transition-all active:scale-95 cursor-pointer shadow-lg"
+              >
+                {isTheaterMode ? (
+                  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="2" y="4" width="20" height="16" rx="2" />
+                    <rect x="6" y="7" width="12" height="10" rx="1" fill="currentColor" opacity="0.6" />
+                  </svg>
+                ) : (
+                  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="2" y="4" width="20" height="16" rx="2" />
+                    <rect x="4" y="6" width="16" height="12" rx="1" fill="currentColor" opacity="0.6" />
+                  </svg>
+                )}
+              </button>
+            )}
+
+            {/* Fullscreen Button */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleFullscreen();
+              }}
+              onMouseDown={(e) => e.stopPropagation()}
+              onTouchStart={(e) => {
+                e.stopPropagation();
+                toggleFullscreen();
+              }}
+              title={isFullscreen ? "Exit Fullscreen (f / Esc)" : "Fullscreen (f)"}
+              className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-xl bg-black/80 text-white/90 hover:text-white hover:bg-black/95 backdrop-blur-md border border-white/20 transition-all active:scale-95 cursor-pointer shadow-lg"
+            >
+              {isFullscreen ? (
+                <Minimize className="h-4 w-4" />
+              ) : (
+                <Maximize className="h-4 w-4" />
+              )}
+            </button>
+          </div>
         </div>
       </div>
 
