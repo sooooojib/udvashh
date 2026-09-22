@@ -1,5 +1,6 @@
-@import "tailwindcss";
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@100..900&display=swap');
+@import "tailwindcss";
+@import "katex/dist/katex.min.css";
 
 @custom-variant dark (&:where(.dark, .dark *));
 
@@ -317,6 +318,21 @@ body.theater-mode-active main > :not(.video-player-root) {
   border-radius: 0 !important;
   border: none !important;
   box-shadow: none !important;
+}
+
+/* ── KaTeX Math Formula Styling ── */
+.katex {
+  color: inherit !important;
+  font-size: 1.05em;
+  text-rendering: auto;
+}
+.katex-display {
+  margin: 0.5em 0 !important;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+.inline-math {
+  margin: 0 0.15em;
 }
 
 

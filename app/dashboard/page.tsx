@@ -20,10 +20,12 @@ import {
   ArrowRight,
   BookOpen,
   Flame,
+  GraduationCap,
   Lightbulb,
   PlaySquare,
   Tv,
 } from "lucide-react";
+import { getExamStats } from "@/lib/exams";
 
 export const metadata: Metadata = {
   title: "Dashboard | অবনতি",
@@ -87,6 +89,20 @@ export default async function DashboardPage() {
   const totalSubjectHacks = subjectHacksVideos.length;
   const watchedSubjectHacks = subjectHacksVideos.filter((v) => watchedIds.has(v.id)).length;
   const subjectHacksPercent = totalSubjectHacks > 0 ? Math.round((watchedSubjectHacks / totalSubjectHacks) * 100) : 0;
+
+  // Exam stats & User Attempts for Live Exams Hub
+  const examStats = getExamStats();
+  let userExamAttemptsCount = 0;
+  try {
+    const attemptsResult = await sql`
+      SELECT count(*)::int as count FROM exam_attempts
+      WHERE user_id = ${session.id}
+    `;
+    userExamAttemptsCount = attemptsResult[0]?.count || 0;
+  } catch {
+    userExamAttemptsCount = 0;
+  }
+  const examPercent = examStats.total > 0 ? Math.round((userExamAttemptsCount / examStats.total) * 100) : 0;
 
   // All playlists for Dashboard sync
   const allDashboardPlaylists = [
@@ -394,56 +410,68 @@ export default async function DashboardPage() {
           </Link>
 
 
-          {/* Module 4: Model Tests & Exams (FUTURE) */}
-          <div className="relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border/40 bg-card/50 p-5.5 opacity-75 backdrop-blur-md dark:border-[#1F2C34]/60 dark:bg-[#111820]/40">
+          {/* Module 4: Live Exams (ACTIVE) */}
+          <Link
+            href="/exams"
+            className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border/60 bg-card/90 p-5 shadow-sm backdrop-blur-md transition-all duration-200 ease-in-out hover:scale-[1.01] active:scale-[0.99] hover:border-rose-500/50 dark:border-[#1F2C34] dark:bg-[#111820] dark:hover:border-rose-500/60 hover:shadow-lg hover:shadow-red-500/5 min-h-[180px]"
+          >
+            {/* Top Badge */}
             <div className="flex items-center justify-between gap-2">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-muted text-muted-foreground dark:bg-[#141E28] dark:text-[#5C6A72]">
-                <BookOpen className="h-5.5 w-5.5" />
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-red-500 via-rose-500 to-red-600 text-white shadow-md shadow-red-500/25 transition-transform duration-200 group-hover:scale-105">
+                <GraduationCap className="h-5.5 w-5.5" />
               </div>
-              <span className="rounded-full bg-muted dark:bg-[#141E28] px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground dark:text-[#9AA7AE]">
-                Coming Soon
+              <span className="flex items-center gap-1.5 rounded-full bg-gradient-to-r from-red-500/15 to-rose-500/15 px-2.5 py-0.5 text-xs font-bold text-rose-600 border border-rose-500/30 dark:text-rose-400">
+                <span className="h-1.5 w-1.5 rounded-full bg-gradient-to-r from-red-500 to-rose-500 animate-pulse" />
+                Active
               </span>
             </div>
 
+            {/* Title */}
             <div className="mt-4">
-              <h3 className="font-heading text-lg font-bold tracking-tight text-foreground/80 dark:text-[#E8EDF0]/80">
-                Model Tests & Quizzes
+              <h3 className="font-heading text-lg font-bold tracking-tight text-foreground transition-colors group-hover:text-rose-600 dark:text-[#E8EDF0] dark:group-hover:text-rose-400">
+                Live Exams
               </h3>
             </div>
 
-            {/* Stats Row */}
-            <div className="my-4 grid grid-cols-3 gap-2 rounded-xl border border-border/40 bg-muted/15 p-2.5 dark:border-[#1F2C34]/60 dark:bg-[#0A0F12]/30">
+            {/* Module Stats Grid */}
+            <div className="my-4 grid grid-cols-3 gap-2 rounded-xl border border-border/40 bg-muted/20 p-2.5 dark:border-[#1F2C34] dark:bg-[#0A0F12]/60">
               <div>
                 <span className="block text-[10px] font-medium text-muted-foreground uppercase tracking-wider dark:text-[#5C6A72]">
                   Total
                 </span>
-                <span className="font-mono text-sm font-bold text-foreground/70 dark:text-[#E8EDF0]/70">
-                  0 <span className="text-[10px] font-normal text-muted-foreground">tests</span>
+                <span className="font-mono text-sm font-bold text-foreground dark:text-[#E8EDF0]">
+                  {examStats.total} <span className="text-[10px] font-normal text-muted-foreground">tests</span>
                 </span>
               </div>
-              <div className="border-l border-border/40 pl-2.5 dark:border-[#1F2C34]/60">
+              <div className="border-l border-border/40 pl-2.5 dark:border-[#1F2C34]">
                 <span className="block text-[10px] font-medium text-muted-foreground uppercase tracking-wider dark:text-[#5C6A72]">
-                  Attended
+                  Completed
                 </span>
-                <span className="font-mono text-sm font-bold text-foreground/70 dark:text-[#E8EDF0]/70">
-                  0 <span className="text-[10px] font-normal text-muted-foreground">done</span>
+                <span className="font-mono text-sm font-bold text-rose-600 dark:text-rose-400">
+                  {userExamAttemptsCount} <span className="text-[10px] font-normal text-muted-foreground">done</span>
                 </span>
               </div>
-              <div className="border-l border-border/40 pl-2.5 dark:border-[#1F2C34]/60">
+              <div className="border-l border-border/40 pl-2.5 dark:border-[#1F2C34]">
                 <span className="block text-[10px] font-medium text-muted-foreground uppercase tracking-wider dark:text-[#5C6A72]">
-                  Status
+                  Progress
                 </span>
-                <span className="font-mono text-xs font-semibold text-muted-foreground">
-                  Ready
+                <span className="font-mono text-sm font-bold text-foreground dark:text-[#E8EDF0]">
+                  {examPercent}%
                 </span>
               </div>
             </div>
 
-            <div className="flex items-center justify-between border-t border-border/30 dark:border-[#1F2C34]/40 pt-3 text-xs text-muted-foreground dark:text-[#5C6A72]">
-              <span>Section ready</span>
-              <span>Available soon</span>
+            {/* Meta & Button */}
+            <div className="flex items-center justify-between border-t border-border/40 dark:border-[#1F2C34] pt-3 text-xs">
+              <span className="font-medium text-muted-foreground font-mono text-[11px] dark:text-[#9AA7AE]">
+                Daily • Weekly • Written
+              </span>
+              <span className="flex items-center gap-1 font-bold text-rose-600 dark:text-rose-400 transition-transform group-hover:translate-x-0.5">
+                <span>Explore Exams</span>
+                <ArrowRight className="h-3.5 w-3.5" />
+              </span>
             </div>
-          </div>
+          </Link>
         </div>
       </div>
     </main>

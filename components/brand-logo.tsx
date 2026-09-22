@@ -12,24 +12,40 @@ interface BrandLogoProps {
 
 const themeStyles = {
   teal: {
+    svg: "text-teal-600 dark:text-[#25A8A2]",
     text: "text-teal-600 dark:text-[#25A8A2]",
     hover: "group-hover:text-teal-700 dark:group-hover:text-[#38D2CB]",
     glow: "dark:drop-shadow-[0_0_10px_rgba(37,168,162,0.35)] dark:group-hover:drop-shadow-[0_0_16px_rgba(37,168,162,0.6)]",
   },
   emerald: {
+    svg: "text-emerald-600 dark:text-emerald-400",
     text: "text-emerald-600 dark:text-emerald-400",
     hover: "group-hover:text-emerald-700 dark:group-hover:text-emerald-300",
     glow: "dark:drop-shadow-[0_0_10px_rgba(16,185,129,0.35)] dark:group-hover:drop-shadow-[0_0_16px_rgba(16,185,129,0.6)]",
   },
   amber: {
+    svg: "text-amber-600 dark:text-amber-400",
     text: "text-amber-600 dark:text-amber-400",
     hover: "group-hover:text-amber-700 dark:group-hover:text-amber-300",
     glow: "dark:drop-shadow-[0_0_10px_rgba(245,158,11,0.35)] dark:group-hover:drop-shadow-[0_0_16px_rgba(245,158,11,0.6)]",
   },
   blue: {
+    svg: "text-blue-600 dark:text-blue-400",
     text: "text-blue-600 dark:text-blue-400",
     hover: "group-hover:text-blue-700 dark:group-hover:text-blue-300",
     glow: "dark:drop-shadow-[0_0_10px_rgba(59,130,246,0.35)] dark:group-hover:drop-shadow-[0_0_16px_rgba(59,130,246,0.6)]",
+  },
+  purple: {
+    svg: "text-purple-600 dark:text-purple-400",
+    text: "text-purple-600 dark:text-purple-400",
+    hover: "group-hover:text-purple-700 dark:group-hover:text-purple-300",
+    glow: "dark:drop-shadow-[0_0_10px_rgba(168,85,247,0.35)] dark:group-hover:drop-shadow-[0_0_16px_rgba(168,85,247,0.6)]",
+  },
+  red: {
+    svg: "text-rose-600 dark:text-rose-400",
+    text: "bg-gradient-to-r from-red-600 via-rose-500 to-red-600 bg-clip-text text-transparent dark:from-red-400 dark:via-rose-400 dark:to-red-400",
+    hover: "group-hover:opacity-90",
+    glow: "dark:drop-shadow-[0_0_12px_rgba(225,29,72,0.45)] dark:group-hover:drop-shadow-[0_0_18px_rgba(244,63,94,0.7)]",
   },
 } as const;
 
@@ -73,6 +89,8 @@ export function BrandLogo({ className, href = "/dashboard" }: BrandLogoProps) {
     activeTheme = "amber";
   } else if (pathname.startsWith("/subject-hacks")) {
     activeTheme = "blue";
+  } else if (pathname.startsWith("/exams")) {
+    activeTheme = "red";
   } else if (pathname.startsWith("/watch")) {
     if (watchModule === "intensive") activeTheme = "amber";
     else if (watchModule === "subject-hacks") activeTheme = "blue";
@@ -94,12 +112,12 @@ export function BrandLogo({ className, href = "/dashboard" }: BrandLogoProps) {
       <svg
         width="28"
         height="28"
-        viewBox="0 10 380 430"
+        viewBox="0 0 380 440"
         fill="currentColor"
         xmlns="http://www.w3.org/2000/svg"
         className={cn(
-          "h-7 w-7 shrink-0 transition-colors duration-200 drop-shadow-sm",
-          t.text,
+          "h-7 w-7 shrink-0 overflow-visible transition-colors duration-200 drop-shadow-sm",
+          t.svg,
           t.hover,
           t.glow
         )}
@@ -135,7 +153,7 @@ export function BrandLogo({ className, href = "/dashboard" }: BrandLogoProps) {
       {/* Brand Name Typography ("অবনতি") */}
       <span
         className={cn(
-          "font-bengali text-2xl font-bold tracking-tight leading-none transition-colors duration-200",
+          "font-bengali text-2xl font-bold tracking-tight inline-block pt-1 pb-1 leading-normal transition-all duration-200 overflow-visible",
           t.text,
           t.hover
         )}
