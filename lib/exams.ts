@@ -163,3 +163,79 @@ export function getExamStats() {
 
   return { total, daily, weekly, written, totalQuestions };
 }
+
+/**
+ * Normalizes a Live Class video title to a matching key (e.g. "bangladesh affairs-10", "bangla language-01")
+ */
+export function normalizeLiveClassToExamKey(title: string): string | null {
+  const numMatch = title.match(/(\d+)\s*$/);
+  if (!numMatch) return null;
+  const num = parseInt(numMatch[1], 10);
+  const padNum = String(num).padStart(2, "0");
+
+  const t = title.toLowerCase();
+  let subjectKey = "";
+  if (t.includes("bengali language") || t.includes("bangla language")) subjectKey = "bangla language";
+  else if (t.includes("bengali literature") || t.includes("bangla literature")) subjectKey = "bangla literature";
+  else if (t.includes("english language")) subjectKey = "english language";
+  else if (t.includes("english literature")) subjectKey = "english literature";
+  else if (t.includes("mathematical reasoning") || t.includes("math")) subjectKey = "math";
+  else if (t.includes("mental ability")) subjectKey = "mental ability";
+  else if (t.includes("international affairs")) subjectKey = "international affairs";
+  else if (t.includes("bangladesh affairs")) subjectKey = "bangladesh affairs";
+  else if (t.includes("computer") || t.includes("ict")) subjectKey = "computer";
+  else if (t.includes("general science") || t.includes("science")) subjectKey = "general science";
+  else if (t.includes("geography")) subjectKey = "geography";
+  else if (t.includes("ethics")) subjectKey = "ethics";
+
+  if (!subjectKey) return null;
+  return `${subjectKey}-${padNum}`;
+}
+
+/**
+ * Normalizes a Daily Live Exam title to the same matching key format
+ */
+export function normalizeExamToKey(title: string): string | null {
+  const numMatch = title.match(/(\d+)\s*$/);
+  if (!numMatch) return null;
+  const num = parseInt(numMatch[1], 10);
+  const padNum = String(num).padStart(2, "0");
+
+  const t = title.toLowerCase();
+  let subjectKey = "";
+  if (t.includes("bangla language") || t.includes("bengali language")) subjectKey = "bangla language";
+  else if (t.includes("bangla literature") || t.includes("bengali literature")) subjectKey = "bangla literature";
+  else if (t.includes("english language")) subjectKey = "english language";
+  else if (t.includes("english literature")) subjectKey = "english literature";
+  else if (t.includes("math")) subjectKey = "math";
+  else if (t.includes("mental ability")) subjectKey = "mental ability";
+  else if (t.includes("international affairs")) subjectKey = "international affairs";
+  else if (t.includes("bangladesh affairs")) subjectKey = "bangladesh affairs";
+  else if (t.includes("computer")) subjectKey = "computer";
+  else if (t.includes("general science") || t.includes("science")) subjectKey = "general science";
+  else if (t.includes("geography")) subjectKey = "geography";
+  else if (t.includes("ethics")) subjectKey = "ethics";
+
+  if (!subjectKey) return null;
+  return `${subjectKey}-${padNum}`;
+}
+
+/**
+ * Finds the corresponding Daily Live Exam for a given Live Class video title instantly in-memory
+ */
+export function getConnectedDailyExam(videoTitle: string): ExamItem | null {
+  const key = normalizeLiveClassToExamKey(videoTitle);
+  if (!key) return null;
+
+  const exams = getAllExams();
+  for (const exam of exams) {
+    if (exam.category === "daily") {
+      const examKey = normalizeExamToKey(exam.title);
+      if (examKey === key) {
+        return exam;
+      }
+    }
+  }
+
+  return null;
+}

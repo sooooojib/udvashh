@@ -6,6 +6,10 @@ import { VideoPlayer } from "@/components/watch/video-player";
 import { VideoPdfSection } from "@/components/watch/video-pdf-section";
 import type { VideoPdfItem } from "@/app/actions/pdf";
 import { getPlaylistName } from "@/lib/youtube/playlists";
+import { INTENSIVE_PLAYLISTS, getIntensivePlaylistName } from "@/lib/youtube/intensive-playlists";
+import { SUBJECT_HACKS_PLAYLISTS, getSubjectHacksPlaylistName } from "@/lib/youtube/subject-hacks-playlists";
+import { compareVideos } from "@/lib/utils/format";
+import { getConnectedDailyExam, type ExamItem } from "@/lib/exams";
 
 interface WatchPageProps {
   params: Promise<{ videoId: string }>;
@@ -68,8 +72,11 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
       .catch(() => {});
   }
 
-  // Fetch watched status, playlist siblings, and PDFs in a single batched HTTP round-trip
-  const [progressRows, playlistRows, pdfRowsRaw] = await sql.transaction([
+  // Resolve connected Daily Exam instantly (0ms)
+  const connectedExam: ExamItem | null = getConnectedDailyExam(video.title);
+
+  // Batch ALL queries into a single HTTP round-trip (progress, playlist, PDFs, and exam attempt)
+  const queries = [
     sql`
       SELECT watched, progress_seconds FROM watch_progress
       WHERE user_id = ${session.id} AND video_id = ${video.id}
@@ -84,7 +91,22 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
       WHERE video_id = ${video.id}
       ORDER BY created_at ASC
     `,
-  ]);
+  ];
+
+  if (connectedExam) {
+    queries.push(sql`
+      SELECT score, total_questions, selected_answers
+      FROM exam_attempts
+      WHERE user_id = ${session.id} AND exam_id = ${connectedExam.id}
+      LIMIT 1
+    `);
+  }
+
+  const results = await sql.transaction(queries);
+  const progressRows = results[0];
+  const playlistRows = results[1];
+  const pdfRowsRaw = results[2];
+  const attemptRows = connectedExam && results.length > 3 ? results[3] : [];
 
   const isWatched = progressRows[0]?.watched === true;
   const dbProgressSeconds = Number(progressRows[0]?.progress_seconds) || 0;
@@ -94,11 +116,24 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
       : dbProgressSeconds;
   const pdfRows = pdfRowsRaw as unknown as VideoPdfItem[];
 
+  let connectedExamAttempt: {
+    score: number;
+    total: number;
+    selectedAnswers: Record<string, string>;
+  } | null = null;
+
+  if (attemptRows && attemptRows.length > 0) {
+    connectedExamAttempt = {
+      score: attemptRows[0].score,
+      total: attemptRows[0].total_questions,
+      selectedAnswers: attemptRows[0].selected_answers || {},
+    };
+  }
+
   let nextVideoId: string | null = null;
   let videoPosition = video.position;
 
   if (playlistRows.length > 0) {
-    const { compareVideos } = await import("@/lib/utils/format");
     playlistRows.sort(compareVideos as Parameters<typeof playlistRows.sort>[0]);
 
     const currentIndex = playlistRows.findIndex(
@@ -112,13 +147,6 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
       }
     }
   }
-
-  const { INTENSIVE_PLAYLISTS, getIntensivePlaylistName } = await import(
-    "@/lib/youtube/intensive-playlists"
-  );
-  const { SUBJECT_HACKS_PLAYLISTS, getSubjectHacksPlaylistName } = await import(
-    "@/lib/youtube/subject-hacks-playlists"
-  );
 
   const isIntensive = INTENSIVE_PLAYLISTS.some(
     (p) => p.id === video.playlist_id
@@ -162,6 +190,8 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
         nextVideoId={nextVideoId}
         isAdmin={isOwner}
         privacyStatus={currentPrivacy}
+        connectedExam={connectedExam}
+        initialExamAttempt={connectedExamAttempt}
       />
 
       <VideoPdfSection

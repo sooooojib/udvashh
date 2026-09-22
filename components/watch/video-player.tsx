@@ -43,6 +43,8 @@ import {
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { ConnectedExamCard } from "./connected-exam-card";
+import type { ExamItem } from "@/lib/exams";
 
 // Dynamically import react-youtube to avoid SSR issues
 const YouTube = dynamic(
@@ -75,6 +77,12 @@ interface VideoPlayerProps {
   nextVideoId: string | null;
   isAdmin?: boolean;
   privacyStatus?: string | null;
+  connectedExam?: ExamItem | null;
+  initialExamAttempt?: {
+    score: number;
+    total: number;
+    selectedAnswers: Record<string, string>;
+  } | null;
 }
 
 export function VideoPlayer({
@@ -93,6 +101,8 @@ export function VideoPlayer({
   nextVideoId,
   isAdmin = false,
   privacyStatus,
+  connectedExam,
+  initialExamAttempt,
 }: VideoPlayerProps) {
   const [optimisticWatched, setOptimisticWatched] =
     useOptimistic(initialWatched);
@@ -1540,6 +1550,16 @@ export function VideoPlayer({
           <p className="whitespace-pre-line text-xs sm:text-sm leading-relaxed text-muted-foreground dark:text-[#9AA7AE]">
             {description}
           </p>
+        </div>
+      )}
+
+      {/* ── Connected Daily Live Exam (Right after Description) ── */}
+      {connectedExam && (
+        <div className={cn(isTheaterMode && "md:hidden")}>
+          <ConnectedExamCard
+            exam={connectedExam}
+            initialAttempt={initialExamAttempt}
+          />
         </div>
       )}
     </div>
