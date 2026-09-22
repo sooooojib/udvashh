@@ -103,7 +103,11 @@ export async function updatePlaybackProgress(
       END
   `;
 
-  revalidatePath("/dashboard");
+  // Only revalidate dashboard when the video is nearly finished (auto-marked watched)
+  // Avoid heavy dashboard re-rendering on routine playback heartbeat pings
+  if (isNearlyFinished) {
+    revalidatePath("/dashboard");
+  }
 }
 
 export async function removeFromCurrentlyWatching(

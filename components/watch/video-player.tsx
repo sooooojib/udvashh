@@ -861,8 +861,8 @@ export function VideoPlayer({
       const current = playerRef.current.getCurrentTime?.();
       if (typeof current === "number" && current >= 0) {
         const floorSec = Math.floor(current);
-        // Only update if changed by at least 3 seconds
-        if (Math.abs(floorSec - lastSyncedSecondsRef.current) >= 3) {
+        // Only update if changed by at least 5 seconds
+        if (Math.abs(floorSec - lastSyncedSecondsRef.current) >= 5) {
           lastSyncedSecondsRef.current = floorSec;
           updatePlaybackProgress(videoId, floorSec, duration);
         }
@@ -873,10 +873,10 @@ export function VideoPlayer({
   React.useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
     if (isPlaying) {
-      // Sync every 10 seconds while playing
+      // Sync every 60 seconds while playing (reduces database & Vercel compute by ~85% while keeping exact resume position)
       interval = setInterval(() => {
         syncProgress();
-      }, 10000);
+      }, 60000);
     }
     return () => {
       if (interval) clearInterval(interval);

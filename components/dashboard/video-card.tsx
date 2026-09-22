@@ -159,6 +159,7 @@ export function VideoCard({
             sizes="(max-width: 480px) 100vw, (max-width: 768px) 50vw, (max-width: 1280px) 33vw, 25vw"
             loading={index < 3 ? "eager" : "lazy"}
             decoding="async"
+            unoptimized={Boolean(video.thumbnail_url?.includes("ytimg.com") || video.thumbnail_url?.includes("youtube.com"))}
             className="object-cover transition-transform duration-300 ease-out group-hover:scale-105"
           />
         ) : (
