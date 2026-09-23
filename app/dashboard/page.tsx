@@ -413,22 +413,22 @@ export default async function DashboardPage() {
           {/* Module 4: Live Exams (ACTIVE) */}
           <Link
             href="/exams"
-            className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border/60 bg-card/90 p-5 shadow-sm backdrop-blur-md transition-all duration-200 ease-in-out hover:scale-[1.01] active:scale-[0.99] hover:border-rose-500/50 dark:border-[#1F2C34] dark:bg-[#111820] dark:hover:border-rose-500/60 hover:shadow-lg hover:shadow-red-500/5 min-h-[180px]"
+            className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border/60 bg-card/90 p-5 shadow-sm backdrop-blur-md transition-all duration-200 ease-in-out hover:scale-[1.01] active:scale-[0.99] hover:border-[#881337]/50 dark:border-[#1F2C34] dark:bg-[#111820] dark:hover:border-[#881337]/60 hover:shadow-md min-h-[180px]"
           >
             {/* Top Badge */}
             <div className="flex items-center justify-between gap-2">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-red-500 via-rose-500 to-red-600 text-white shadow-md shadow-red-500/25 transition-transform duration-200 group-hover:scale-105">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#881337] text-white shadow-xs transition-transform duration-200 group-hover:scale-105">
                 <GraduationCap className="h-5.5 w-5.5" />
               </div>
-              <span className="flex items-center gap-1.5 rounded-full bg-gradient-to-r from-red-500/15 to-rose-500/15 px-2.5 py-0.5 text-xs font-bold text-rose-600 border border-rose-500/30 dark:text-rose-400">
-                <span className="h-1.5 w-1.5 rounded-full bg-gradient-to-r from-red-500 to-rose-500 animate-pulse" />
+              <span className="flex items-center gap-1.5 rounded-full bg-[#FFF1F2] px-2.5 py-0.5 text-xs font-bold text-[#881337] border border-[#881337]/20 dark:bg-[#881337]/25 dark:text-[#FDA4AF] dark:border-[#881337]/35">
+                <span className="h-1.5 w-1.5 rounded-full bg-[#881337] dark:bg-[#FDA4AF] animate-pulse" />
                 Active
               </span>
             </div>
 
             {/* Title */}
             <div className="mt-4">
-              <h3 className="font-heading text-lg font-bold tracking-tight text-foreground transition-colors group-hover:text-rose-600 dark:text-[#E8EDF0] dark:group-hover:text-rose-400">
+              <h3 className="font-heading text-lg font-bold tracking-tight text-foreground transition-colors group-hover:text-[#881337] dark:text-[#E8EDF0] dark:group-hover:text-[#FDA4AF]">
                 Live Exams
               </h3>
             </div>
@@ -447,7 +447,7 @@ export default async function DashboardPage() {
                 <span className="block text-[10px] font-medium text-muted-foreground uppercase tracking-wider dark:text-[#5C6A72]">
                   Completed
                 </span>
-                <span className="font-mono text-sm font-bold text-rose-600 dark:text-rose-400">
+                <span className="font-mono text-sm font-bold text-[#881337] dark:text-[#FDA4AF]">
                   {userExamAttemptsCount} <span className="text-[10px] font-normal text-muted-foreground">done</span>
                 </span>
               </div>
@@ -466,7 +466,7 @@ export default async function DashboardPage() {
               <span className="font-medium text-muted-foreground font-mono text-[11px] dark:text-[#9AA7AE]">
                 Daily • Weekly • Written
               </span>
-              <span className="flex items-center gap-1 font-bold text-rose-600 dark:text-rose-400 transition-transform group-hover:translate-x-0.5">
+              <span className="flex items-center gap-1 font-bold text-[#881337] dark:text-[#FDA4AF] transition-transform group-hover:translate-x-0.5">
                 <span>Explore Exams</span>
                 <ArrowRight className="h-3.5 w-3.5" />
               </span>

@@ -138,7 +138,7 @@ export function ExamModal({ exam, initialAttempt, onClose, onAttemptSaved }: Exa
           {/* Top Row: Meta Badges on Left + Cross Button on Top Right */}
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap min-w-0">
-              <span className="inline-flex items-center gap-1 rounded-full px-2 sm:px-2.5 py-0.5 text-[9px] sm:text-[11px] font-bold uppercase tracking-wider border bg-gradient-to-r from-red-500/10 to-rose-500/10 text-rose-600 dark:text-rose-400 border-red-500/20 whitespace-nowrap">
+              <span className="inline-flex items-center gap-1 rounded-full px-2 sm:px-2.5 py-0.5 text-[9px] sm:text-[11px] font-bold uppercase tracking-wider bg-[#FFF1F2] text-[#881337] border border-[#881337]/15 dark:bg-[#881337]/20 dark:text-[#FDA4AF] dark:border-[#881337]/30 whitespace-nowrap">
                 {exam.category === "daily"
                   ? "Daily Live"
                   : exam.category === "weekly"
@@ -147,12 +147,12 @@ export function ExamModal({ exam, initialAttempt, onClose, onAttemptSaved }: Exa
               </span>
 
               <span className="inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-mono text-muted-foreground dark:text-[#9AA7AE] bg-muted/60 dark:bg-black/40 px-1.5 sm:px-2 py-0.5 rounded-md border border-border/40 dark:border-[#1F2C34] whitespace-nowrap">
-                <Clock className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-rose-500" />
+                <Clock className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-[#BE123C] dark:text-[#FDA4AF]" />
                 {exam.duration}
               </span>
 
               <span className="inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-mono text-muted-foreground dark:text-[#9AA7AE] bg-muted/60 dark:bg-black/40 px-1.5 sm:px-2 py-0.5 rounded-md border border-border/40 dark:border-[#1F2C34] whitespace-nowrap">
-                <FileQuestion className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-rose-500" />
+                <FileQuestion className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-[#BE123C] dark:text-[#FDA4AF]" />
                 {isWritten ? "Written" : `${exam.totalQuestions} Qs`}
               </span>
 
@@ -161,9 +161,9 @@ export function ExamModal({ exam, initialAttempt, onClose, onAttemptSaved }: Exa
                   href={exam.pdfUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="hidden sm:inline-flex items-center gap-1 text-[11px] font-bold text-rose-600 dark:text-rose-400 bg-red-500/10 hover:bg-red-500/20 px-2 py-0.5 rounded-md border border-red-500/30 transition-colors whitespace-nowrap"
+                  className="hidden sm:inline-flex items-center gap-1 text-[11px] font-bold text-[#881337] dark:text-[#FDA4AF] bg-[#FFF1F2] hover:bg-[#881337] hover:text-white dark:bg-[#881337]/20 dark:hover:bg-[#881337] dark:hover:text-white px-2 py-0.5 rounded-md border border-[#881337]/25 transition-colors whitespace-nowrap"
                 >
-                  <FileText className="h-3 w-3 text-rose-500" />
+                  <FileText className="h-3 w-3 text-[#BE123C] dark:text-[#FDA4AF]" />
                   <span>Exam PDF</span>
                   <ArrowRight className="h-3 w-3" />
                 </a>
@@ -174,7 +174,7 @@ export function ExamModal({ exam, initialAttempt, onClose, onAttemptSaved }: Exa
             <button
               type="button"
               onClick={onClose}
-              className="flex h-8 w-8 sm:h-8.5 sm:w-8.5 items-center justify-center rounded-full text-muted-foreground hover:text-rose-600 hover:bg-rose-500/10 dark:hover:text-rose-400 dark:hover:bg-rose-500/10 transition-colors cursor-pointer shrink-0"
+              className="flex h-8 w-8 sm:h-8.5 sm:w-8.5 items-center justify-center rounded-full text-muted-foreground hover:text-[#881337] hover:bg-[#FFF1F2] dark:hover:text-[#FDA4AF] dark:hover:bg-[#881337]/20 transition-colors cursor-pointer shrink-0"
               title="Close"
             >
               <X className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
@@ -183,7 +183,7 @@ export function ExamModal({ exam, initialAttempt, onClose, onAttemptSaved }: Exa
 
           {/* Main Row: Exam Title + Mode Switcher */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-            <h2 className="font-heading text-sm sm:text-base md:text-lg font-bold tracking-tight text-foreground dark:text-[#E8EDF0] truncate min-w-0">
+            <h2 className="font-heading text-sm sm:text-base md:text-lg font-bold tracking-tight text-[#27272A] dark:text-[#E8EDF0] truncate min-w-0">
               {exam.title}
             </h2>
 
@@ -196,8 +196,8 @@ export function ExamModal({ exam, initialAttempt, onClose, onAttemptSaved }: Exa
                   className={cn(
                     "flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3 py-1 sm:py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all cursor-pointer whitespace-nowrap",
                     mode === "practice"
-                      ? "bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-sm shadow-red-500/20 font-bold"
-                      : "text-muted-foreground hover:text-rose-600 dark:hover:text-rose-400"
+                      ? "bg-[#881337] text-white shadow-xs font-bold dark:bg-[#881337] dark:text-white"
+                      : "text-muted-foreground hover:text-[#881337] dark:hover:text-[#FDA4AF]"
                   )}
                 >
                   <Sparkles className="h-3.5 w-3.5" />
@@ -209,8 +209,8 @@ export function ExamModal({ exam, initialAttempt, onClose, onAttemptSaved }: Exa
                   className={cn(
                     "flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3 py-1 sm:py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all cursor-pointer whitespace-nowrap",
                     mode === "solutions"
-                      ? "bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-sm shadow-red-500/20 font-bold"
-                      : "text-muted-foreground hover:text-rose-600 dark:hover:text-rose-400"
+                      ? "bg-[#881337] text-white shadow-xs font-bold dark:bg-[#881337] dark:text-white"
+                      : "text-muted-foreground hover:text-[#881337] dark:hover:text-[#FDA4AF]"
                   )}
                 >
                   <Lightbulb className="h-3.5 w-3.5" />
@@ -223,9 +223,9 @@ export function ExamModal({ exam, initialAttempt, onClose, onAttemptSaved }: Exa
 
         {/* ── Practice Mode Score Banner ── */}
         {mode === "practice" && submitted && score && (
-          <div className="shrink-0 flex items-center justify-between px-6 py-3.5 bg-gradient-to-r from-red-500/15 via-rose-500/10 to-red-500/15 border-b border-red-500/20 text-rose-700 dark:text-rose-300">
+          <div className="shrink-0 flex items-center justify-between px-6 py-3 bg-[#FFF1F2] border-b border-[#881337]/20 text-[#881337] dark:bg-[#881337]/20 dark:border-[#881337]/35 dark:text-[#FFE4E6]">
             <div className="flex items-center gap-2.5">
-              <Trophy className="h-5 w-5 text-rose-500" />
+              <Trophy className="h-5 w-5 text-[#881337] dark:text-[#FDA4AF]" />
               <span className="font-heading font-bold text-sm sm:text-base">
                 Exam Completed! You scored {score.correct} / {score.total} (
                 {Math.round((score.correct / score.total) * 100)}%)
@@ -234,7 +234,7 @@ export function ExamModal({ exam, initialAttempt, onClose, onAttemptSaved }: Exa
             <button
               type="button"
               onClick={handleResetPractice}
-              className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-bold text-rose-600 hover:text-rose-700 dark:text-rose-400 underline hover:no-underline cursor-pointer"
+              className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-bold text-[#BE123C] hover:text-[#881337] dark:text-[#FDA4AF] dark:hover:text-[#FFE4E6] underline hover:no-underline cursor-pointer"
             >
               <RotateCcw className="h-4 w-4" />
               Try Again
@@ -251,7 +251,7 @@ export function ExamModal({ exam, initialAttempt, onClose, onAttemptSaved }: Exa
           ) : isWritten ? (
             /* Written Exam Format */
             <div className="space-y-4 sm:space-y-6">
-              <div className="rounded-xl sm:rounded-2xl border border-rose-500/25 bg-gradient-to-r from-red-500/10 to-rose-500/5 p-3.5 sm:p-5 text-xs sm:text-sm text-rose-700 dark:text-rose-300">
+              <div className="rounded-xl sm:rounded-2xl border border-[#881337]/20 bg-[#FFF1F2] p-3.5 sm:p-5 text-xs sm:text-sm text-[#881337] dark:border-[#881337]/30 dark:bg-[#881337]/20 dark:text-[#FFE4E6]">
                 📝 <strong>Written Exam Mode:</strong> This is a 3-hour descriptive question paper. Below are the question sections and full solutions.
               </div>
               {exam.questions.map((q, idx) => (
@@ -259,13 +259,13 @@ export function ExamModal({ exam, initialAttempt, onClose, onAttemptSaved }: Exa
                   key={idx}
                   className="rounded-xl sm:rounded-2xl border border-border/70 bg-card p-4 sm:p-8 space-y-3 sm:space-y-4 dark:border-[#1F2C34] dark:bg-[#111820]"
                 >
-                  <div className="font-heading font-bold text-sm sm:text-lg text-foreground dark:text-[#E8EDF0]">
+                  <div className="font-heading font-bold text-sm sm:text-lg text-[#27272A] dark:text-[#E8EDF0]">
                     Section {q.number || idx + 1}
                   </div>
                   <LatexRenderer
                     content={formatSolution(q.content || q.question)}
                     as="div"
-                    className="text-sm sm:text-lg leading-relaxed text-foreground/90 whitespace-pre-wrap dark:text-[#D1D9E0]"
+                    className="text-sm sm:text-lg leading-relaxed text-[#27272A]/90 whitespace-pre-wrap dark:text-[#D1D9E0]"
                   />
                 </div>
               ))}
@@ -284,13 +284,13 @@ export function ExamModal({ exam, initialAttempt, onClose, onAttemptSaved }: Exa
                   {/* Question Title */}
                   <div className="space-y-2.5 sm:space-y-3">
                     <div className="flex items-start gap-2.5 sm:gap-3.5">
-                      <span className="flex h-6 w-6 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-red-500/15 to-rose-500/15 text-xs sm:text-sm font-mono font-bold text-rose-600 dark:text-rose-400 border border-red-500/20">
+                      <span className="flex h-6 w-6 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-lg bg-[#FFF1F2] text-xs sm:text-sm font-mono font-bold text-[#881337] dark:bg-[#881337]/25 dark:text-[#FDA4AF] border border-[#881337]/20">
                         {q.number}
                       </span>
                       <LatexRenderer
                         content={q.question}
                         as="h3"
-                        className="font-medium text-sm sm:text-lg md:text-xl leading-relaxed text-foreground dark:text-[#E8EDF0]"
+                        className="font-medium text-sm sm:text-lg md:text-xl leading-relaxed text-[#27272A] dark:text-[#E8EDF0]"
                       />
                     </div>
 
@@ -332,11 +332,11 @@ export function ExamModal({ exam, initialAttempt, onClose, onAttemptSaved }: Exa
                             onClick={() => handleSelectOption(q.number, key)}
                             className={cn(
                               "flex items-center gap-2.5 sm:gap-3.5 rounded-xl border p-2.5 sm:p-4 text-left text-xs sm:text-base transition-all duration-150",
-                              isPractice && !submitted && "cursor-pointer hover:border-rose-500/50 hover:bg-rose-500/5 dark:hover:border-rose-500/40 dark:hover:bg-rose-500/10",
-                              isUserSelected && !submitted && "border-rose-500/80 bg-gradient-to-r from-red-500/15 to-rose-500/10 text-foreground dark:border-rose-400 dark:bg-rose-500/15 font-medium ring-1 ring-rose-500/30",
+                              isPractice && !submitted && "cursor-pointer hover:border-[#881337]/50 hover:bg-[#FFF1F2]/60 dark:hover:border-[#881337]/40 dark:hover:bg-[#881337]/15",
+                              isUserSelected && !submitted && "border-[#881337] bg-[#FFF1F2] text-[#27272A] dark:border-[#BE123C] dark:bg-[#881337]/25 dark:text-[#FFE4E6] font-medium ring-1 ring-[#881337]/30",
                               isCorrectOption && "border-emerald-500/50 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-semibold ring-1 ring-emerald-500/30",
                               isWrongOption && "border-rose-500/50 bg-rose-500/10 text-rose-700 dark:text-rose-300",
-                              !isUserSelected && !isCorrectOption && !isWrongOption && "border-border/60 bg-muted/20 dark:border-[#1F2C34] dark:bg-[#0A0F12]/40"
+                              !isUserSelected && !isCorrectOption && !isWrongOption && "border-border/60 bg-muted/20 text-[#27272A] dark:border-[#1F2C34] dark:bg-[#0A0F12]/40 dark:text-[#E8EDF0]"
                             )}
                           >
                             <span
@@ -345,9 +345,9 @@ export function ExamModal({ exam, initialAttempt, onClose, onAttemptSaved }: Exa
                                 isCorrectOption
                                   ? "bg-emerald-500 text-white border-emerald-500"
                                   : isWrongOption
-                                  ? "bg-rose-500 text-white border-rose-500"
+                                  ? "bg-[#BE123C] text-white border-[#BE123C]"
                                   : isUserSelected
-                                  ? "bg-gradient-to-br from-red-600 to-rose-600 text-white border-transparent shadow-xs"
+                                  ? "bg-[#881337] text-white border-[#881337]"
                                   : "border-border/80 bg-background text-muted-foreground dark:border-[#1F2C34] dark:bg-black"
                               )}
                             >
@@ -362,7 +362,7 @@ export function ExamModal({ exam, initialAttempt, onClose, onAttemptSaved }: Exa
                               <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0" />
                             )}
                             {isWrongOption && (
-                              <XCircle className="h-5 w-5 text-rose-500 shrink-0" />
+                              <XCircle className="h-5 w-5 text-[#BE123C] shrink-0" />
                             )}
                           </button>
                         );
@@ -387,7 +387,7 @@ export function ExamModal({ exam, initialAttempt, onClose, onAttemptSaved }: Exa
                             <LatexRenderer
                               content={formatSolution(q.solution)}
                               as="div"
-                              className="text-sm sm:text-base leading-relaxed text-foreground/85 dark:text-[#C9D1D9] whitespace-pre-wrap"
+                              className="text-sm sm:text-base leading-relaxed text-[#27272A]/85 dark:text-[#C9D1D9] whitespace-pre-wrap"
                             />
                             {(q.hasImage || q.solution.includes("[images]")) && (
                               <div className="inline-flex items-center gap-1.5 rounded-md border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-700 dark:text-amber-300">
@@ -421,11 +421,11 @@ export function ExamModal({ exam, initialAttempt, onClose, onAttemptSaved }: Exa
                                 href={pdf}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="inline-flex items-center gap-2 rounded-xl border border-rose-500/30 bg-gradient-to-r from-red-500/10 to-rose-500/10 px-3.5 py-2 text-xs sm:text-sm font-semibold text-rose-700 hover:from-red-500/20 hover:to-rose-500/20 dark:text-rose-300 transition-colors"
+                                className="inline-flex items-center gap-2 rounded-xl border border-[#881337]/25 bg-[#FFF1F2] hover:bg-[#881337] hover:text-white px-3.5 py-2 text-xs sm:text-sm font-semibold text-[#881337] dark:border-[#881337]/35 dark:bg-[#881337]/20 dark:text-[#FDA4AF] dark:hover:bg-[#881337] dark:hover:text-white transition-colors"
                               >
-                                <FileText className="h-4 w-4 text-rose-500" />
+                                <FileText className="h-4 w-4 text-[#BE123C] dark:text-[#FDA4AF]" />
                                 <span>Open Solution PDF</span>
-                                <ArrowRight className="h-3.5 w-3.5 text-rose-500" />
+                                <ArrowRight className="h-3.5 w-3.5" />
                               </a>
                             ))}
                           </div>
@@ -445,7 +445,7 @@ export function ExamModal({ exam, initialAttempt, onClose, onAttemptSaved }: Exa
               <span className="whitespace-nowrap">
                 <span className="hidden xs:inline">Answered: </span>
                 <span className="xs:hidden">Ans: </span>
-                <strong className="bg-gradient-to-r from-red-600 to-rose-600 bg-clip-text text-transparent font-bold dark:from-red-400 dark:to-rose-400">
+                <strong className="text-[#881337] font-bold dark:text-[#FDA4AF]">
                   {Object.keys(selectedAnswers).length}
                 </strong>
                 {" "}/ {exam.questions.length}
@@ -464,7 +464,7 @@ export function ExamModal({ exam, initialAttempt, onClose, onAttemptSaved }: Exa
                 type="button"
                 onClick={handleSubmitExam}
                 disabled={Object.keys(selectedAnswers).length === 0}
-                className="group/submit inline-flex items-center gap-1.5 sm:gap-2 rounded-xl bg-gradient-to-r from-red-600 via-rose-600 to-red-600 hover:from-red-500 hover:via-rose-500 hover:to-rose-500 px-3.5 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-bold text-white shadow-md shadow-red-600/20 disabled:opacity-50 cursor-pointer active:scale-95 transition-all whitespace-nowrap"
+                className="group/submit inline-flex items-center gap-1.5 sm:gap-2 rounded-xl bg-[#881337] hover:bg-[#BE123C] px-3.5 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-bold text-white shadow-xs disabled:opacity-50 cursor-pointer active:scale-95 transition-all whitespace-nowrap"
               >
                 <CheckCircle2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
                 <span>Submit Exam</span>
@@ -475,7 +475,7 @@ export function ExamModal({ exam, initialAttempt, onClose, onAttemptSaved }: Exa
             <button
               type="button"
               onClick={onClose}
-              className="rounded-xl border border-border/80 bg-muted/60 hover:bg-rose-500/10 hover:text-rose-600 hover:border-rose-500/30 px-3 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-bold text-foreground dark:border-[#1F2C34] dark:hover:bg-rose-500/15 dark:hover:text-rose-400 transition-colors cursor-pointer whitespace-nowrap"
+              className="rounded-xl border border-border/80 bg-muted/60 hover:bg-[#FFF1F2] hover:text-[#881337] hover:border-[#881337]/30 px-3 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-bold text-foreground dark:border-[#1F2C34] dark:hover:bg-[#881337]/20 dark:hover:text-[#FDA4AF] transition-colors cursor-pointer whitespace-nowrap"
             >
               Close
             </button>

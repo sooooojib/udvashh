@@ -41,17 +41,17 @@ export function ConnectedExamCard({
     <>
       <div
         className={cn(
-          "relative overflow-hidden rounded-2xl border border-red-500/30 bg-gradient-to-br from-red-500/[0.04] via-card to-card p-4 sm:p-5 shadow-sm backdrop-blur-md dark:border-rose-500/25 dark:bg-[#111820] space-y-4 transition-all duration-200 hover:border-rose-500/40 hover:shadow-md",
+          "relative overflow-hidden rounded-2xl border border-[#881337]/20 bg-card p-4 sm:p-5 shadow-xs backdrop-blur-md dark:border-[#881337]/30 dark:bg-[#111820] space-y-4 transition-all duration-200 hover:border-[#881337]/35 hover:shadow-sm",
           className
         )}
       >
         {/* ── Exam Title Header: Icon + Title + (Score if completed) ── */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0 flex-1">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-red-500 via-rose-500 to-red-600 text-white shadow-md shadow-red-500/25">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#881337] text-white shadow-xs">
               <GraduationCap className="h-4.5 w-4.5" />
             </div>
-            <h3 className="font-heading text-base sm:text-lg font-bold tracking-tight text-foreground dark:text-[#E8EDF0]">
+            <h3 className="font-heading text-base sm:text-lg font-bold tracking-tight text-[#27272A] dark:text-[#E8EDF0]">
               {exam.title}
             </h3>
           </div>
@@ -70,23 +70,22 @@ export function ConnectedExamCard({
 
         {/* ── Exam Meta Details ── */}
         <div className="space-y-2.5 pt-0.5">
-
           <div className="flex flex-wrap items-center gap-2 text-xs">
             {/* Subject */}
             <span className="inline-flex items-center gap-1 rounded-lg bg-muted/60 px-2.5 py-1 text-muted-foreground dark:bg-black/40 dark:text-[#9AA7AE] border border-border/40 font-medium">
-              <BookOpen className="h-3 w-3 text-rose-500" />
+              <BookOpen className="h-3 w-3 text-[#BE123C] dark:text-[#FDA4AF]" />
               <span>{exam.subject}</span>
             </span>
 
             {/* Duration */}
             <span className="inline-flex items-center gap-1 rounded-lg bg-muted/60 px-2.5 py-1 text-muted-foreground dark:bg-black/40 dark:text-[#9AA7AE] border border-border/40 font-mono">
-              <Clock className="h-3 w-3 text-rose-500" />
+              <Clock className="h-3 w-3 text-[#BE123C] dark:text-[#FDA4AF]" />
               <span>{exam.duration}</span>
             </span>
 
             {/* Question count */}
             <span className="inline-flex items-center gap-1 rounded-lg bg-muted/60 px-2.5 py-1 text-muted-foreground dark:bg-black/40 dark:text-[#9AA7AE] border border-border/40 font-mono">
-              <FileQuestion className="h-3 w-3 text-rose-500" />
+              <FileQuestion className="h-3 w-3 text-[#BE123C] dark:text-[#FDA4AF]" />
               <span>{exam.totalQuestions} MCQs</span>
             </span>
 
@@ -96,9 +95,9 @@ export function ConnectedExamCard({
                 href={exam.pdfUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 rounded-lg bg-red-500/10 hover:bg-red-500/20 px-2.5 py-1 text-rose-600 dark:text-rose-400 border border-red-500/25 transition-colors font-semibold"
+                className="inline-flex items-center gap-1 rounded-lg bg-[#FFF1F2] hover:bg-[#881337] hover:text-white px-2.5 py-1 text-[#881337] dark:bg-[#881337]/20 dark:text-[#FDA4AF] dark:hover:bg-[#881337] dark:hover:text-white border border-[#881337]/20 dark:border-[#881337]/35 transition-colors font-semibold"
               >
-                <FileText className="h-3 w-3 text-rose-500" />
+                <FileText className="h-3 w-3 text-[#BE123C] dark:text-[#FDA4AF]" />
                 <span>Exam PDF</span>
               </a>
             )}
@@ -112,15 +111,15 @@ export function ConnectedExamCard({
               type="button"
               onClick={() => setIsModalOpen(true)}
               className={cn(
-                "group/btn inline-flex items-center justify-center gap-2 rounded-xl py-2 px-4 text-xs font-bold transition-all duration-200 cursor-pointer active:scale-98 shadow-md",
+                "group/btn inline-flex items-center justify-center gap-2 rounded-xl py-2 px-4 text-xs font-bold transition-all duration-200 cursor-pointer active:scale-98 shadow-xs",
                 isAttempted
-                  ? "bg-muted/80 hover:bg-muted text-foreground border border-border/80 dark:border-[#1F2C34] hover:border-rose-500/40 hover:text-rose-600 dark:hover:text-rose-400 shadow-none"
-                  : "text-white bg-gradient-to-r from-red-600 via-rose-600 to-red-600 hover:from-red-500 hover:via-rose-500 hover:to-rose-500 shadow-red-600/20"
+                  ? "bg-muted/70 hover:bg-[#FFF1F2] text-[#27272A] border border-border/80 hover:border-[#881337]/30 hover:text-[#881337] dark:bg-[#141E28] dark:text-[#E8EDF0] dark:hover:bg-[#881337]/20 dark:hover:text-[#FDA4AF] dark:hover:border-[#881337]/40 shadow-none"
+                  : "text-white bg-[#881337] hover:bg-[#BE123C] shadow-xs active:bg-[#70102e]"
               )}
             >
               {isAttempted ? (
                 <>
-                  <RotateCcw className="h-3.5 w-3.5 text-rose-500" />
+                  <RotateCcw className="h-3.5 w-3.5 text-[#BE123C] dark:text-[#FDA4AF]" />
                   <span>Review & Retake Exam</span>
                 </>
               ) : (
@@ -135,7 +134,7 @@ export function ConnectedExamCard({
 
           <Link
             href="/exams"
-            className="inline-flex items-center justify-center gap-1 text-xs font-semibold text-muted-foreground hover:text-rose-600 dark:hover:text-rose-400 transition-colors py-1 px-2"
+            className="inline-flex items-center justify-center gap-1 text-xs font-semibold text-muted-foreground hover:text-[#881337] dark:hover:text-[#FDA4AF] transition-colors py-1 px-2"
           >
             <span>Explore All Exams</span>
             <ArrowRight className="h-3 w-3" />

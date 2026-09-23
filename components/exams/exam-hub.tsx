@@ -172,7 +172,7 @@ export function ExamHub({ initialExams, initialUserAttempts }: ExamHubProps) {
         <div className="flex flex-col gap-3.5 md:flex-row md:items-center md:justify-between">
           {/* Section Indicator Label */}
           <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-red-500/15 via-rose-500/15 to-red-500/15 text-rose-600 dark:text-rose-400 ring-1 ring-rose-500/30">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#FFF1F2] text-[#881337] border border-[#881337]/20 dark:bg-[#881337]/20 dark:text-[#FDA4AF] dark:border-[#881337]/35 shadow-xs">
               <Filter className="h-4 w-4" />
             </div>
             <div>
@@ -193,7 +193,7 @@ export function ExamHub({ initialExams, initialUserAttempts }: ExamHubProps) {
                       setSelectedType("all");
                       setSelectedSubject("all");
                     }}
-                    className="ml-2 text-rose-600 dark:text-rose-400 hover:underline font-semibold cursor-pointer"
+                    className="ml-2 text-[#BE123C] hover:text-[#881337] dark:text-[#FDA4AF] dark:hover:text-[#FFE4E6] font-semibold cursor-pointer"
                   >
                     Reset filters
                   </button>
@@ -217,14 +217,14 @@ export function ExamHub({ initialExams, initialUserAttempts }: ExamHubProps) {
                 className={cn(
                   "flex w-full items-center justify-between gap-2.5 rounded-xl border px-3.5 py-2.5 text-xs font-medium transition-all duration-200 min-h-[46px] select-none text-left active:scale-[0.99] cursor-pointer",
                   isTypeOpen
-                    ? "border-rose-500 bg-card shadow-[0_0_15px_rgba(244,63,94,0.15)] ring-2 ring-rose-500/20 dark:border-rose-500 dark:bg-[#111820]"
+                    ? "border-[#881337] bg-card ring-2 ring-[#881337]/15 dark:border-[#BE123C] dark:bg-[#111820]"
                     : selectedType !== "all"
-                    ? "border-rose-500/50 bg-rose-500/5 text-foreground dark:border-rose-500/40 dark:bg-[#111820] shadow-sm"
-                    : "border-border/70 bg-card/90 hover:border-rose-500/50 hover:bg-card dark:border-[#1F2C34] dark:bg-[#111820] dark:hover:border-rose-500/50 shadow-sm"
+                    ? "border-[#881337]/40 bg-[#FFF1F2] text-[#27272A] dark:border-[#881337]/50 dark:bg-[#881337]/15 dark:text-[#E8EDF0] shadow-2xs"
+                    : "border-border/70 bg-card/90 hover:border-[#881337]/40 hover:bg-card dark:border-[#1F2C34] dark:bg-[#111820] dark:hover:border-[#BE123C]/50 shadow-2xs"
                 )}
               >
                 <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                  <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-rose-500/15 text-rose-600 dark:text-rose-400">
+                  <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-[#FFF1F2] text-[#881337] border border-[#881337]/15 dark:bg-[#881337]/25 dark:text-[#FDA4AF] dark:border-[#881337]/35">
                     {getTypeIcon(selectedType)}
                   </div>
 
@@ -240,7 +240,7 @@ export function ExamHub({ initialExams, initialUserAttempts }: ExamHubProps) {
                 <ChevronDown
                   className={cn(
                     "h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200",
-                    isTypeOpen && "rotate-180 text-rose-600 dark:text-rose-400"
+                    isTypeOpen && "rotate-180 text-[#881337] dark:text-[#FDA4AF]"
                   )}
                 />
               </button>
@@ -264,12 +264,12 @@ export function ExamHub({ initialExams, initialUserAttempts }: ExamHubProps) {
                     className={cn(
                       "flex w-full items-center justify-between gap-2.5 rounded-xl px-3 py-2.5 text-xs transition-all duration-150 text-left min-h-[42px] cursor-pointer",
                       selectedType === "all"
-                        ? "bg-rose-500/15 text-rose-600 dark:text-rose-400 font-semibold border border-rose-500/30"
-                        : "text-foreground hover:bg-accent/60 dark:text-[#E8EDF0] dark:hover:bg-[#141E28]"
+                        ? "bg-[#FFF1F2] text-[#881337] font-semibold border border-[#881337]/20 dark:bg-[#881337]/25 dark:text-[#FFE4E6] dark:border-[#881337]/40"
+                        : "text-[#27272A] hover:bg-[#FFF1F2]/60 dark:text-[#E8EDF0] dark:hover:bg-[#141E28]"
                     )}
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <Layers className="h-3.5 w-3.5 shrink-0 text-rose-600 dark:text-rose-400" />
+                      <Layers className="h-3.5 w-3.5 shrink-0 text-[#881337] dark:text-[#FDA4AF]" />
                       <span className="truncate">All Exam Types</span>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
@@ -277,7 +277,7 @@ export function ExamHub({ initialExams, initialUserAttempts }: ExamHubProps) {
                         ({counts.all} exams)
                       </span>
                       {selectedType === "all" && (
-                        <Check className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400" />
+                        <Check className="h-3.5 w-3.5 text-[#881337] dark:text-[#FDA4AF]" />
                       )}
                     </div>
                   </button>
@@ -297,12 +297,12 @@ export function ExamHub({ initialExams, initialUserAttempts }: ExamHubProps) {
                     className={cn(
                       "flex w-full items-center justify-between gap-2.5 rounded-xl px-3 py-2.5 text-xs transition-all duration-150 text-left min-h-[42px] cursor-pointer",
                       selectedType === "daily"
-                        ? "bg-rose-500/15 text-rose-600 dark:text-rose-400 font-semibold border border-rose-500/30"
-                        : "text-foreground hover:bg-accent/60 dark:text-[#E8EDF0] dark:hover:bg-[#141E28]"
+                        ? "bg-[#FFF1F2] text-[#881337] font-semibold border border-[#881337]/20 dark:bg-[#881337]/25 dark:text-[#FFE4E6] dark:border-[#881337]/40"
+                        : "text-[#27272A] hover:bg-[#FFF1F2]/60 dark:text-[#E8EDF0] dark:hover:bg-[#141E28]"
                     )}
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <Tv className="h-3.5 w-3.5 shrink-0 text-rose-600 dark:text-rose-400" />
+                      <Tv className="h-3.5 w-3.5 shrink-0 text-[#881337] dark:text-[#FDA4AF]" />
                       <span className="truncate">Daily Live Exams</span>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
@@ -310,7 +310,7 @@ export function ExamHub({ initialExams, initialUserAttempts }: ExamHubProps) {
                         ({counts.daily})
                       </span>
                       {selectedType === "daily" && (
-                        <Check className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400" />
+                        <Check className="h-3.5 w-3.5 text-[#881337] dark:text-[#FDA4AF]" />
                       )}
                     </div>
                   </button>
@@ -328,12 +328,12 @@ export function ExamHub({ initialExams, initialUserAttempts }: ExamHubProps) {
                     className={cn(
                       "flex w-full items-center justify-between gap-2.5 rounded-xl px-3 py-2.5 text-xs transition-all duration-150 text-left min-h-[42px] cursor-pointer",
                       selectedType === "weekly"
-                        ? "bg-rose-500/15 text-rose-600 dark:text-rose-400 font-semibold border border-rose-500/30"
-                        : "text-foreground hover:bg-accent/60 dark:text-[#E8EDF0] dark:hover:bg-[#141E28]"
+                        ? "bg-[#FFF1F2] text-[#881337] font-semibold border border-[#881337]/20 dark:bg-[#881337]/25 dark:text-[#FFE4E6] dark:border-[#881337]/40"
+                        : "text-[#27272A] hover:bg-[#FFF1F2]/60 dark:text-[#E8EDF0] dark:hover:bg-[#141E28]"
                     )}
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <Flame className="h-3.5 w-3.5 shrink-0 text-rose-600 dark:text-rose-400" />
+                      <Flame className="h-3.5 w-3.5 shrink-0 text-[#881337] dark:text-[#FDA4AF]" />
                       <span className="truncate">Weekly Exams</span>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
@@ -341,7 +341,7 @@ export function ExamHub({ initialExams, initialUserAttempts }: ExamHubProps) {
                         ({counts.weekly})
                       </span>
                       {selectedType === "weekly" && (
-                        <Check className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400" />
+                        <Check className="h-3.5 w-3.5 text-[#881337] dark:text-[#FDA4AF]" />
                       )}
                     </div>
                   </button>
@@ -359,12 +359,12 @@ export function ExamHub({ initialExams, initialUserAttempts }: ExamHubProps) {
                     className={cn(
                       "flex w-full items-center justify-between gap-2.5 rounded-xl px-3 py-2.5 text-xs transition-all duration-150 text-left min-h-[42px] cursor-pointer",
                       selectedType === "written"
-                        ? "bg-rose-500/15 text-rose-600 dark:text-rose-400 font-semibold border border-rose-500/30"
-                        : "text-foreground hover:bg-accent/60 dark:text-[#E8EDF0] dark:hover:bg-[#141E28]"
+                        ? "bg-[#FFF1F2] text-[#881337] font-semibold border border-[#881337]/20 dark:bg-[#881337]/25 dark:text-[#FFE4E6] dark:border-[#881337]/40"
+                        : "text-[#27272A] hover:bg-[#FFF1F2]/60 dark:text-[#E8EDF0] dark:hover:bg-[#141E28]"
                     )}
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <FileText className="h-3.5 w-3.5 shrink-0 text-rose-600 dark:text-rose-400" />
+                      <FileText className="h-3.5 w-3.5 shrink-0 text-[#881337] dark:text-[#FDA4AF]" />
                       <span className="truncate">Written Exams</span>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
@@ -372,7 +372,7 @@ export function ExamHub({ initialExams, initialUserAttempts }: ExamHubProps) {
                         ({counts.written})
                       </span>
                       {selectedType === "written" && (
-                        <Check className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400" />
+                        <Check className="h-3.5 w-3.5 text-[#881337] dark:text-[#FDA4AF]" />
                       )}
                     </div>
                   </button>
@@ -380,7 +380,7 @@ export function ExamHub({ initialExams, initialUserAttempts }: ExamHubProps) {
               )}
             </div>
 
-            {/* 2. Subject Dropdown (Matching Image 2 exactly!) */}
+            {/* 2. Subject Dropdown (Matching Image 2 style) */}
             <div className="relative min-w-0 w-full sm:w-64 md:w-72" ref={subjectDropdownRef}>
               <button
                 type="button"
@@ -393,14 +393,14 @@ export function ExamHub({ initialExams, initialUserAttempts }: ExamHubProps) {
                 className={cn(
                   "flex w-full items-center justify-between gap-2.5 rounded-xl border px-3.5 py-2.5 text-xs font-medium transition-all duration-200 min-h-[46px] select-none text-left active:scale-[0.99] cursor-pointer",
                   isSubjectOpen
-                    ? "border-rose-500 bg-card shadow-[0_0_15px_rgba(244,63,94,0.15)] ring-2 ring-rose-500/20 dark:border-rose-500 dark:bg-[#111820]"
+                    ? "border-[#881337] bg-card ring-2 ring-[#881337]/15 dark:border-[#BE123C] dark:bg-[#111820]"
                     : selectedSubject !== "all"
-                    ? "border-rose-500/50 bg-rose-500/5 text-foreground dark:border-rose-500/40 dark:bg-[#111820] shadow-sm"
-                    : "border-border/70 bg-card/90 hover:border-rose-500/50 hover:bg-card dark:border-[#1F2C34] dark:bg-[#111820] dark:hover:border-rose-500/50 shadow-sm"
+                    ? "border-[#881337]/40 bg-[#FFF1F2] text-[#27272A] dark:border-[#881337]/50 dark:bg-[#881337]/15 dark:text-[#E8EDF0] shadow-2xs"
+                    : "border-border/70 bg-card/90 hover:border-[#881337]/40 hover:bg-card dark:border-[#1F2C34] dark:bg-[#111820] dark:hover:border-[#BE123C]/50 shadow-2xs"
                 )}
               >
                 <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                  <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-rose-500/15 text-rose-600 dark:text-rose-400">
+                  <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-[#FFF1F2] text-[#881337] border border-[#881337]/15 dark:bg-[#881337]/25 dark:text-[#FDA4AF] dark:border-[#881337]/35">
                     {selectedSubject === "all" ? (
                       <Layers className="h-3.5 w-3.5" />
                     ) : (
@@ -422,7 +422,7 @@ export function ExamHub({ initialExams, initialUserAttempts }: ExamHubProps) {
                 <ChevronDown
                   className={cn(
                     "h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200",
-                    isSubjectOpen && "rotate-180 text-rose-600 dark:text-rose-400"
+                    isSubjectOpen && "rotate-180 text-[#881337] dark:text-[#FDA4AF]"
                   )}
                 />
               </button>
@@ -445,12 +445,12 @@ export function ExamHub({ initialExams, initialUserAttempts }: ExamHubProps) {
                     className={cn(
                       "flex w-full items-center justify-between gap-2.5 rounded-xl px-3 py-2.5 text-xs transition-all duration-150 text-left min-h-[42px] cursor-pointer",
                       selectedSubject === "all"
-                        ? "bg-rose-500/15 text-rose-600 dark:text-rose-400 font-semibold border border-rose-500/30"
-                        : "text-foreground hover:bg-accent/60 dark:text-[#E8EDF0] dark:hover:bg-[#141E28]"
+                        ? "bg-[#FFF1F2] text-[#881337] font-semibold border border-[#881337]/20 dark:bg-[#881337]/25 dark:text-[#FFE4E6] dark:border-[#881337]/40"
+                        : "text-[#27272A] hover:bg-[#FFF1F2]/60 dark:text-[#E8EDF0] dark:hover:bg-[#141E28]"
                     )}
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <Layers className="h-3.5 w-3.5 shrink-0 text-rose-600 dark:text-rose-400" />
+                      <Layers className="h-3.5 w-3.5 shrink-0 text-[#881337] dark:text-[#FDA4AF]" />
                       <span className="truncate font-semibold">All Subjects</span>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
@@ -458,7 +458,7 @@ export function ExamHub({ initialExams, initialUserAttempts }: ExamHubProps) {
                         ({subjectList.length} {subjectList.length === 1 ? "subject" : "subjects"} • {typeFilteredExams.length} exams)
                       </span>
                       {selectedSubject === "all" && (
-                        <Check className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400" />
+                        <Check className="h-3.5 w-3.5 text-[#881337] dark:text-[#FDA4AF]" />
                       )}
                     </div>
                   </button>
@@ -481,12 +481,12 @@ export function ExamHub({ initialExams, initialUserAttempts }: ExamHubProps) {
                         className={cn(
                           "flex w-full items-center justify-between gap-2.5 rounded-xl px-3 py-2.5 text-xs transition-all duration-150 text-left min-h-[42px] cursor-pointer",
                           isSelected
-                            ? "bg-rose-500/15 text-rose-600 dark:text-rose-400 font-semibold border border-rose-500/30"
-                            : "text-foreground hover:bg-accent/60 dark:text-[#E8EDF0] dark:hover:bg-[#141E28]"
+                            ? "bg-[#FFF1F2] text-[#881337] font-semibold border border-[#881337]/20 dark:bg-[#881337]/25 dark:text-[#FFE4E6] dark:border-[#881337]/40"
+                            : "text-[#27272A] hover:bg-[#FFF1F2]/60 dark:text-[#E8EDF0] dark:hover:bg-[#141E28]"
                         )}
                       >
                         <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                          <BookOpen className="h-3.5 w-3.5 shrink-0 opacity-60 text-rose-600 dark:text-rose-400" />
+                          <BookOpen className="h-3.5 w-3.5 shrink-0 opacity-60 text-[#881337] dark:text-[#FDA4AF]" />
                           <span className="truncate">{sub.name}</span>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
@@ -494,7 +494,7 @@ export function ExamHub({ initialExams, initialUserAttempts }: ExamHubProps) {
                             ({sub.count})
                           </span>
                           {isSelected && (
-                            <Check className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400" />
+                            <Check className="h-3.5 w-3.5 text-[#881337] dark:text-[#FDA4AF]" />
                           )}
                         </div>
                       </button>
@@ -532,25 +532,25 @@ export function ExamHub({ initialExams, initialUserAttempts }: ExamHubProps) {
             return (
               <div
                 key={exam.id}
-                className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border/70 bg-card/90 p-4.5 space-y-4 shadow-2xs backdrop-blur-md transition-all duration-200 hover:shadow-lg hover:shadow-red-500/5 hover:-translate-y-1 hover:border-rose-500/50 dark:border-[#1F2C34] dark:bg-[#111820] dark:hover:border-rose-500/40"
+                className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border/70 bg-white p-4.5 space-y-4 shadow-xs backdrop-blur-md transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 hover:border-[#881337]/35 dark:border-[#1F2C34] dark:bg-[#111820] dark:hover:border-[#881337]/45"
               >
                 {/* Header Row: Type Badge + Subject Tag */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider border bg-gradient-to-r from-red-500/10 to-rose-500/10 text-rose-600 dark:text-rose-400 border-red-500/20">
+                    <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-wider bg-[#FFF1F2] text-[#881337] border border-[#881337]/15 dark:bg-[#881337]/20 dark:text-[#FDA4AF] dark:border-[#881337]/30">
                       {isDaily ? (
                         <>
-                          <Tv className="h-2.5 w-2.5 text-rose-500" />
+                          <Tv className="h-2.5 w-2.5 text-[#881337] dark:text-[#FDA4AF]" />
                           <span>Daily Live</span>
                         </>
                       ) : isWeekly ? (
                         <>
-                          <Flame className="h-2.5 w-2.5 text-rose-500" />
+                          <Flame className="h-2.5 w-2.5 text-[#881337] dark:text-[#FDA4AF]" />
                           <span>Weekly Live</span>
                         </>
                       ) : (
                         <>
-                          <FileText className="h-2.5 w-2.5 text-rose-500" />
+                          <FileText className="h-2.5 w-2.5 text-[#881337] dark:text-[#FDA4AF]" />
                           <span>Written Biweekly</span>
                         </>
                       )}
@@ -561,8 +561,8 @@ export function ExamHub({ initialExams, initialUserAttempts }: ExamHubProps) {
                     </span>
                   </div>
 
-                  {/* Title */}
-                  <h3 className="font-heading text-sm sm:text-base font-bold tracking-tight text-foreground dark:text-[#E8EDF0] line-clamp-2 leading-snug transition-colors group-hover:text-rose-600 dark:group-hover:text-rose-400">
+                  {/* Title: Dark Charcoal Text with Burgundy Hover */}
+                  <h3 className="font-heading text-sm sm:text-base font-bold tracking-tight text-[#27272A] dark:text-[#E8EDF0] line-clamp-2 leading-snug transition-colors group-hover:text-[#881337] dark:group-hover:text-[#FDA4AF]">
                     {exam.title}
                   </h3>
                 </div>
@@ -571,22 +571,22 @@ export function ExamHub({ initialExams, initialUserAttempts }: ExamHubProps) {
                 <div className="space-y-3 pt-2 border-t border-border/40 dark:border-[#1F2C34]/80">
                   <div className="grid grid-cols-2 gap-2">
                     {/* Duration Badge */}
-                    <div className="flex items-center gap-1.5 rounded-lg bg-muted/40 p-2 dark:bg-[#0A0F12]/60 border border-border/40 dark:border-[#1F2C34]">
-                      <Clock className="h-3.5 w-3.5 text-rose-500 shrink-0" />
+                    <div className="flex items-center gap-1.5 rounded-lg bg-muted/30 p-2 dark:bg-[#0A0F12]/60 border border-border/40 dark:border-[#1F2C34]">
+                      <Clock className="h-3.5 w-3.5 text-[#BE123C] dark:text-[#FDA4AF] shrink-0" />
                       <div>
                         <span className="block text-[9px] uppercase font-bold text-muted-foreground">Duration</span>
-                        <span className="font-mono text-xs font-bold text-foreground dark:text-[#E8EDF0]">
+                        <span className="font-mono text-xs font-bold text-[#27272A] dark:text-[#E8EDF0]">
                           {exam.duration}
                         </span>
                       </div>
                     </div>
 
                     {/* Total Questions Badge */}
-                    <div className="flex items-center gap-1.5 rounded-lg bg-muted/40 p-2 dark:bg-[#0A0F12]/60 border border-border/40 dark:border-[#1F2C34]">
-                      <FileQuestion className="h-3.5 w-3.5 text-rose-500 shrink-0" />
+                    <div className="flex items-center gap-1.5 rounded-lg bg-muted/30 p-2 dark:bg-[#0A0F12]/60 border border-border/40 dark:border-[#1F2C34]">
+                      <FileQuestion className="h-3.5 w-3.5 text-[#BE123C] dark:text-[#FDA4AF] shrink-0" />
                       <div>
                         <span className="block text-[9px] uppercase font-bold text-muted-foreground">Questions</span>
-                        <span className="font-mono text-xs font-bold text-foreground dark:text-[#E8EDF0]">
+                        <span className="font-mono text-xs font-bold text-[#27272A] dark:text-[#E8EDF0]">
                           {isWritten ? "Written" : `${exam.totalQuestions} MCQs`}
                         </span>
                       </div>
@@ -606,15 +606,15 @@ export function ExamHub({ initialExams, initialUserAttempts }: ExamHubProps) {
                     </div>
                   )}
 
-                  {/* Action CTA Button with consistent Red Gradient theme & Animated Arrow */}
+                  {/* Action CTA Button: Burgundy (#881337) with Crimson Hover (#BE123C) */}
                   <button
                     type="button"
                     onClick={() => setActiveExam(exam)}
                     className={cn(
-                      "group/btn w-full inline-flex items-center justify-center gap-2 rounded-xl py-2.5 px-3 text-xs font-bold transition-all duration-200 cursor-pointer active:scale-98 shadow-md",
+                      "group/btn w-full inline-flex items-center justify-center gap-2 rounded-xl py-2.5 px-3 text-xs font-bold transition-all duration-200 cursor-pointer active:scale-98 shadow-xs",
                       isAttempted
-                        ? "bg-muted/70 hover:bg-muted text-foreground border border-border/80 dark:border-[#1F2C34] hover:border-rose-500/40 hover:text-rose-600 dark:hover:text-rose-400 shadow-none"
-                        : "text-white bg-gradient-to-r from-red-600 via-rose-600 to-red-600 hover:from-red-500 hover:via-rose-500 hover:to-rose-500 shadow-red-600/20"
+                        ? "bg-muted/70 hover:bg-[#FFF1F2] text-[#27272A] border border-border/80 hover:border-[#881337]/30 hover:text-[#881337] dark:bg-[#141E28] dark:text-[#E8EDF0] dark:hover:bg-[#881337]/20 dark:hover:text-[#FDA4AF] dark:hover:border-[#881337]/40 shadow-none"
+                        : "text-white bg-[#881337] hover:bg-[#BE123C] shadow-xs active:bg-[#70102e]"
                     )}
                   >
                     <span>{isAttempted ? "Review & Retake" : "View Exam & Solutions"}</span>

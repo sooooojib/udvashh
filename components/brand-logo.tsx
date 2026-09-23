@@ -42,10 +42,10 @@ const themeStyles = {
     glow: "dark:drop-shadow-[0_0_10px_rgba(168,85,247,0.35)] dark:group-hover:drop-shadow-[0_0_16px_rgba(168,85,247,0.6)]",
   },
   red: {
-    svg: "text-rose-600 dark:text-rose-400",
-    text: "bg-gradient-to-r from-red-600 via-rose-500 to-red-600 bg-clip-text text-transparent dark:from-red-400 dark:via-rose-400 dark:to-red-400",
-    hover: "group-hover:opacity-90",
-    glow: "dark:drop-shadow-[0_0_12px_rgba(225,29,72,0.45)] dark:group-hover:drop-shadow-[0_0_18px_rgba(244,63,94,0.7)]",
+    svg: "text-[#881337] dark:text-[#FDA4AF]",
+    text: "text-[#881337] dark:text-[#FFE4E6]",
+    hover: "group-hover:text-[#BE123C] dark:group-hover:text-[#FECDD3]",
+    glow: "dark:drop-shadow-[0_0_10px_rgba(136,19,55,0.35)] dark:group-hover:drop-shadow-[0_0_16px_rgba(190,18,60,0.5)]",
   },
 } as const;
 
