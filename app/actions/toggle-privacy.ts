@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { getSession } from "@/lib/auth/session";
 import { sql } from "@/lib/db";
 import { updateVideoPrivacy } from "@/lib/youtube/youtube-oauth";
@@ -67,6 +67,7 @@ export async function toggleVideoPrivacy(
     revalidatePath("/intensive-classes");
     revalidatePath("/subject-hacks");
     revalidatePath(`/watch/${youtubeVideoId}`);
+    revalidateTag("videos-catalog", "default");
 
     return {
       success: true,

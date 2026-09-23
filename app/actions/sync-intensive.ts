@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { getSession } from "@/lib/auth/session";
 import { syncPlaylist } from "@/lib/youtube/sync";
 
@@ -65,6 +65,7 @@ export async function syncIntensiveNow(
       }
       revalidatePath("/dashboard");
       revalidatePath("/intensive-classes");
+      revalidateTag("videos-catalog", "default");
       return {
         success: true,
         synced: totalSynced,
@@ -76,6 +77,7 @@ export async function syncIntensiveNow(
 
     revalidatePath("/dashboard");
     revalidatePath("/intensive-classes");
+    revalidateTag("videos-catalog", "default");
 
     return {
       success: true,

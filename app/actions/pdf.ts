@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { getSession } from "@/lib/auth/session";
 import { sql } from "@/lib/db";
 import { createAdminClient } from "@/utils/supabase/admin";
@@ -39,6 +39,7 @@ function revalidatePdfRoutes() {
   revalidatePath("/subject-hacks", "page");
   revalidatePath("/dashboard", "page");
   revalidatePath("/watch/[videoId]", "page");
+  revalidateTag("videos-catalog", "default");
 }
 
 /**

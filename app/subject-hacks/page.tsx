@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { sql } from "@/lib/db";
+import { getCachedVideosByPlaylists } from "@/lib/db/cached-catalog";
 import { getSession } from "@/lib/auth/session";
 import { type Video } from "@/components/dashboard/video-card";
 import { WatchProgressBar } from "@/components/dashboard/progress-bar";
@@ -29,19 +30,8 @@ export default async function SubjectHacksPage() {
 
   const subjectHacksPlaylistIds = SUBJECT_HACKS_PLAYLISTS.map((p) => p.id);
 
-  let videoList: Video[] = [];
-  if (subjectHacksPlaylistIds.length > 0) {
-    const videos = await sql`
-      SELECT 
-        v.*,
-        EXISTS(SELECT 1 FROM video_pdfs vp WHERE vp.video_id = v.id) AS has_pdf,
-        (SELECT COUNT(*)::int FROM video_pdfs vp WHERE vp.video_id = v.id) AS pdf_count
-      FROM videos v
-      WHERE v.playlist_id = ANY(${subjectHacksPlaylistIds})
-      ORDER BY v.position ASC
-    `;
-    videoList = videos as unknown as Video[];
-  }
+  // Fetch videos only for subject hacks playlists (cached at server level)
+  const videoList: Video[] = await getCachedVideosByPlaylists(subjectHacksPlaylistIds);
 
   let watchedVideoIds: string[] = [];
   if (videoList.length > 0) {

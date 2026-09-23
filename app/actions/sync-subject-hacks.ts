@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { getSession } from "@/lib/auth/session";
 import { syncPlaylist } from "@/lib/youtube/sync";
 
@@ -64,6 +64,7 @@ export async function syncSubjectHacksNow(
       }
       revalidatePath("/dashboard");
       revalidatePath("/subject-hacks");
+      revalidateTag("videos-catalog", "default");
       return {
         success: true,
         synced: totalSynced,
@@ -75,6 +76,7 @@ export async function syncSubjectHacksNow(
 
     revalidatePath("/dashboard");
     revalidatePath("/subject-hacks");
+    revalidateTag("videos-catalog", "default");
 
     return {
       success: true,

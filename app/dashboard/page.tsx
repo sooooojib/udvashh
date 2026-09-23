@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { sql } from "@/lib/db";
+import { getCachedDashboardVideos } from "@/lib/db/cached-catalog";
 import { getSession } from "@/lib/auth/session";
 import { WatchProgressBar } from "@/components/dashboard/progress-bar";
 import { OwnerSyncButton } from "@/components/dashboard/sync-button";
@@ -51,10 +52,7 @@ export default async function DashboardPage() {
   const subjectHacksPlaylistIds = SUBJECT_HACKS_PLAYLISTS.map((p) => p.id);
   const allKnownPlaylistIds = [...livePlaylistIds, ...intensivePlaylistIds, ...subjectHacksPlaylistIds];
 
-  const videos = await sql`
-    SELECT id, duration, playlist_id FROM videos
-    WHERE playlist_id = ANY(${allKnownPlaylistIds})
-  `;
+  const videos = await getCachedDashboardVideos(allKnownPlaylistIds);
 
   // Separate live vs intensive vs subject hacks videos
   const liveVideos = videos.filter((v) =>

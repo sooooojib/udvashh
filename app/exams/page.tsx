@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { getSession } from "@/lib/auth/session";
-import { getAllExamsFromDb } from "@/lib/exams";
+import { getAllExams } from "@/lib/exams";
 import { getUserExamAttempts } from "@/app/actions/exams";
 import { ExamHub } from "@/components/exams/exam-hub";
 import { GraduationCap } from "lucide-react";
@@ -16,7 +16,7 @@ export default async function ExamsPage() {
   if (!session) redirect("/login?redirectTo=/exams");
 
   const [exams, userAttempts] = await Promise.all([
-    getAllExamsFromDb(),
+    getAllExams(),
     getUserExamAttempts(),
   ]);
 

@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { sql } from "@/lib/db";
+import { getCachedVideoByYoutubeId, getCachedPlaylistVideos } from "@/lib/db/cached-catalog";
 import { getSession } from "@/lib/auth/session";
 import { VideoPlayer } from "@/components/watch/video-player";
 import { VideoPdfSection } from "@/components/watch/video-pdf-section";
@@ -21,10 +22,7 @@ export async function generateMetadata({
 }: WatchPageProps): Promise<Metadata> {
   try {
     const { videoId } = await params;
-    const rows = await sql`
-      SELECT title FROM videos WHERE youtube_video_id = ${videoId} LIMIT 1
-    `;
-    const video = rows[0];
+    const video = await getCachedVideoByYoutubeId(videoId);
 
     return {
       title: video ? `${video.title} | অবনতি` : "Watch | অবনতি",
@@ -52,61 +50,49 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
     allowedAdmins.length === 0 ||
     allowedAdmins.includes(session.email?.toLowerCase() || "");
 
-  // Fetch the video by youtube_video_id
-  const videoRows = await sql`
-    SELECT * FROM videos WHERE youtube_video_id = ${videoId} LIMIT 1
-  `;
-
-  if (videoRows.length === 0) notFound();
-  const video = videoRows[0];
+  // Fetch the video by youtube_video_id (cached at server level)
+  const video = await getCachedVideoByYoutubeId(videoId);
+  if (!video) notFound();
 
   // Use cached DB privacy status immediately for instantaneous page delivery
   const currentPrivacy = video.privacy_status;
 
-  // If admin, opportunistically refresh privacy in the background without blocking the user
-  if (isOwner) {
-    import("@/lib/youtube/privacy-sync")
-      .then(({ syncSingleVideoPrivacy }) =>
-        syncSingleVideoPrivacy(video.youtube_video_id, video.privacy_status)
-      )
-      .catch(() => {});
-  }
-
   // Resolve connected Daily Exam instantly (0ms)
   const connectedExam: ExamItem | null = getConnectedDailyExam(video.title);
 
-  // Batch ALL queries into a single HTTP round-trip (progress, playlist, PDFs, and exam attempt)
-  const queries = [
-    sql`
-      SELECT watched, progress_seconds FROM watch_progress
-      WHERE user_id = ${session.id} AND video_id = ${video.id}
-      LIMIT 1
-    `,
-    sql`
-      SELECT youtube_video_id, title, position FROM videos
-      WHERE playlist_id = ${video.playlist_id}
-    `,
-    sql`
-      SELECT * FROM video_pdfs
-      WHERE video_id = ${video.id}
-      ORDER BY created_at ASC
-    `,
-  ];
+  // Batch remaining user-specific queries (progress, PDFs, and exam attempt)
+  const [playlistRows, userResults] = await Promise.all([
+    getCachedPlaylistVideos(video.playlist_id),
+    (async () => {
+      const queries = [
+        sql`
+          SELECT watched, progress_seconds FROM watch_progress
+          WHERE user_id = ${session.id} AND video_id = ${video.id}
+          LIMIT 1
+        `,
+        sql`
+          SELECT * FROM video_pdfs
+          WHERE video_id = ${video.id}
+          ORDER BY created_at ASC
+        `,
+      ];
 
-  if (connectedExam) {
-    queries.push(sql`
-      SELECT score, total_questions, selected_answers
-      FROM exam_attempts
-      WHERE user_id = ${session.id} AND exam_id = ${connectedExam.id}
-      LIMIT 1
-    `);
-  }
+      if (connectedExam) {
+        queries.push(sql`
+          SELECT score, total_questions, selected_answers
+          FROM exam_attempts
+          WHERE user_id = ${session.id} AND exam_id = ${connectedExam.id}
+          LIMIT 1
+        `);
+      }
 
-  const results = await sql.transaction(queries);
-  const progressRows = results[0];
-  const playlistRows = results[1];
-  const pdfRowsRaw = results[2];
-  const attemptRows = connectedExam && results.length > 3 ? results[3] : [];
+      return sql.transaction(queries);
+    })(),
+  ]);
+
+  const progressRows = userResults[0];
+  const pdfRowsRaw = userResults[1];
+  const attemptRows = connectedExam && userResults.length > 2 ? userResults[2] : [];
 
   const isWatched = progressRows[0]?.watched === true;
   const dbProgressSeconds = Number(progressRows[0]?.progress_seconds) || 0;

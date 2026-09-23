@@ -883,10 +883,11 @@ export function VideoPlayer({
   React.useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
     if (isPlaying) {
-      // Sync every 60 seconds while playing (reduces database & Vercel compute by ~85% while keeping exact resume position)
+      // Periodic heartbeat sync every 180 seconds (3 minutes) while actively playing.
+      // Immediate syncs already fire on pause (state 2), video end (state 0), and tab close (beforeunload).
       interval = setInterval(() => {
         syncProgress();
-      }, 60000);
+      }, 180000);
     }
     return () => {
       if (interval) clearInterval(interval);

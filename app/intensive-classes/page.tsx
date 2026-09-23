@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { sql } from "@/lib/db";
+import { getCachedVideosByPlaylists } from "@/lib/db/cached-catalog";
 import { getSession } from "@/lib/auth/session";
 import { type Video } from "@/components/dashboard/video-card";
 import { WatchProgressBar } from "@/components/dashboard/progress-bar";
@@ -37,20 +38,8 @@ export default async function IntensiveClassesPage() {
   // Get all intensive playlist IDs to filter videos
   const intensivePlaylistIds = INTENSIVE_PLAYLISTS.map((p) => p.id);
 
-  // Fetch videos only for intensive playlists
-  let videoList: Video[] = [];
-  if (intensivePlaylistIds.length > 0) {
-    const videos = await sql`
-      SELECT 
-        v.*,
-        EXISTS(SELECT 1 FROM video_pdfs vp WHERE vp.video_id = v.id) AS has_pdf,
-        (SELECT COUNT(*)::int FROM video_pdfs vp WHERE vp.video_id = v.id) AS pdf_count
-      FROM videos v
-      WHERE v.playlist_id = ANY(${intensivePlaylistIds})
-      ORDER BY v.position ASC
-    `;
-    videoList = videos as unknown as Video[];
-  }
+  // Fetch videos only for intensive playlists (cached at server level)
+  const videoList: Video[] = await getCachedVideosByPlaylists(intensivePlaylistIds);
 
   // Fetch user's watch progress for intensive videos only
   let watchedVideoIds: string[] = [];
