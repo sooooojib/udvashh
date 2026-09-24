@@ -206,6 +206,10 @@ export function CurrentlyWatching({ videos }: CurrentlyWatchingProps) {
             duration > 0
               ? Math.min(100, Math.max(1, Math.round((progress / duration) * 100)))
               : 0;
+          const remainingPercent =
+            duration > 0
+              ? Math.max(0, Math.min(100, Math.round((remainingSeconds / duration) * 100)))
+              : 0;
 
           const resumeHref = `/watch/${video.youtube_video_id}?t=${progress}`;
           const fallbackThumbnail = `https://i.ytimg.com/vi/${video.youtube_video_id}/hqdefault.jpg`;
@@ -280,7 +284,10 @@ export function CurrentlyWatching({ videos }: CurrentlyWatchingProps) {
 
                     <span className="inline-flex items-center gap-1.5 text-zinc-300 shrink-0 font-medium">
                       <Clock className="h-3 w-3 shrink-0" />
-                      <span>{formatTimeLeft(remainingSeconds)}</span>
+                      <span>
+                        {formatTimeLeft(remainingSeconds)}
+                        {remainingSeconds > 0 && ` (${remainingPercent}% left)`}
+                      </span>
                     </span>
                   </div>
                 </div>
