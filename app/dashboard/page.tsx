@@ -221,6 +221,7 @@ export default async function DashboardPage() {
           {/* Module 1: Live Classes (ACTIVE) */}
           <Link
             href="/live-classes"
+            prefetch={true}
             className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border/60 bg-card/90 p-5 shadow-sm backdrop-blur-md transition-all duration-200 ease-in-out hover:scale-[1.01] active:scale-[0.99] hover:border-emerald-500/50 dark:border-[#1F2C34] dark:bg-[#111820] dark:hover:border-emerald-500/60 hover:shadow-md min-h-[180px]"
           >
             {/* Top Badge */}
@@ -284,6 +285,7 @@ export default async function DashboardPage() {
           {/* Module 2: Intensive Classes (ACTIVE) */}
           <Link
             href="/intensive-classes"
+            prefetch={true}
             className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border/60 bg-card/90 p-5 shadow-sm backdrop-blur-md transition-all duration-200 ease-in-out hover:scale-[1.01] active:scale-[0.99] hover:border-amber-500/50 dark:border-[#1F2C34] dark:bg-[#111820] dark:hover:border-amber-500/60 hover:shadow-md min-h-[180px]"
           >
             {/* Top Badge */}
@@ -347,6 +349,7 @@ export default async function DashboardPage() {
           {/* Module 3: Subject Hacks (ACTIVE) */}
           <Link
             href="/subject-hacks"
+            prefetch={true}
             className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border/60 bg-card/90 p-5 shadow-sm backdrop-blur-md transition-all duration-200 ease-in-out hover:scale-[1.01] active:scale-[0.99] hover:border-blue-500/50 dark:border-[#1F2C34] dark:bg-[#111820] dark:hover:border-blue-500/60 hover:shadow-md min-h-[180px]"
           >
             {/* Top Badge */}
@@ -411,6 +414,7 @@ export default async function DashboardPage() {
           {/* Module 4: Live Exams (ACTIVE) */}
           <Link
             href="/exams"
+            prefetch={true}
             className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border/60 bg-card/90 p-5 shadow-sm backdrop-blur-md transition-all duration-200 ease-in-out hover:scale-[1.01] active:scale-[0.99] hover:border-[#881337]/50 dark:border-[#1F2C34] dark:bg-[#111820] dark:hover:border-[#881337]/60 hover:shadow-md min-h-[180px]"
           >
             {/* Top Badge */}

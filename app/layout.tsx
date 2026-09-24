@@ -77,7 +77,12 @@ export default function RootLayout({
         <link rel="dns-prefetch" href="https://s.ytimg.com" />
         <link rel="dns-prefetch" href="https://i.ytimg.com" />
         <link
-          href="https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@100..900&display=swap"
+          rel="preload"
+          as="style"
+          href="https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;500;600;700&display=swap"
+        />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;500;600;700&display=swap"
           rel="stylesheet"
         />
       </head>

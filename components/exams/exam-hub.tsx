@@ -16,8 +16,13 @@ import {
   Tv,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import dynamic from "next/dynamic";
 import { ExamItem, SUBJECTS, SubjectType } from "@/lib/exams";
-import { ExamModal } from "@/components/exams/exam-modal";
+
+const ExamModal = dynamic(
+  () => import("@/components/exams/exam-modal").then((mod) => mod.ExamModal),
+  { ssr: false }
+);
 
 interface ExamHubProps {
   initialExams: ExamItem[];
@@ -627,20 +632,20 @@ export function ExamHub({ initialExams, initialUserAttempts }: ExamHubProps) {
         </div>
       )}
 
-      {/* ── Question & Solution Modal ── */}
-      <ExamModal
-        exam={activeExam}
-        initialAttempt={activeExam ? userAttempts[activeExam.id] : undefined}
-        onClose={() => setActiveExam(null)}
-        onAttemptSaved={(score, total, selectedAnswers) => {
-          if (activeExam) {
+      {/* ── Question & Solution Modal (Dynamically loaded on open) ── */}
+      {activeExam && (
+        <ExamModal
+          exam={activeExam}
+          initialAttempt={userAttempts[activeExam.id]}
+          onClose={() => setActiveExam(null)}
+          onAttemptSaved={(score, total, selectedAnswers) => {
             setUserAttempts((prev) => ({
               ...prev,
               [activeExam.id]: { score, total, selectedAnswers },
             }));
-          }
-        }}
-      />
+          }}
+        />
+      )}
     </div>
   );
 }
