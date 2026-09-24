@@ -109,7 +109,7 @@ export default async function DashboardPage() {
     ...SUBJECT_HACKS_PLAYLISTS.map((p) => ({ ...p, category: "Subject Hacks" })),
   ];
 
-  // Fetch up to 3 currently watching videos (in-progress, not marked watched, > 10s progress)
+  // Fetch up to 6 currently watching videos (in-progress, not marked watched, > 10s progress)
   const currentlyWatchingRows = await sql`
     SELECT 
       v.id,
@@ -127,7 +127,7 @@ export default async function DashboardPage() {
       AND wp.watched = false
       AND wp.progress_seconds > 10
     ORDER BY COALESCE(wp.last_watched_at, wp.updated_at) DESC
-    LIMIT 3
+    LIMIT 6
   `;
 
   const currentlyWatchingVideos: CurrentlyWatchingVideo[] = currentlyWatchingRows.map((row) => {
