@@ -15,7 +15,7 @@ export async function Header() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/80 bg-background/80 backdrop-blur-md dark:border-[#1F2C34]/80 dark:bg-[#0A0F12]/80 transition-colors duration-200 pt-safe">
-      <div className="relative mx-auto flex h-16 max-w-[1680px] items-center justify-between px-3.5 sm:px-6 lg:px-8">
+      <div className="relative mx-auto flex h-16 max-w-[1400px] items-center justify-between px-3.5 sm:px-5 lg:px-6">
         {/* Left side: User badge */}
         <div className="flex items-center justify-start z-10 min-w-0">
           {userEmail && (

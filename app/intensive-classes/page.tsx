@@ -58,7 +58,7 @@ export default async function IntensiveClassesPage() {
 
 
   return (
-    <main className="flex-1 p-3.5 sm:p-5 md:py-6 md:px-6 lg:px-8 max-w-[1680px] mx-auto w-full space-y-8 min-h-[calc(100dvh-4rem)] animate-page-enter overflow-x-hidden">
+    <main className="flex-1 px-3.5 sm:px-5 lg:px-6 py-6 sm:py-8 max-w-[1400px] mx-auto w-full space-y-8 min-h-[calc(100dvh-4rem)] animate-page-enter overflow-x-hidden">
       {/* Page Header with Amber Accent */}
       <div className="flex items-center gap-3.5">
         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-600 ring-1 ring-amber-500/30 shadow-sm dark:text-amber-400">
