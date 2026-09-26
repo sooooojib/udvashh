@@ -247,36 +247,79 @@ export function VideoPdfSection({
         setPdfs((prev) => [...prev, completeData.pdf]);
         closeAndResetModal();
       } else {
-        // GOOGLE DRIVE UPLOAD (Powered by permanent Apps Script / Drive bridge)
-        setUploadStatusText("Uploading to Google Drive...");
+        // GOOGLE DRIVE UPLOAD (Direct Client -> Apps Script Bridge, zero Vercel limits!)
+        setUploadStatusText("Connecting to Google Drive...");
+        setUploadProgress(15);
+
+        // 1. Get Google Apps Script URL
+        const configRes = await fetch("/api/upload/drive/config");
+        if (!configRes.ok) {
+          const errData = await configRes.json().catch(() => ({}));
+          throw new Error(errData.message || "Failed to connect to Google Drive bridge.");
+        }
+        const { scriptUrl } = await configRes.json();
+
+        // 2. Read PDF as base64 in browser
+        setUploadStatusText("Processing PDF file...");
         setUploadProgress(30);
 
-        const formData = new FormData();
-        formData.append("videoId", videoId);
-        formData.append("file", selectedFile);
-        formData.append("title", title);
-        formData.append("destination", "drive");
-
-        setUploadProgress(60);
-
-        const uploadRes = await fetch("/api/upload/pdf", {
-          method: "POST",
-          body: formData,
+        const base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const result = reader.result as string;
+            const commaIdx = result.indexOf(",");
+            resolve(commaIdx !== -1 ? result.slice(commaIdx + 1) : result);
+          };
+          reader.onerror = () => reject(new Error("Failed to read PDF file"));
+          reader.readAsDataURL(selectedFile);
         });
 
-        if (!uploadRes.ok) {
-          const errData = await uploadRes.json().catch(() => ({}));
-          throw new Error(errData.message || "Failed to upload to Google Drive.");
+        // 3. Upload directly to Google Drive via Apps Script (no 4.5MB Vercel limit)
+        setUploadStatusText("Uploading directly to Google Drive...");
+        setUploadProgress(60);
+
+        const scriptRes = await fetch(scriptUrl, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify({
+            fileName: selectedFile.name,
+            base64,
+          }),
+        });
+
+        if (!scriptRes.ok) {
+          throw new Error(`Google Drive bridge returned status ${scriptRes.status}`);
         }
 
-        const data = await uploadRes.json();
-        if (!data.success || !data.pdf) {
-          throw new Error(data.message || "Failed to save Drive PDF record.");
+        const scriptData = await scriptRes.json();
+        if (!scriptData.success || !scriptData.fileId) {
+          throw new Error(scriptData.error || "Google Drive upload was unsuccessful.");
+        }
+
+        // 4. Save record in database
+        setUploadStatusText("Finalizing Drive PDF record...");
+        setUploadProgress(90);
+
+        const completeRes = await fetch("/api/upload/drive/complete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            videoId,
+            title,
+            fileId: scriptData.fileId,
+            webViewLink: scriptData.webViewLink,
+            fileSize: selectedFile.size,
+          }),
+        });
+
+        const completeData = await completeRes.json();
+        if (!completeRes.ok || !completeData.success) {
+          throw new Error(completeData.message || "Failed to save Drive PDF record.");
         }
 
         setUploadProgress(100);
         toast.success("PDF uploaded to Google Drive!");
-        setPdfs((prev) => [...prev, data.pdf]);
+        setPdfs((prev) => [...prev, completeData.pdf]);
         closeAndResetModal();
       }
     } catch (err: unknown) {
