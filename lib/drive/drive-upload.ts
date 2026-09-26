@@ -130,6 +130,30 @@ export async function uploadPdfToGoogleDrive({
   fileName: string;
   fileBuffer: Buffer;
 }): Promise<{ fileId: string; webViewLink: string }> {
+  const scriptUrl = cleanEnv(process.env.GOOGLE_APPS_SCRIPT_URL);
+  if (scriptUrl) {
+    const base64 = fileBuffer.toString("base64");
+    const res = await fetch(scriptUrl, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({
+        fileName: fileName.endsWith(".pdf") ? fileName : `${fileName}.pdf`,
+        base64,
+      }),
+      redirect: "follow",
+    });
+
+    const data = await res.json();
+    if (!data.success || !data.fileId) {
+      throw new Error(`Google Apps Script upload failed: ${data.error || "Unknown error"}`);
+    }
+
+    return {
+      fileId: data.fileId,
+      webViewLink: data.webViewLink,
+    };
+  }
+
   const accessToken = await getDriveAccessToken();
 
   const metadata: Record<string, unknown> = {

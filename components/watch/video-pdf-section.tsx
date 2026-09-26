@@ -247,80 +247,37 @@ export function VideoPdfSection({
         setPdfs((prev) => [...prev, completeData.pdf]);
         closeAndResetModal();
       } else {
-        // GOOGLE DRIVE RESUMABLE CHUNKED UPLOAD
-        setUploadStatusText("Creating Google Drive session...");
-        setUploadProgress(5);
+        // GOOGLE DRIVE UPLOAD (Powered by permanent Apps Script / Drive bridge)
+        setUploadStatusText("Uploading to Google Drive...");
+        setUploadProgress(30);
 
-        // 1. Start resumable session
-        const startRes = await fetch("/api/upload/drive/start", {
+        const formData = new FormData();
+        formData.append("videoId", videoId);
+        formData.append("file", selectedFile);
+        formData.append("title", title);
+        formData.append("destination", "drive");
+
+        setUploadProgress(60);
+
+        const uploadRes = await fetch("/api/upload/pdf", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            videoId,
-            fileName: selectedFile.name,
-            fileSize: selectedFile.size,
-          }),
+          body: formData,
         });
 
-        if (!startRes.ok) {
-          const startData = await startRes.json().catch(() => ({}));
-          throw new Error(startData.message || "Failed to initiate Drive upload.");
+        if (!uploadRes.ok) {
+          const errData = await uploadRes.json().catch(() => ({}));
+          throw new Error(errData.message || "Failed to upload to Google Drive.");
         }
 
-        const { sessionUrl } = await startRes.json();
-
-        // 2. Upload in 2MB chunks (safe from Vercel's 4.5MB payload limit)
-        const CHUNK_SIZE = 2 * 1024 * 1024; // 2MB (multiple of 256KB)
-        const totalSize = selectedFile.size;
-        let start = 0;
-        let chunkIndex = 1;
-        const totalChunks = Math.ceil(totalSize / CHUNK_SIZE);
-        let createdPdf: VideoPdfItem | null = null;
-
-        while (start < totalSize) {
-          const end = Math.min(start + CHUNK_SIZE, totalSize) - 1;
-          const chunkBlob = selectedFile.slice(start, end + 1);
-
-          setUploadStatusText(`Uploading chunk ${chunkIndex} of ${totalChunks}...`);
-
-          const chunkRes = await fetch(
-            `/api/upload/drive/chunk?rangeStart=${start}&rangeEnd=${end}&totalSize=${totalSize}&videoId=${encodeURIComponent(videoId)}&title=${encodeURIComponent(title)}`,
-            {
-              method: "POST",
-              headers: {
-                "x-session-url": sessionUrl,
-                "Content-Type": "application/octet-stream",
-              },
-              body: chunkBlob,
-            }
-          );
-
-          if (!chunkRes.ok) {
-            const errData = await chunkRes.json().catch(() => ({}));
-            throw new Error(errData.message || `Chunk ${chunkIndex} upload failed.`);
-          }
-
-          const chunkData = await chunkRes.json();
-          const percent = Math.round(((end + 1) / totalSize) * 100);
-          setUploadProgress(percent);
-
-          if (chunkData.done && chunkData.pdf) {
-            createdPdf = chunkData.pdf;
-            break;
-          }
-
-          start = end + 1;
-          chunkIndex++;
+        const data = await uploadRes.json();
+        if (!data.success || !data.pdf) {
+          throw new Error(data.message || "Failed to save Drive PDF record.");
         }
 
-        if (createdPdf) {
-          setUploadProgress(100);
-          toast.success("PDF uploaded to Google Drive!");
-          setPdfs((prev) => [...prev, createdPdf!]);
-          closeAndResetModal();
-        } else {
-          throw new Error("Upload completed without receiving confirmation.");
-        }
+        setUploadProgress(100);
+        toast.success("PDF uploaded to Google Drive!");
+        setPdfs((prev) => [...prev, data.pdf]);
+        closeAndResetModal();
       }
     } catch (err: unknown) {
       console.error("Upload error:", err);

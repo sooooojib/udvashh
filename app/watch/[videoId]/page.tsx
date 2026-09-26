@@ -185,7 +185,10 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
         initialPdfs={pdfRows}
         isAdmin={isOwner}
         moduleType={moduleType}
-        isDriveConnected={Boolean(process.env.GOOGLE_DRIVE_REFRESH_TOKEN)}
+        isDriveConnected={Boolean(
+          process.env.GOOGLE_APPS_SCRIPT_URL ||
+            process.env.GOOGLE_DRIVE_REFRESH_TOKEN
+        )}
       />
     </main>
   );

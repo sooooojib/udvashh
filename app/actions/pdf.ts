@@ -341,7 +341,9 @@ export async function uploadPdfToDriveAction(
  */
 export async function isGoogleDriveLinked(): Promise<boolean> {
   return Boolean(
-    process.env.GOOGLE_DRIVE_REFRESH_TOKEN || process.env.YT_OAUTH_REFRESH_TOKEN
+    process.env.GOOGLE_APPS_SCRIPT_URL ||
+      process.env.GOOGLE_DRIVE_REFRESH_TOKEN ||
+      process.env.YT_OAUTH_REFRESH_TOKEN
   );
 }
 
