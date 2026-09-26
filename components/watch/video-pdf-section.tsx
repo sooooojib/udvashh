@@ -16,6 +16,9 @@ import {
   CheckCircle2,
   AlertCircle,
   HardDrive,
+  ChevronDown,
+  ChevronUp,
+  Layers,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,7 +44,7 @@ interface ActiveUploadTask {
   progress: number;
   statusText: string;
   mode: "drive" | "supabase";
-  status: "uploading" | "completed" | "error";
+  status: "queued" | "uploading" | "completed" | "error";
   errorMessage?: string;
 }
 
@@ -67,13 +70,11 @@ export function VideoPdfSection({
   // Three modes: "drive" (upload to Google Drive), "supabase" (upload to Supabase), "link" (paste Drive URL)
   const [uploadMode, setUploadMode] = React.useState<"drive" | "supabase" | "link">("drive");
 
-  // File Upload State
-  const [selectedFile, setSelectedFile] = React.useState<File | null>(null);
+  // Multi-File Upload State
+  const [selectedFiles, setSelectedFiles] = React.useState<File[]>([]);
   const [uploadTitle, setUploadTitle] = React.useState("");
-  const [isUploading, setIsUploading] = React.useState(false);
-  const [uploadProgress, setUploadProgress] = React.useState<number | null>(null);
-  const [uploadStatusText, setUploadStatusText] = React.useState<string>("");
-  const [activeUpload, setActiveUpload] = React.useState<ActiveUploadTask | null>(null);
+  const [activeUploads, setActiveUploads] = React.useState<ActiveUploadTask[]>([]);
+  const [isDrawerExpanded, setIsDrawerExpanded] = React.useState(false);
   const [isDragOver, setIsDragOver] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -155,18 +156,40 @@ export function VideoPdfSection({
       ? "text-blue-500"
       : "text-emerald-600 dark:text-emerald-400";
 
-  // Handle file selection
-  const handleFileChange = (file: File | null) => {
-    if (!file) return;
-    if (!file.name.toLowerCase().endsWith(".pdf") && file.type !== "application/pdf") {
+  // Handle multi-file selection
+  const handleFilesChange = (files: FileList | File[] | null) => {
+    if (!files || files.length === 0) return;
+    const validPdfs: File[] = [];
+
+    Array.from(files).forEach((f) => {
+      if (f.name.toLowerCase().endsWith(".pdf") || f.type === "application/pdf") {
+        validPdfs.push(f);
+      }
+    });
+
+    if (validPdfs.length === 0) {
       toast.error("Only PDF files (.pdf) are allowed.");
       return;
     }
-    setSelectedFile(file);
-    if (!uploadTitle.trim()) {
-      const cleanName = file.name.replace(/\.pdf$/i, "").replace(/[_-]+/g, " ");
+
+    setSelectedFiles((prev) => {
+      const combined = [...prev];
+      validPdfs.forEach((newF) => {
+        if (!combined.some((ex) => ex.name === newF.name && ex.size === newF.size)) {
+          combined.push(newF);
+        }
+      });
+      return combined;
+    });
+
+    if (validPdfs.length === 1 && selectedFiles.length === 0 && !uploadTitle.trim()) {
+      const cleanName = validPdfs[0].name.replace(/\.pdf$/i, "").replace(/[_-]+/g, " ");
       setUploadTitle(cleanName);
     }
+  };
+
+  const removeSelectedFile = (indexToRemove: number) => {
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== indexToRemove));
   };
 
   // Handle drag & drop
@@ -184,223 +207,285 @@ export function VideoPdfSection({
     e.preventDefault();
     e.stopPropagation();
     setIsDragOver(false);
-    const droppedFile = e.dataTransfer.files[0];
-    if (droppedFile) handleFileChange(droppedFile);
+    if (e.dataTransfer.files) {
+      handleFilesChange(e.dataTransfer.files);
+    }
   };
 
-  // Handle direct file upload in background (zero waiting time!)
+  // Handle batch file upload in background (YouTube-style queue, zero waiting time!)
   const handleFileUpload = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedFile) {
-      toast.error("Please choose a PDF file.");
+    if (selectedFiles.length === 0) {
+      toast.error("Please choose at least one PDF file.");
       return;
     }
 
-    const fileToUpload = selectedFile;
+    const filesToUpload = [...selectedFiles];
     const modeToUpload: "drive" | "supabase" =
       uploadMode === "supabase" ? "supabase" : "drive";
-    const title =
-      uploadTitle.trim() ||
-      fileToUpload.name.replace(/\.pdf$/i, "").replace(/[_-]+/g, " ");
+    const customSingleTitle = uploadTitle.trim();
 
-    // Close the modal immediately so the user can continue watching without waiting!
+    // Close the modal immediately so the user can continue watching uninterrupted!
     closeAndResetModal();
 
-    const taskId = Date.now().toString();
-    setActiveUpload({
-      id: taskId,
-      title,
-      fileName: fileToUpload.name,
-      fileSize: fileToUpload.size,
-      progress: 10,
-      statusText:
-        modeToUpload === "supabase"
-          ? "Connecting to Supabase Storage..."
-          : "Connecting to Google Drive bridge...",
-      mode: modeToUpload,
-      status: "uploading",
+    const newTasks: ActiveUploadTask[] = filesToUpload.map((f, idx) => {
+      const cleanName = f.name.replace(/\.pdf$/i, "").replace(/[_-]+/g, " ");
+      const title =
+        filesToUpload.length === 1 && customSingleTitle
+          ? customSingleTitle
+          : cleanName;
+      return {
+        id: `${Date.now()}-${idx}-${f.name}`,
+        title,
+        fileName: f.name,
+        fileSize: f.size,
+        progress: 0,
+        statusText: "Waiting in queue...",
+        mode: modeToUpload,
+        status: "queued" as const,
+      };
     });
 
-    try {
-      if (modeToUpload === "supabase") {
-        setActiveUpload((prev) =>
-          prev ? { ...prev, progress: 20, statusText: "Authorizing upload..." } : null
-        );
+    setActiveUploads((prev) => [...prev, ...newTasks]);
 
-        // 1. Get signed upload URL (tiny JSON request, bypasses Vercel 4.5MB limit)
-        const signRes = await fetch("/api/upload/supabase/sign", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ videoId, fileName: fileToUpload.name }),
-        });
-
-        if (!signRes.ok) {
-          const errData = await signRes.json().catch(() => ({}));
-          throw new Error(errData.message || "Failed to initialize Supabase upload.");
+    // Background Queue Runner (processes sequential uploads so personal accounts aren't throttled)
+    (async () => {
+      let cachedScriptUrl = "";
+      if (modeToUpload === "drive") {
+        try {
+          const configRes = await fetch("/api/upload/drive/config");
+          if (configRes.ok) {
+            const cfg = await configRes.json();
+            cachedScriptUrl = cfg.scriptUrl || "";
+          }
+        } catch (cfgErr) {
+          console.error("Failed to load drive config:", cfgErr);
         }
-
-        const { signedUrl, storagePath } = await signRes.json();
-
-        setActiveUpload((prev) =>
-          prev ? { ...prev, progress: 45, statusText: "Uploading directly to Supabase Storage..." } : null
-        );
-
-        // 2. Upload file directly to Supabase Storage (Client -> Supabase, zero Vercel limits!)
-        const uploadRes = await fetch(signedUrl, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/pdf",
-          },
-          body: fileToUpload,
-        });
-
-        if (!uploadRes.ok) {
-          throw new Error(`Supabase upload failed (status ${uploadRes.status}).`);
-        }
-
-        setActiveUpload((prev) =>
-          prev ? { ...prev, progress: 85, statusText: "Finalizing PDF record..." } : null
-        );
-
-        // 3. Record metadata in database
-        const completeRes = await fetch("/api/upload/supabase/complete", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            videoId,
-            title,
-            storagePath,
-            fileSize: fileToUpload.size,
-          }),
-        });
-
-        const completeData = await completeRes.json();
-        if (!completeRes.ok || !completeData.success) {
-          throw new Error(completeData.message || "Failed to finalize PDF record.");
-        }
-
-        setPdfs((prev) => [...prev, completeData.pdf]);
-        setActiveUpload((prev) =>
-          prev
-            ? {
-                ...prev,
-                progress: 100,
-                statusText: "PDF uploaded to Supabase!",
-                status: "completed",
-              }
-            : null
-        );
-        toast.success("PDF uploaded to Supabase!");
-        setTimeout(() => {
-          setActiveUpload((curr) => (curr?.id === taskId ? null : curr));
-        }, 3500);
-      } else {
-        // GOOGLE DRIVE UPLOAD (Direct Client -> Apps Script Bridge, zero Vercel limits!)
-        setActiveUpload((prev) =>
-          prev ? { ...prev, progress: 15, statusText: "Connecting to Google Drive bridge..." } : null
-        );
-
-        // 1. Get Google Apps Script URL
-        const configRes = await fetch("/api/upload/drive/config");
-        if (!configRes.ok) {
-          const errData = await configRes.json().catch(() => ({}));
-          throw new Error(errData.message || "Failed to connect to Google Drive bridge.");
-        }
-        const { scriptUrl } = await configRes.json();
-
-        // 2. Read PDF as base64 in browser
-        setActiveUpload((prev) =>
-          prev ? { ...prev, progress: 30, statusText: "Processing PDF file..." } : null
-        );
-
-        const base64 = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => {
-            const result = reader.result as string;
-            const commaIdx = result.indexOf(",");
-            resolve(commaIdx !== -1 ? result.slice(commaIdx + 1) : result);
-          };
-          reader.onerror = () => reject(new Error("Failed to read PDF file"));
-          reader.readAsDataURL(fileToUpload);
-        });
-
-        // 3. Upload directly to Google Drive via Apps Script (no 4.5MB Vercel limit)
-        setActiveUpload((prev) =>
-          prev ? { ...prev, progress: 60, statusText: "Uploading directly to Google Drive..." } : null
-        );
-
-        const scriptRes = await fetch(scriptUrl, {
-          method: "POST",
-          headers: { "Content-Type": "text/plain;charset=utf-8" },
-          body: JSON.stringify({
-            fileName: fileToUpload.name,
-            base64,
-          }),
-        });
-
-        if (!scriptRes.ok) {
-          throw new Error(`Google Drive bridge returned status ${scriptRes.status}`);
-        }
-
-        const scriptData = await scriptRes.json();
-        if (!scriptData.success || !scriptData.fileId) {
-          throw new Error(scriptData.error || "Google Drive upload was unsuccessful.");
-        }
-
-        // 4. Save record in database
-        setActiveUpload((prev) =>
-          prev ? { ...prev, progress: 90, statusText: "Finalizing Drive record..." } : null
-        );
-
-        const completeRes = await fetch("/api/upload/drive/complete", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            videoId,
-            title,
-            fileId: scriptData.fileId,
-            webViewLink: scriptData.webViewLink,
-            fileSize: fileToUpload.size,
-          }),
-        });
-
-        const completeData = await completeRes.json();
-        if (!completeRes.ok || !completeData.success) {
-          throw new Error(completeData.message || "Failed to save Drive PDF record.");
-        }
-
-        setPdfs((prev) => [...prev, completeData.pdf]);
-        setActiveUpload((prev) =>
-          prev
-            ? {
-                ...prev,
-                progress: 100,
-                statusText: "PDF uploaded to Google Drive!",
-                status: "completed",
-              }
-            : null
-        );
-        toast.success("PDF uploaded to Google Drive!");
-        setTimeout(() => {
-          setActiveUpload((curr) => (curr?.id === taskId ? null : curr));
-        }, 3500);
       }
-    } catch (err: unknown) {
-      console.error("Upload error:", err);
-      const msg =
-        err instanceof Error ? err.message : "Upload failed. Please try again.";
-      setActiveUpload((prev) =>
-        prev
-          ? {
-              ...prev,
-              status: "error",
-              errorMessage: msg,
-              statusText: msg,
+
+      for (let i = 0; i < filesToUpload.length; i++) {
+        const file = filesToUpload[i];
+        const task = newTasks[i];
+
+        // Mark current file as actively uploading
+        setActiveUploads((prev) =>
+          prev.map((t) =>
+            t.id === task.id
+              ? {
+                  ...t,
+                  status: "uploading",
+                  progress: 10,
+                  statusText:
+                    modeToUpload === "supabase"
+                      ? "Connecting to Supabase Storage..."
+                      : "Connecting to Google Drive bridge...",
+                }
+              : t
+          )
+        );
+
+        try {
+          if (modeToUpload === "supabase") {
+            // 1. Get signed upload URL
+            setActiveUploads((prev) =>
+              prev.map((t) =>
+                t.id === task.id
+                  ? { ...t, progress: 25, statusText: "Authorizing upload..." }
+                  : t
+              )
+            );
+
+            const signRes = await fetch("/api/upload/supabase/sign", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ videoId, fileName: file.name }),
+            });
+
+            if (!signRes.ok) {
+              const errData = await signRes.json().catch(() => ({}));
+              throw new Error(errData.message || "Failed to initialize Supabase upload.");
             }
-          : null
-      );
-      toast.error(msg);
-    }
+
+            const { signedUrl, storagePath } = await signRes.json();
+
+            // 2. Upload directly to Supabase Storage
+            setActiveUploads((prev) =>
+              prev.map((t) =>
+                t.id === task.id
+                  ? { ...t, progress: 50, statusText: "Uploading to Supabase Storage..." }
+                  : t
+              )
+            );
+
+            const uploadRes = await fetch(signedUrl, {
+              method: "PUT",
+              headers: { "Content-Type": "application/pdf" },
+              body: file,
+            });
+
+            if (!uploadRes.ok) {
+              throw new Error(`Supabase upload failed (status ${uploadRes.status}).`);
+            }
+
+            // 3. Save database record
+            setActiveUploads((prev) =>
+              prev.map((t) =>
+                t.id === task.id
+                  ? { ...t, progress: 85, statusText: "Finalizing PDF record..." }
+                  : t
+              )
+            );
+
+            const completeRes = await fetch("/api/upload/supabase/complete", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                videoId,
+                title: task.title,
+                storagePath,
+                fileSize: file.size,
+              }),
+            });
+
+            const completeData = await completeRes.json();
+            if (!completeRes.ok || !completeData.success) {
+              throw new Error(completeData.message || "Failed to finalize PDF record.");
+            }
+
+            setPdfs((prev) => [...prev, completeData.pdf]);
+            setActiveUploads((prev) =>
+              prev.map((t) =>
+                t.id === task.id
+                  ? {
+                      ...t,
+                      status: "completed",
+                      progress: 100,
+                      statusText: "Uploaded to Supabase!",
+                    }
+                  : t
+              )
+            );
+            toast.success(`Uploaded: ${task.title}`);
+          } else {
+            // GOOGLE DRIVE UPLOAD
+            if (!cachedScriptUrl) {
+              const configRes = await fetch("/api/upload/drive/config");
+              if (!configRes.ok) {
+                const errData = await configRes.json().catch(() => ({}));
+                throw new Error(errData.message || "Failed to connect to Google Drive bridge.");
+              }
+              const cfg = await configRes.json();
+              cachedScriptUrl = cfg.scriptUrl;
+            }
+
+            // 2. Read PDF as base64 in browser
+            setActiveUploads((prev) =>
+              prev.map((t) =>
+                t.id === task.id
+                  ? { ...t, progress: 30, statusText: "Processing PDF..." }
+                  : t
+              )
+            );
+
+            const base64 = await new Promise<string>((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = () => {
+                const result = reader.result as string;
+                const commaIdx = result.indexOf(",");
+                resolve(commaIdx !== -1 ? result.slice(commaIdx + 1) : result);
+              };
+              reader.onerror = () => reject(new Error("Failed to read PDF file"));
+              reader.readAsDataURL(file);
+            });
+
+            // 3. Upload directly to Google Drive via Apps Script
+            setActiveUploads((prev) =>
+              prev.map((t) =>
+                t.id === task.id
+                  ? { ...t, progress: 60, statusText: "Uploading to Google Drive..." }
+                  : t
+              )
+            );
+
+            const scriptRes = await fetch(cachedScriptUrl, {
+              method: "POST",
+              headers: { "Content-Type": "text/plain;charset=utf-8" },
+              body: JSON.stringify({
+                fileName: file.name,
+                base64,
+              }),
+            });
+
+            if (!scriptRes.ok) {
+              throw new Error(`Google Drive bridge returned status ${scriptRes.status}`);
+            }
+
+            const scriptData = await scriptRes.json();
+            if (!scriptData.success || !scriptData.fileId) {
+              throw new Error(scriptData.error || "Google Drive upload was unsuccessful.");
+            }
+
+            // 4. Save record in database
+            setActiveUploads((prev) =>
+              prev.map((t) =>
+                t.id === task.id
+                  ? { ...t, progress: 90, statusText: "Finalizing Drive record..." }
+                  : t
+              )
+            );
+
+            const completeRes = await fetch("/api/upload/drive/complete", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                videoId,
+                title: task.title,
+                fileId: scriptData.fileId,
+                webViewLink: scriptData.webViewLink,
+                fileSize: file.size,
+              }),
+            });
+
+            const completeData = await completeRes.json();
+            if (!completeRes.ok || !completeData.success) {
+              throw new Error(completeData.message || "Failed to save Drive PDF record.");
+            }
+
+            setPdfs((prev) => [...prev, completeData.pdf]);
+            setActiveUploads((prev) =>
+              prev.map((t) =>
+                t.id === task.id
+                  ? {
+                      ...t,
+                      status: "completed",
+                      progress: 100,
+                      statusText: "Uploaded to Google Drive!",
+                    }
+                  : t
+              )
+            );
+            toast.success(`Uploaded: ${task.title}`);
+          }
+        } catch (err: unknown) {
+          console.error(`Upload error for ${file.name}:`, err);
+          const msg =
+            err instanceof Error ? err.message : "Upload failed.";
+          setActiveUploads((prev) =>
+            prev.map((t) =>
+              t.id === task.id
+                ? {
+                    ...t,
+                    status: "error",
+                    errorMessage: msg,
+                    statusText: msg,
+                  }
+                : t
+            )
+          );
+          toast.error(`Failed to upload ${file.name}: ${msg}`);
+        }
+      }
+    })();
   };
 
   // Handle Google Drive Link Attachment
@@ -463,13 +548,11 @@ export function VideoPdfSection({
 
   const closeAndResetModal = () => {
     setIsAddModalOpen(false);
-    setSelectedFile(null);
+    setSelectedFiles([]);
     setUploadTitle("");
     setDriveTitle("");
     setDriveUrl("");
     setUploadMode("drive");
-    setUploadProgress(null);
-    setUploadStatusText("");
   };
 
   return (
@@ -516,7 +599,7 @@ export function VideoPdfSection({
       </div>
 
       {/* ── PDF List ── */}
-      {pdfs.length === 0 && !activeUpload ? (
+      {pdfs.length === 0 && activeUploads.length === 0 ? (
         <div className="flex items-center gap-3 py-4 px-4 rounded-xl border border-dashed border-border/50 dark:border-[#1F2C34]/60 bg-muted/10 dark:bg-[#111820]/40">
           <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-muted/30 dark:bg-[#141E28]/60">
             <FileText className="h-4 w-4 text-muted-foreground/50 dark:text-[#5C6A72]" />
@@ -534,54 +617,64 @@ export function VideoPdfSection({
         </div>
       ) : (
         <div className="space-y-1.5">
-          {/* Optimistic Ghost Card while uploading */}
-          {activeUpload && activeUpload.status === "uploading" && (
-            <div
-              className="flex items-center justify-between gap-3 px-3.5 py-3 rounded-xl border border-dashed transition-all duration-200 animate-pulse"
-              style={{
-                borderColor: `${accentColor}50`,
-                backgroundColor: `${accentColor}08`,
-              }}
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <div
-                  className="flex items-center justify-center w-9 h-9 rounded-lg shrink-0"
-                  style={{ backgroundColor: `${accentColor}18` }}
-                >
-                  <Loader2 className="h-4 w-4 animate-spin" style={{ color: accentColor }} />
-                </div>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="text-xs font-semibold text-foreground dark:text-[#E8EDF0] truncate">
-                      {activeUpload.title}
-                    </p>
-                    <span
-                      className="px-1.5 py-0.5 text-[9px] font-bold rounded"
-                      style={{
-                        backgroundColor: `${accentColor}20`,
-                        color: accentColor,
-                      }}
-                    >
-                      {activeUpload.mode === "drive" ? "Drive" : "Supabase"}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 text-[11px] text-muted-foreground dark:text-[#9AA7AE] mt-0.5">
-                    <span>{activeUpload.statusText}</span>
-                    <span>•</span>
-                    <span className="font-mono font-medium">{activeUpload.progress}%</span>
-                  </div>
-                </div>
-              </div>
-              <div className="w-20 hidden sm:block shrink-0">
-                <div className="w-full h-1.5 bg-muted/40 dark:bg-[#1A2530] rounded-full overflow-hidden">
+          {/* Optimistic Ghost Cards while uploading/queued */}
+          {activeUploads
+            .filter((t) => t.status === "uploading" || t.status === "queued")
+            .map((task) => (
+              <div
+                key={task.id}
+                className="flex items-center justify-between gap-3 px-3.5 py-3 rounded-xl border border-dashed transition-all duration-200 animate-pulse"
+                style={{
+                  borderColor: `${accentColor}50`,
+                  backgroundColor: `${accentColor}08`,
+                }}
+              >
+                <div className="flex items-center gap-3 min-w-0">
                   <div
-                    className="h-full rounded-full transition-all duration-300"
-                    style={{ width: `${activeUpload.progress}%`, backgroundColor: accentColor }}
-                  />
+                    className="flex items-center justify-center w-9 h-9 rounded-lg shrink-0"
+                    style={{ backgroundColor: `${accentColor}18` }}
+                  >
+                    <Loader2 className="h-4 w-4 animate-spin" style={{ color: accentColor }} />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs font-semibold text-foreground dark:text-[#E8EDF0] truncate">
+                        {task.title}
+                      </p>
+                      <span
+                        className="px-1.5 py-0.5 text-[9px] font-bold rounded"
+                        style={{
+                          backgroundColor: `${accentColor}20`,
+                          color: accentColor,
+                        }}
+                      >
+                        {task.mode === "drive" ? "Drive" : "Supabase"}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground dark:text-[#9AA7AE] mt-0.5">
+                      <span>{task.statusText}</span>
+                      {task.status === "uploading" && (
+                        <>
+                          <span>•</span>
+                          <span className="font-mono font-medium">{task.progress}%</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <div className="w-20 hidden sm:block shrink-0">
+                  <div className="w-full h-1.5 bg-muted/40 dark:bg-[#1A2530] rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-300"
+                      style={{
+                        width: task.status === "uploading" ? `${task.progress}%` : "15%",
+                        backgroundColor: accentColor,
+                      }}
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            ))}
           {pdfs.map((pdf, idx) => {
             const isDrive = pdf.source_type === "drive";
             const downloadUrl =
@@ -880,18 +973,22 @@ export function VideoPdfSection({
                   <input
                     ref={fileInputRef}
                     type="file"
+                    multiple
                     accept="application/pdf,.pdf"
                     className="hidden"
-                    onChange={(e) => handleFileChange(e.target.files?.[0] || null)}
+                    onChange={(e) => {
+                      handleFilesChange(e.target.files);
+                      e.target.value = "";
+                    }}
                   />
 
                   {/* Drag & Drop Zone */}
                   <div
                     className={cn(
-                      "relative flex flex-col items-center justify-center gap-2 p-6 rounded-xl border-2 border-dashed cursor-pointer transition-all duration-200",
+                      "relative flex flex-col items-center justify-center gap-2 p-5 rounded-xl border-2 border-dashed cursor-pointer transition-all duration-200",
                       isDragOver
                         ? "border-current bg-current/5 scale-[1.01]"
-                        : selectedFile
+                        : selectedFiles.length > 0
                         ? "border-emerald-500/40 bg-emerald-500/5 dark:bg-emerald-500/8"
                         : "border-border/50 bg-muted/10 hover:border-border/80 hover:bg-muted/20 dark:border-[#1F2C34] dark:bg-[#111820]/50 dark:hover:border-[#253342]"
                     )}
@@ -901,91 +998,115 @@ export function VideoPdfSection({
                     onDragLeave={handleDragLeave}
                     onDrop={handleDrop}
                   >
-                    {selectedFile ? (
-                      <>
-                        <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-emerald-500/10">
-                          <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-                        </div>
-                        <div className="text-center">
-                          <p className="text-xs font-medium text-foreground dark:text-[#E8EDF0] truncate max-w-[280px]">
-                            {selectedFile.name}
-                          </p>
-                          <p className="text-[10px] text-muted-foreground dark:text-[#5C6A72] font-mono mt-0.5">
-                            {formatFileSize(selectedFile.size)}
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedFile(null);
-                            setUploadTitle("");
-                          }}
-                          className="text-[11px] text-muted-foreground hover:text-rose-500 dark:text-[#9AA7AE] dark:hover:text-rose-400 transition-colors mt-1 cursor-pointer"
-                        >
-                          Remove
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-muted/30 dark:bg-[#141E28]">
-                          <UploadCloud className="h-5 w-5 text-muted-foreground/60 dark:text-[#5C6A72]" />
-                        </div>
-                        <div className="text-center">
-                          <p className="text-xs font-medium text-muted-foreground dark:text-[#9AA7AE]">
-                            Drop PDF here or{" "}
-                            <span style={{ color: accentColor }} className="font-semibold">
-                              browse
-                            </span>
-                          </p>
-                          <p className="text-[10px] text-muted-foreground/50 dark:text-[#5C6A72] mt-0.5">
-                            PDF files only
-                          </p>
-                        </div>
-                      </>
-                    )}
+                    <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-muted/30 dark:bg-[#141E28]">
+                      {selectedFiles.length > 0 ? (
+                        <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                      ) : (
+                        <UploadCloud className="h-5 w-5 text-muted-foreground/60 dark:text-[#5C6A72]" />
+                      )}
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xs font-medium text-foreground dark:text-[#E8EDF0]">
+                        {selectedFiles.length > 0
+                          ? `${selectedFiles.length} ${selectedFiles.length === 1 ? "PDF" : "PDFs"} selected`
+                          : "Drop PDF(s) here or browse"}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground/60 dark:text-[#5C6A72] mt-0.5">
+                        {selectedFiles.length > 0
+                          ? "Click to choose or drop more PDFs"
+                          : "Supports multiple PDF selection at once"}
+                      </p>
+                    </div>
                   </div>
 
-                  {/* Title Input */}
-                  <div className="space-y-1.5">
-                    <label
-                      htmlFor="upload-title"
-                      className="text-[11px] font-semibold text-muted-foreground dark:text-[#9AA7AE] uppercase tracking-wider"
-                    >
-                      Title
-                    </label>
-                    <Input
-                      id="upload-title"
-                      placeholder="e.g. Lecture 01 — Problem Solving"
-                      value={uploadTitle}
-                      onChange={(e) => setUploadTitle(e.target.value)}
-                      disabled={isUploading}
-                      className="h-9 text-xs rounded-xl border-border/40 dark:border-[#1F2C34] dark:bg-[#111820] focus-visible:ring-1"
-                      style={
-                        {
-                          "--tw-ring-color": `${accentColor}50`,
-                        } as React.CSSProperties
-                      }
-                    />
-                  </div>
-
-                  {/* Progress Bar during upload */}
-                  {isUploading && uploadProgress !== null && (
+                  {/* Selected Files List */}
+                  {selectedFiles.length > 0 && (
                     <div className="space-y-1.5 pt-1">
-                      <div className="flex items-center justify-between text-[11px] text-muted-foreground dark:text-[#9AA7AE]">
-                        <span className="truncate pr-2">{uploadStatusText || "Uploading..."}</span>
-                        <span className="font-mono font-medium shrink-0">{uploadProgress}%</span>
+                      <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                        <span className="font-semibold text-foreground/80 dark:text-[#E8EDF0]">
+                          Files to upload ({selectedFiles.length})
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-[10px]">
+                            {formatFileSize(
+                              selectedFiles.reduce((acc, f) => acc + f.size, 0)
+                            )}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedFiles([]);
+                              setUploadTitle("");
+                            }}
+                            className="text-[11px] text-rose-500 hover:text-rose-600 transition-colors cursor-pointer"
+                          >
+                            Clear all
+                          </button>
+                        </div>
                       </div>
-                      <div className="w-full h-1.5 bg-muted/40 dark:bg-[#1A232A] rounded-full overflow-hidden">
-                        <div
-                          className="h-full rounded-full transition-all duration-300"
-                          style={{
-                            width: `${uploadProgress}%`,
-                            backgroundColor: accentColor,
-                          }}
-                        />
+
+                      <div className="max-h-36 overflow-y-auto space-y-1.5 pr-1">
+                        {selectedFiles.map((file, idx) => (
+                          <div
+                            key={`${file.name}-${idx}`}
+                            className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg border border-border/40 dark:border-[#1F2C34] bg-muted/20 dark:bg-[#111820]"
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <FileText className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                              <div className="min-w-0">
+                                <p className="text-xs font-medium truncate text-foreground dark:text-[#E8EDF0]">
+                                  {file.name}
+                                </p>
+                                <span className="text-[10px] font-mono text-muted-foreground">
+                                  {formatFileSize(file.size)}
+                                </span>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                removeSelectedFile(idx);
+                              }}
+                              className="p-1 rounded-md text-muted-foreground hover:text-rose-500 transition-colors cursor-pointer shrink-0"
+                              title="Remove file"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        ))}
                       </div>
                     </div>
+                  )}
+
+                  {/* Title Input (only if exactly 1 file is selected) */}
+                  {selectedFiles.length === 1 && (
+                    <div className="space-y-1.5">
+                      <label
+                        htmlFor="upload-title"
+                        className="text-[11px] font-semibold text-muted-foreground dark:text-[#9AA7AE] uppercase tracking-wider"
+                      >
+                        Title (Optional)
+                      </label>
+                      <Input
+                        id="upload-title"
+                        placeholder="e.g. Lecture 01 — Problem Solving"
+                        value={uploadTitle}
+                        onChange={(e) => setUploadTitle(e.target.value)}
+                        className="h-9 text-xs rounded-xl border-border/40 dark:border-[#1F2C34] dark:bg-[#111820] focus-visible:ring-1"
+                        style={
+                          {
+                            "--tw-ring-color": `${accentColor}50`,
+                          } as React.CSSProperties
+                        }
+                      />
+                    </div>
+                  )}
+
+                  {selectedFiles.length > 1 && (
+                    <p className="text-[11px] text-muted-foreground/70 dark:text-[#788896]">
+                      * Each PDF will automatically be titled using its clean file name.
+                    </p>
                   )}
 
                   {/* Actions */}
@@ -993,14 +1114,13 @@ export function VideoPdfSection({
                     <button
                       type="button"
                       onClick={closeAndResetModal}
-                      disabled={isUploading}
                       className="h-9 rounded-xl text-xs px-4 border border-border/70 bg-card text-muted-foreground hover:text-foreground hover:bg-muted/80 dark:border-[#1F2C34] dark:bg-[#141E28] dark:text-[#9AA7AE] dark:hover:bg-[#1F2C34] dark:hover:text-white font-medium transition-all active:scale-[0.98] cursor-pointer"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
-                      disabled={!selectedFile || isUploading}
+                      disabled={selectedFiles.length === 0}
                       className={cn(
                         "inline-flex items-center justify-center gap-1.5 h-9 px-4 rounded-xl text-xs font-semibold transition-all duration-200",
                         "disabled:opacity-40 disabled:cursor-not-allowed",
@@ -1008,21 +1128,16 @@ export function VideoPdfSection({
                         buttonAccent
                       )}
                     >
-                      {isUploading ? (
-                        <>
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          {uploadProgress !== null ? `${uploadProgress}%` : "Uploading…"}
-                        </>
+                      {uploadMode === "supabase" ? (
+                        <HardDrive className="h-3.5 w-3.5" />
                       ) : (
-                        <>
-                          {uploadMode === "supabase" ? (
-                            <HardDrive className="h-3.5 w-3.5" />
-                          ) : (
-                            <UploadCloud className="h-3.5 w-3.5" />
-                          )}
-                          {uploadMode === "supabase" ? "Upload to Supabase" : "Upload to Drive"}
-                        </>
+                        <UploadCloud className="h-3.5 w-3.5" />
                       )}
+                      {selectedFiles.length > 1
+                        ? `Upload ${selectedFiles.length} PDFs to ${uploadMode === "supabase" ? "Supabase" : "Drive"}`
+                        : uploadMode === "supabase"
+                        ? "Upload to Supabase"
+                        : "Upload to Drive"}
                     </button>
                   </div>
                 </form>
@@ -1128,112 +1243,171 @@ export function VideoPdfSection({
         </div>
       )}
 
-      {/* ── Floating Background Upload Widget ── */}
-      {activeUpload && (
-        <aside
-          aria-label="File upload progress"
-          className={cn(
-            "fixed bottom-5 right-5 z-50 w-[330px] sm:w-[360px] p-4 rounded-2xl border shadow-2xl transition-all duration-300",
-            "bg-background/95 dark:bg-[#121A22]/95 backdrop-blur-xl border-border/80 dark:border-[#2A3742]",
-            activeUpload.status === "error"
-              ? "border-destructive/50 ring-1 ring-destructive/20"
-              : activeUpload.status === "completed"
-              ? "border-emerald-500/50 ring-1 ring-emerald-500/20"
-              : "ring-1 ring-black/5 dark:ring-white/5"
-          )}
-        >
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex items-center gap-3 min-w-0">
-              <div
-                className="flex items-center justify-center w-8 h-8 rounded-xl shrink-0 transition-colors"
-                style={{
-                  backgroundColor:
-                    activeUpload.status === "completed"
+      {/* ── YouTube-Style Floating Upload Manager ── */}
+      {activeUploads.length > 0 && (() => {
+        const total = activeUploads.length;
+        const completedCount = activeUploads.filter((t) => t.status === "completed").length;
+        const hasErrors = activeUploads.some((t) => t.status === "error");
+        const allCompleted = completedCount === total && total > 0;
+        const overallProgress = Math.round(
+          activeUploads.reduce(
+            (acc, t) => acc + (t.status === "completed" ? 100 : t.progress),
+            0
+          ) / (total || 1)
+        );
+
+        return (
+          <aside
+            aria-label="Upload manager"
+            className={cn(
+              "fixed bottom-5 right-5 z-50 w-[340px] sm:w-[380px] rounded-2xl border shadow-2xl transition-all duration-300 overflow-hidden",
+              "bg-background/95 dark:bg-[#10171F]/95 backdrop-blur-xl border-border/80 dark:border-[#222F3D]",
+              allCompleted
+                ? "border-emerald-500/50 ring-1 ring-emerald-500/20"
+                : hasErrors
+                ? "border-amber-500/40 ring-1 ring-amber-500/20"
+                : "ring-1 ring-black/5 dark:ring-white/5"
+            )}
+          >
+            {/* Header summary bar (Clickable to expand/collapse) */}
+            <div
+              onClick={() => setIsDrawerExpanded((prev) => !prev)}
+              className="flex items-center justify-between gap-3 px-4 py-3 cursor-pointer hover:bg-muted/40 dark:hover:bg-[#141D26] transition-colors select-none"
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div
+                  className="flex items-center justify-center w-7 h-7 rounded-lg shrink-0 transition-colors"
+                  style={{
+                    backgroundColor: allCompleted
                       ? "#10B98120"
-                      : activeUpload.status === "error"
-                      ? "#EF444420"
+                      : hasErrors
+                      ? "#F59E0B20"
                       : `${accentColor}18`,
-                }}
-              >
-                {activeUpload.status === "completed" ? (
-                  <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                ) : activeUpload.status === "error" ? (
-                  <AlertCircle className="h-4 w-4 text-destructive" />
-                ) : (
-                  <Loader2 className="h-4 w-4 animate-spin" style={{ color: accentColor }} />
-                )}
+                  }}
+                >
+                  {allCompleted ? (
+                    <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                  ) : hasErrors ? (
+                    <AlertCircle className="h-4 w-4 text-amber-500" />
+                  ) : (
+                    <Loader2 className="h-4 w-4 animate-spin" style={{ color: accentColor }} />
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-foreground dark:text-[#E8EDF0] truncate">
+                    {allCompleted
+                      ? `${total} ${total === 1 ? "PDF" : "PDFs"} uploaded`
+                      : total === 1
+                      ? `Uploading ${activeUploads[0].title}`
+                      : `Uploading ${total} PDFs (${completedCount}/${total} done)`}
+                  </p>
+                  <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground dark:text-[#788896]">
+                    <span className="font-mono font-medium">{overallProgress}%</span>
+                    <span>•</span>
+                    <span>{isDrawerExpanded ? "Click to collapse" : "Click to view queue"}</span>
+                  </div>
+                </div>
               </div>
-              <div className="min-w-0">
-                <p className="text-xs font-semibold text-foreground dark:text-[#E8EDF0] truncate">
-                  {activeUpload.title}
-                </p>
-                <p className="text-[11px] text-muted-foreground dark:text-[#9AA7AE] truncate mt-0.5">
-                  {activeUpload.statusText}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-1.5 shrink-0">
-              <span
-                className="font-mono text-xs font-bold tabular-nums"
-                style={{
-                  color:
-                    activeUpload.status === "completed"
-                      ? "#10B981"
-                      : activeUpload.status === "error"
-                      ? "#EF4444"
-                      : accentColor,
-                }}
-              >
-                {activeUpload.progress}%
-              </span>
-              {(activeUpload.status === "completed" || activeUpload.status === "error") && (
+
+              <div className="flex items-center gap-1 shrink-0">
                 <button
                   type="button"
-                  onClick={() => setActiveUpload(null)}
-                  className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors cursor-pointer"
-                  title="Dismiss"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsDrawerExpanded((prev) => !prev);
+                  }}
+                  className="p-1 rounded-lg text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                  title={isDrawerExpanded ? "Collapse" : "Expand"}
                 >
-                  <X className="h-3.5 w-3.5" />
+                  {isDrawerExpanded ? (
+                    <ChevronDown className="h-4 w-4" />
+                  ) : (
+                    <ChevronUp className="h-4 w-4" />
+                  )}
                 </button>
-              )}
+                {(allCompleted || hasErrors) && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setActiveUploads([]);
+                      setIsDrawerExpanded(false);
+                    }}
+                    className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors cursor-pointer"
+                    title="Dismiss all"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
 
-          {/* Micro Progress Bar */}
-          <div className="w-full h-1.5 bg-muted/40 dark:bg-[#1A2530] rounded-full overflow-hidden mt-3">
-            <div
-              className="h-full rounded-full transition-all duration-300"
-              style={{
-                width: `${activeUpload.progress}%`,
-                backgroundColor:
-                  activeUpload.status === "completed"
+            {/* Overall Batch Progress Bar */}
+            <div className="w-full h-1 bg-muted/40 dark:bg-[#1A2530] overflow-hidden">
+              <div
+                className="h-full transition-all duration-300"
+                style={{
+                  width: `${overallProgress}%`,
+                  backgroundColor: allCompleted
                     ? "#10B981"
-                    : activeUpload.status === "error"
-                    ? "#EF4444"
+                    : hasErrors
+                    ? "#F59E0B"
                     : accentColor,
-              }}
-            />
-          </div>
+                }}
+              />
+            </div>
 
-          {/* Footer Info */}
-          <div className="flex items-center justify-between text-[10px] text-muted-foreground/75 dark:text-[#788896] mt-2 font-medium">
-            <span className="flex items-center gap-1">
-              {activeUpload.mode === "drive" ? (
-                <>
-                  <UploadCloud className="h-3 w-3 text-emerald-500" />
-                  <span>Google Drive</span>
-                </>
-              ) : (
-                <>
-                  <HardDrive className="h-3 w-3 text-blue-500" />
-                  <span>Supabase Storage</span>
-                </>
-              )}
-            </span>
-            <span>{formatFileSize(activeUpload.fileSize)}</span>
-          </div>
-        </aside>
-      )}
+            {/* Expanded Itemized Queue */}
+            {isDrawerExpanded && (
+              <div className="max-h-60 overflow-y-auto px-4 py-2.5 divide-y divide-border/30 dark:divide-[#1F2C34]/60">
+                {activeUploads.map((task) => (
+                  <div key={task.id} className="py-2.5 first:pt-1 last:pb-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <FileText className="h-3.5 w-3.5 text-muted-foreground/70 shrink-0" />
+                        <span className="text-xs font-medium text-foreground dark:text-[#E8EDF0] truncate">
+                          {task.title}
+                        </span>
+                      </div>
+                      <span className="text-[10px] font-mono shrink-0">
+                        {task.status === "completed" ? (
+                          <span className="text-emerald-500 font-semibold flex items-center gap-0.5">
+                            <CheckCircle2 className="h-3 w-3 inline" /> Done
+                          </span>
+                        ) : task.status === "error" ? (
+                          <span className="text-rose-500 font-semibold flex items-center gap-0.5">
+                            <AlertCircle className="h-3 w-3 inline" /> Failed
+                          </span>
+                        ) : task.status === "uploading" ? (
+                          <span style={{ color: accentColor }} className="font-semibold">
+                            {task.progress}%
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">Queued</span>
+                        )}
+                      </span>
+                    </div>
+
+                    {task.status === "uploading" && (
+                      <div className="w-full h-1 bg-muted/40 dark:bg-[#1A2530] rounded-full overflow-hidden mt-1.5">
+                        <div
+                          className="h-full rounded-full transition-all duration-300"
+                          style={{ width: `${task.progress}%`, backgroundColor: accentColor }}
+                        />
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between text-[10px] text-muted-foreground/70 dark:text-[#788896] mt-1">
+                      <span className="truncate">{task.statusText}</span>
+                      <span>{formatFileSize(task.fileSize)}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </aside>
+        );
+      })()}
     </section>
   );
 }
