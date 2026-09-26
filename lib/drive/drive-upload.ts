@@ -244,6 +244,29 @@ export async function setDriveFilePublic(fileId: string): Promise<void> {
  * Deletes a file from Google Drive by its file ID.
  */
 export async function deleteFileFromGoogleDrive(fileId: string): Promise<void> {
+  const scriptUrl = cleanEnv(process.env.GOOGLE_APPS_SCRIPT_URL);
+  if (scriptUrl) {
+    try {
+      const res = await fetch(scriptUrl, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({
+          action: "delete",
+          fileId,
+        }),
+        redirect: "follow",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (data && data.success === false) {
+        console.warn("Apps Script delete returned error:", data.error);
+      }
+      return;
+    } catch (scriptErr) {
+      console.warn("Could not delete file via Apps Script:", scriptErr);
+      return;
+    }
+  }
+
   const accessToken = await getDriveAccessToken();
 
   const res = await fetch(
