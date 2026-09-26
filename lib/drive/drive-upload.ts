@@ -1,5 +1,3 @@
-import crypto from "node:crypto";
-
 /**
  * Google Drive API Client & Direct Uploader
  */
@@ -10,10 +8,6 @@ function cleanEnv(val?: string): string {
 }
 
 export function getDriveConfig() {
-  const serviceAccountEmail = cleanEnv(process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL);
-  const serviceAccountPrivateKey = cleanEnv(process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY);
-  const serviceAccountKeyJson = cleanEnv(process.env.GOOGLE_SERVICE_ACCOUNT_KEY);
-
   const clientId = cleanEnv(
     process.env.GOOGLE_DRIVE_CLIENT_ID ||
       process.env.YT_OAUTH_CLIENT_ID ||
@@ -30,71 +24,7 @@ export function getDriveConfig() {
   );
   const folderId = cleanEnv(process.env.GOOGLE_DRIVE_FOLDER_ID);
 
-  return {
-    serviceAccountEmail,
-    serviceAccountPrivateKey,
-    serviceAccountKeyJson,
-    clientId,
-    clientSecret,
-    refreshToken,
-    folderId,
-  };
-}
-
-let cachedServiceAccountToken: { token: string; expiresAt: number } | null = null;
-
-async function getServiceAccountAccessToken(
-  clientEmail: string,
-  privateKeyPem: string
-): Promise<string> {
-  const now = Math.floor(Date.now() / 1000);
-  if (cachedServiceAccountToken && cachedServiceAccountToken.expiresAt > now + 60) {
-    return cachedServiceAccountToken.token;
-  }
-
-  const formattedKey = privateKeyPem.replace(/\\n/g, "\n").trim();
-  const privateKey = crypto.createPrivateKey({
-    key: formattedKey,
-    format: "pem",
-  });
-
-  const header = Buffer.from(JSON.stringify({ alg: "RS256", typ: "JWT" })).toString("base64url");
-  const claimSet = Buffer.from(
-    JSON.stringify({
-      iss: clientEmail,
-      scope: "https://www.googleapis.com/auth/drive",
-      aud: "https://oauth2.googleapis.com/token",
-      exp: now + 3600,
-      iat: now,
-    })
-  ).toString("base64url");
-
-  const unsignedToken = `${header}.${claimSet}`;
-  const signature = crypto.sign("RSA-SHA256", Buffer.from(unsignedToken), privateKey);
-  const jwt = `${unsignedToken}.${Buffer.from(signature).toString("base64url")}`;
-
-  const res = await fetch("https://oauth2.googleapis.com/token", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
-      assertion: jwt,
-    }),
-  });
-
-  const data = await res.json();
-  if (!res.ok || !data.access_token) {
-    throw new Error(
-      `Service Account Drive Auth failed: ${data.error_description || data.error || "Unknown error"}`
-    );
-  }
-
-  cachedServiceAccountToken = {
-    token: data.access_token,
-    expiresAt: now + (data.expires_in || 3600),
-  };
-
-  return data.access_token;
+  return { clientId, clientSecret, refreshToken, folderId };
 }
 
 const REDIRECT_URI = "http://localhost:3000/api/oauth/callback";
@@ -152,35 +82,13 @@ export async function exchangeGoogleCodeForTokens(code: string): Promise<{
 }
 
 /**
- * Gets a fresh access token using either Service Account (permanent) or OAuth refresh token
+ * Gets a fresh access token using the stored refresh token
  */
 export async function getDriveAccessToken(): Promise<string> {
-  const config = getDriveConfig();
-
-  // 1. Prefer Service Account (Permanent, never expires after 7 days)
-  if (config.serviceAccountKeyJson) {
-    try {
-      const sa = JSON.parse(config.serviceAccountKeyJson);
-      if (sa.client_email && sa.private_key) {
-        return await getServiceAccountAccessToken(sa.client_email, sa.private_key);
-      }
-    } catch (e) {
-      console.error("Failed to parse GOOGLE_SERVICE_ACCOUNT_KEY:", e);
-    }
-  }
-
-  if (config.serviceAccountEmail && config.serviceAccountPrivateKey) {
-    return await getServiceAccountAccessToken(
-      config.serviceAccountEmail,
-      config.serviceAccountPrivateKey
-    );
-  }
-
-  // 2. Fallback to OAuth refresh token (user-level)
-  const { clientId, clientSecret, refreshToken } = config;
+  const { clientId, clientSecret, refreshToken } = getDriveConfig();
 
   if (!refreshToken) {
-    throw new Error("Missing Google Drive credentials. Please configure Service Account or OAuth.");
+    throw new Error("Missing Google Drive Refresh Token. Please authorize first.");
   }
   if (!clientId || !clientSecret) {
     throw new Error("Missing Google OAuth Client ID or Secret");
