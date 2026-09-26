@@ -742,11 +742,23 @@ export function VideoPdfSection({
                   )}
 
                   {uploadMode === "drive" && isDriveConnected && (
-                    <div className="flex items-center gap-2 px-3 py-2 rounded-xl border border-emerald-500/15 bg-emerald-500/5 dark:bg-emerald-500/8">
-                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-                      <span className="text-[11px] text-emerald-700 dark:text-emerald-300 font-medium">
-                        Google Drive connected
-                      </span>
+                    <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl border border-emerald-500/15 bg-emerald-500/5 dark:bg-emerald-500/8">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                        <span className="text-[11px] text-emerald-700 dark:text-emerald-300 font-medium">
+                          Google Drive connected
+                        </span>
+                      </div>
+                      {authUrl && (
+                        <a
+                          href={authUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 hover:underline hover:text-emerald-500 transition-colors"
+                        >
+                          Reconnect
+                        </a>
+                      )}
                     </div>
                   )}
 
