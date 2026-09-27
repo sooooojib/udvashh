@@ -69,7 +69,7 @@ export function VideoPdfSection({
 
   // Multi-File Upload State
   const [selectedFiles, setSelectedFiles] = React.useState<File[]>([]);
-  const [singleTitle, setSingleTitle] = React.useState("");
+  const [fileTitles, setFileTitles] = React.useState<Record<string, string>>({});
   const [activeUploads, setActiveUploads] = React.useState<ActiveUploadTask[]>([]);
   const [isWidgetExpanded, setIsWidgetExpanded] = React.useState(false);
   const [isDragOver, setIsDragOver] = React.useState(false);
@@ -163,11 +163,6 @@ export function VideoPdfSection({
       });
       return combined;
     });
-
-    if (valid.length === 1 && selectedFiles.length === 0 && !singleTitle.trim()) {
-      const cleanName = valid[0].name.replace(/\.pdf$/i, "").replace(/[_-]+/g, " ");
-      setSingleTitle(cleanName);
-    }
   };
 
   const removeSelectedFile = (index: number) => {
@@ -427,15 +422,15 @@ export function VideoPdfSection({
     const filesToUpload = [...selectedFiles];
     const modeToUpload: "drive" | "supabase" =
       uploadMode === "supabase" ? "supabase" : "drive";
-    const customSingle = singleTitle.trim();
 
     // Close modal immediately so user continues without waiting
     closeAndResetModal();
 
     const newTasks: ActiveUploadTask[] = filesToUpload.map((f, idx) => {
+      const fileKey = `${f.name}-${f.size}-${idx}`;
       const cleanName = f.name.replace(/\.pdf$/i, "").replace(/[_-]+/g, " ");
-      const title =
-        filesToUpload.length === 1 && customSingle ? customSingle : cleanName;
+      const userCustom = fileTitles[fileKey]?.trim();
+      const title = userCustom || cleanName;
       const taskId = `${Date.now()}-${idx}-${f.name}`;
 
       fileMapRef.current.set(taskId, f);
@@ -537,7 +532,7 @@ export function VideoPdfSection({
   const closeAndResetModal = () => {
     setIsAddModalOpen(false);
     setSelectedFiles([]);
-    setSingleTitle("");
+    setFileTitles({});
     setLinkTitle("");
     setLinkUrl("");
     setUploadMode("drive");
@@ -913,7 +908,7 @@ export function VideoPdfSection({
                       </div>
                     </div>
                   ) : (
-                    /* File List */
+                    /* File List with Inline Rename for Every File */
                     <div className="space-y-2.5">
                       <div className="flex items-center justify-between text-xs">
                         <span className="font-medium text-foreground dark:text-[#E8EDF0]">
@@ -923,38 +918,74 @@ export function VideoPdfSection({
                           type="button"
                           onClick={() => {
                             setSelectedFiles([]);
-                            setSingleTitle("");
+                            setFileTitles({});
                           }}
                           className="text-[11px] text-rose-500 hover:underline cursor-pointer"
                         >
-                          Clear
+                          Clear all
                         </button>
                       </div>
 
-                      <div className="max-h-36 overflow-y-auto space-y-1.5 pr-1">
-                        {selectedFiles.map((f, idx) => (
-                          <div
-                            key={`${f.name}-${idx}`}
-                            className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-muted/30 dark:bg-[#121921] border border-border/40 dark:border-white/5"
-                          >
-                            <div className="flex items-center gap-2 min-w-0">
-                              <FileText className="h-3.5 w-3.5 text-rose-500 shrink-0" />
-                              <span className="text-xs font-medium truncate text-foreground dark:text-[#E8EDF0]">
-                                {f.name}
-                              </span>
-                              <span className="text-[10px] text-muted-foreground font-mono shrink-0">
-                                {formatFileSize(f.size)}
-                              </span>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => removeSelectedFile(idx)}
-                              className="p-1 rounded-md text-muted-foreground hover:text-rose-500 transition-colors cursor-pointer shrink-0"
+                      <div className="max-h-56 overflow-y-auto space-y-2 pr-1">
+                        {selectedFiles.map((f, idx) => {
+                          const fileKey = `${f.name}-${f.size}-${idx}`;
+                          const cleanDefault = f.name
+                            .replace(/\.pdf$/i, "")
+                            .replace(/[_-]+/g, " ");
+                          const currentTitle =
+                            fileTitles[fileKey] !== undefined
+                              ? fileTitles[fileKey]
+                              : cleanDefault;
+
+                          return (
+                            <div
+                              key={fileKey}
+                              className="p-2.5 rounded-xl bg-muted/30 dark:bg-[#121921] border border-border/40 dark:border-white/5 space-y-1.5 transition-all"
                             >
-                              <X className="h-3.5 w-3.5" />
-                            </button>
-                          </div>
-                        ))}
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <FileText className="h-3.5 w-3.5 text-rose-500 shrink-0" />
+                                  <span
+                                    title={f.name}
+                                    className="text-[11px] text-muted-foreground font-mono truncate"
+                                  >
+                                    {f.name}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <span className="text-[10px] text-muted-foreground/80 font-mono">
+                                    {formatFileSize(f.size)}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => removeSelectedFile(idx)}
+                                    className="p-1 rounded-md text-muted-foreground hover:text-rose-500 transition-colors cursor-pointer"
+                                    title="Remove file"
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </button>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-[10px] font-medium text-muted-foreground dark:text-[#8A9BA8] shrink-0">
+                                  Title:
+                                </span>
+                                <Input
+                                  value={currentTitle}
+                                  onChange={(e) =>
+                                    setFileTitles((prev) => ({
+                                      ...prev,
+                                      [fileKey]: e.target.value,
+                                    }))
+                                  }
+                                  placeholder="Note title..."
+                                  className="h-7 text-xs rounded-lg bg-background/70 dark:bg-[#0E151D] border-border/40 dark:border-white/10 px-2 font-medium"
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
 
                       <button
@@ -964,21 +995,6 @@ export function VideoPdfSection({
                       >
                         + Choose more files
                       </button>
-
-                      {/* Single title edit */}
-                      {selectedFiles.length === 1 && (
-                        <div className="space-y-1 pt-1">
-                          <label className="text-[11px] font-medium text-muted-foreground dark:text-[#8A9BA8]">
-                            Custom Title (Optional)
-                          </label>
-                          <Input
-                            placeholder="e.g. English Literature 01"
-                            value={singleTitle}
-                            onChange={(e) => setSingleTitle(e.target.value)}
-                            className="h-8 text-xs rounded-xl border-border/40 dark:border-white/10 dark:bg-[#121921]"
-                          />
-                        </div>
-                      )}
                     </div>
                   )}
 
