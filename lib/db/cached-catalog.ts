@@ -113,3 +113,56 @@ export async function getCachedPlaylistVideos(playlistId: string) {
 
   return fetcher();
 }
+
+/**
+ * Fetches all PDFs for a specific video, cached at the Next.js server level.
+ * Prevents repetitive DB hits on routine watch page visits.
+ * Invalidate with revalidateTag("video-pdfs", "default") or revalidateTag(`video-pdfs-${videoId}`, "default").
+ */
+export async function getCachedVideoPdfs(videoId: string) {
+  if (!videoId) return [];
+
+  const fetcher = unstable_cache(
+    async () => {
+      const rows = await sql`
+        SELECT * FROM video_pdfs
+        WHERE video_id = ${videoId}
+        ORDER BY created_at ASC
+      `;
+      return rows;
+    },
+    [`video-pdfs-${videoId}`],
+    {
+      revalidate: 3600, // 1 hour TTL
+      tags: ["videos-catalog", "video-pdfs", `video-pdfs-${videoId}`],
+    }
+  );
+
+  return fetcher();
+}
+
+/**
+ * Fetches a user's watched video IDs, cached at the Next.js server level.
+ * Avoids repeated Neon wakeups when navigating between Dashboard and Class pages.
+ * Invalidate with revalidateTag(`user-progress-${userId}`, "default").
+ */
+export async function getCachedWatchedVideoIds(userId: string): Promise<string[]> {
+  if (!userId) return [];
+
+  const fetcher = unstable_cache(
+    async () => {
+      const rows = await sql`
+        SELECT video_id FROM watch_progress
+        WHERE user_id = ${userId} AND watched = true
+      `;
+      return rows.map((r: any) => r.video_id as string);
+    },
+    [`user-watched-${userId}`],
+    {
+      revalidate: 300, // 5 minutes TTL
+      tags: [`user-progress-${userId}`],
+    }
+  );
+
+  return fetcher();
+}

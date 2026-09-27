@@ -68,23 +68,12 @@ export default function RootLayout({
       className={`${jakarta.variable} ${geistSans.variable} ${jetbrainsMono.variable} ${anekBangla.variable} h-full antialiased`}
     >
       <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link rel="preconnect" href="https://www.youtube.com" />
         <link rel="preconnect" href="https://s.ytimg.com" />
         <link rel="preconnect" href="https://i.ytimg.com" />
         <link rel="dns-prefetch" href="https://www.youtube.com" />
         <link rel="dns-prefetch" href="https://s.ytimg.com" />
         <link rel="dns-prefetch" href="https://i.ytimg.com" />
-        <link
-          rel="preload"
-          as="style"
-          href="https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;500;600;700&display=swap"
-        />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;500;600;700&display=swap"
-          rel="stylesheet"
-        />
       </head>
       <body className="min-h-full flex flex-col font-sans bg-background text-foreground transition-colors duration-200 overflow-x-hidden">
         <ThemeProvider

@@ -1,7 +1,9 @@
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
-import { sql } from "@/lib/db";
-import { getCachedVideosByPlaylists } from "@/lib/db/cached-catalog";
+import {
+  getCachedVideosByPlaylists,
+  getCachedWatchedVideoIds,
+} from "@/lib/db/cached-catalog";
 import { getSession } from "@/lib/auth/session";
 import { type Video } from "@/components/dashboard/video-card";
 import { WatchProgressBar } from "@/components/dashboard/progress-bar";
@@ -38,20 +40,17 @@ export default async function LiveClassesPage() {
   // Only fetch videos belonging to Live Class playlists
   const livePlaylistIds = KNOWN_PLAYLISTS.map((p) => p.id);
 
-  // Fetch videos ordered by position (cached at server level)
-  const videos = await getCachedVideosByPlaylists(livePlaylistIds);
-
-  // Fetch user's watch progress (watched only)
-  const progressRows = await sql`
-    SELECT video_id FROM watch_progress
-    WHERE user_id = ${session.id} AND watched = true
-  `;
+  // Fetch videos and user watched progress in parallel from server cache (0 Neon DB queries)
+  const [videos, allWatchedVideoIds] = await Promise.all([
+    getCachedVideosByPlaylists(livePlaylistIds),
+    getCachedWatchedVideoIds(session.id),
+  ]);
 
   // Only count progress for live-class videos
   const liveVideoIds = new Set(videos.map((v) => v.id));
-  const watchedVideoIds: string[] = progressRows
-    .map((r) => r.video_id as string)
-    .filter((id) => liveVideoIds.has(id));
+  const watchedVideoIds: string[] = allWatchedVideoIds.filter((id) =>
+    liveVideoIds.has(id)
+  );
 
   const videoList: Video[] = videos as unknown as Video[];
   const watchedCount = watchedVideoIds.length;

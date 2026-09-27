@@ -1,7 +1,9 @@
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
-import { sql } from "@/lib/db";
-import { getCachedVideosByPlaylists } from "@/lib/db/cached-catalog";
+import {
+  getCachedVideosByPlaylists,
+  getCachedWatchedVideoIds,
+} from "@/lib/db/cached-catalog";
 import { getSession } from "@/lib/auth/session";
 import { type Video } from "@/components/dashboard/video-card";
 import { WatchProgressBar } from "@/components/dashboard/progress-bar";
@@ -30,20 +32,16 @@ export default async function SubjectHacksPage() {
 
   const subjectHacksPlaylistIds = SUBJECT_HACKS_PLAYLISTS.map((p) => p.id);
 
-  // Fetch videos only for subject hacks playlists (cached at server level)
-  const videoList: Video[] = await getCachedVideosByPlaylists(subjectHacksPlaylistIds);
+  // Fetch videos and user watched progress in parallel from server cache (0 Neon DB queries)
+  const [videoList, allWatchedVideoIds] = await Promise.all([
+    getCachedVideosByPlaylists(subjectHacksPlaylistIds),
+    getCachedWatchedVideoIds(session.id),
+  ]);
 
-  let watchedVideoIds: string[] = [];
-  if (videoList.length > 0) {
-    const videoIds = videoList.map((v) => v.id);
-    const progressRows = await sql`
-      SELECT video_id FROM watch_progress
-      WHERE user_id = ${session.id}
-        AND watched = true
-        AND video_id = ANY(${videoIds})
-    `;
-    watchedVideoIds = progressRows.map((r) => r.video_id as string);
-  }
+  const hacksVideoIds = new Set(videoList.map((v) => v.id));
+  const watchedVideoIds: string[] = allWatchedVideoIds.filter((id) =>
+    hacksVideoIds.has(id)
+  );
 
   const watchedCount = watchedVideoIds.length;
 

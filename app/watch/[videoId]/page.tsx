@@ -1,7 +1,11 @@
 import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { sql } from "@/lib/db";
-import { getCachedVideoByYoutubeId, getCachedPlaylistVideos } from "@/lib/db/cached-catalog";
+import {
+  getCachedVideoByYoutubeId,
+  getCachedPlaylistVideos,
+  getCachedVideoPdfs,
+} from "@/lib/db/cached-catalog";
 import { getSession } from "@/lib/auth/session";
 import { VideoPlayer } from "@/components/watch/video-player";
 import { VideoPdfSection } from "@/components/watch/video-pdf-section";
@@ -60,20 +64,16 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
   // Resolve connected Daily Exam instantly (0ms)
   const connectedExam: ExamItem | null = getConnectedDailyExam(video.title);
 
-  // Batch remaining user-specific queries (progress, PDFs, and exam attempt)
-  const [playlistRows, userResults] = await Promise.all([
+  // Batch playlist siblings, cached PDFs (0 Neon DB queries), and user-specific queries
+  const [playlistRows, cachedPdfs, userResults] = await Promise.all([
     getCachedPlaylistVideos(video.playlist_id),
+    getCachedVideoPdfs(video.id),
     (async () => {
       const queries = [
         sql`
           SELECT watched, progress_seconds FROM watch_progress
           WHERE user_id = ${session.id} AND video_id = ${video.id}
           LIMIT 1
-        `,
-        sql`
-          SELECT * FROM video_pdfs
-          WHERE video_id = ${video.id}
-          ORDER BY created_at ASC
         `,
       ];
 
@@ -91,8 +91,7 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
   ]);
 
   const progressRows = userResults[0];
-  const pdfRowsRaw = userResults[1];
-  const attemptRows = connectedExam && userResults.length > 2 ? userResults[2] : [];
+  const attemptRows = connectedExam && userResults.length > 1 ? userResults[1] : [];
 
   const isWatched = progressRows[0]?.watched === true;
   const dbProgressSeconds = Number(progressRows[0]?.progress_seconds) || 0;
@@ -100,7 +99,7 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
     typeof urlTimestamp === "number" && !isNaN(urlTimestamp) && urlTimestamp > 0
       ? urlTimestamp
       : dbProgressSeconds;
-  const pdfRows = pdfRowsRaw as unknown as VideoPdfItem[];
+  const pdfRows = cachedPdfs as unknown as VideoPdfItem[];
 
   let connectedExamAttempt: {
     score: number;

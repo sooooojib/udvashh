@@ -2,7 +2,10 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { sql } from "@/lib/db";
-import { getCachedDashboardVideos } from "@/lib/db/cached-catalog";
+import {
+  getCachedDashboardVideos,
+  getCachedWatchedVideoIds,
+} from "@/lib/db/cached-catalog";
 import { getSession } from "@/lib/auth/session";
 import { WatchProgressBar } from "@/components/dashboard/progress-bar";
 import { OwnerSyncButton } from "@/components/dashboard/sync-button";
@@ -52,7 +55,34 @@ export default async function DashboardPage() {
   const subjectHacksPlaylistIds = SUBJECT_HACKS_PLAYLISTS.map((p) => p.id);
   const allKnownPlaylistIds = [...livePlaylistIds, ...intensivePlaylistIds, ...subjectHacksPlaylistIds];
 
-  const videos = await getCachedDashboardVideos(allKnownPlaylistIds);
+  // Batch all dashboard queries in parallel (cached video catalog + cached user progress = 0 redundant DB hits)
+  const [videos, watchedIdsArray, attemptsResult, currentlyWatchingRows] = await Promise.all([
+    getCachedDashboardVideos(allKnownPlaylistIds),
+    getCachedWatchedVideoIds(session.id),
+    sql`
+      SELECT count(*)::int as count FROM exam_attempts
+      WHERE user_id = ${session.id}
+    `.catch(() => [{ count: 0 }]),
+    sql`
+      SELECT 
+        v.id,
+        v.youtube_video_id,
+        v.title,
+        v.thumbnail_url,
+        v.duration,
+        v.playlist_id,
+        wp.progress_seconds,
+        wp.last_watched_at,
+        wp.updated_at
+      FROM watch_progress wp
+      JOIN videos v ON v.id = wp.video_id
+      WHERE wp.user_id = ${session.id}
+        AND wp.watched = false
+        AND wp.progress_seconds > 10
+      ORDER BY COALESCE(wp.last_watched_at, wp.updated_at) DESC
+      LIMIT 6
+    `.catch(() => []),
+  ]);
 
   // Separate live vs intensive vs subject hacks videos
   const liveVideos = videos.filter((v) =>
@@ -65,13 +95,7 @@ export default async function DashboardPage() {
     v.playlist_id ? subjectHacksPlaylistIds.includes(v.playlist_id) : false
   );
 
-  // Fetch user's watched progress
-  const progressRows = await sql`
-    SELECT video_id FROM watch_progress
-    WHERE user_id = ${session.id} AND watched = true
-  `;
-
-  const watchedIds = new Set(progressRows.map((r) => r.video_id));
+  const watchedIds = new Set(watchedIdsArray);
 
   // Live Classes stats
   const totalVideos = liveVideos.length;
@@ -90,16 +114,7 @@ export default async function DashboardPage() {
 
   // Exam stats & User Attempts for Live Exams Hub
   const examStats = getExamStats();
-  let userExamAttemptsCount = 0;
-  try {
-    const attemptsResult = await sql`
-      SELECT count(*)::int as count FROM exam_attempts
-      WHERE user_id = ${session.id}
-    `;
-    userExamAttemptsCount = attemptsResult[0]?.count || 0;
-  } catch {
-    userExamAttemptsCount = 0;
-  }
+  const userExamAttemptsCount = attemptsResult[0]?.count || 0;
   const examPercent = examStats.total > 0 ? Math.round((userExamAttemptsCount / examStats.total) * 100) : 0;
 
   // All playlists for Dashboard sync
@@ -108,27 +123,6 @@ export default async function DashboardPage() {
     ...INTENSIVE_PLAYLISTS.map((p) => ({ ...p, category: "Intensive Classes" })),
     ...SUBJECT_HACKS_PLAYLISTS.map((p) => ({ ...p, category: "Subject Hacks" })),
   ];
-
-  // Fetch up to 6 currently watching videos (in-progress, not marked watched, > 10s progress)
-  const currentlyWatchingRows = await sql`
-    SELECT 
-      v.id,
-      v.youtube_video_id,
-      v.title,
-      v.thumbnail_url,
-      v.duration,
-      v.playlist_id,
-      wp.progress_seconds,
-      wp.last_watched_at,
-      wp.updated_at
-    FROM watch_progress wp
-    JOIN videos v ON v.id = wp.video_id
-    WHERE wp.user_id = ${session.id}
-      AND wp.watched = false
-      AND wp.progress_seconds > 10
-    ORDER BY COALESCE(wp.last_watched_at, wp.updated_at) DESC
-    LIMIT 6
-  `;
 
   const currentlyWatchingVideos: CurrentlyWatchingVideo[] = currentlyWatchingRows.map((row) => {
     const isIntensive = intensivePlaylistIds.includes(row.playlist_id || "");

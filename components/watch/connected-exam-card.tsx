@@ -15,7 +15,12 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ExamItem } from "@/lib/exams";
-import { ExamModal } from "@/components/exams/exam-modal";
+import dynamic from "next/dynamic";
+
+const ExamModal = dynamic(
+  () => import("@/components/exams/exam-modal").then((m) => m.ExamModal),
+  { ssr: false }
+);
 
 interface ConnectedExamCardProps {
   exam: ExamItem;

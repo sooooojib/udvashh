@@ -153,15 +153,16 @@ export async function getAllExamsFromDb(): Promise<ExamItem[]> {
   return getAllExams();
 }
 
-export function getExamStats() {
-  const exams = getAllExams();
-  const total = exams.length;
-  const daily = exams.filter((e) => e.category === "daily").length;
-  const weekly = exams.filter((e) => e.category === "weekly").length;
-  const written = exams.filter((e) => e.category === "written").length;
-  const totalQuestions = exams.reduce((acc, e) => acc + (e.totalQuestions || 0), 0);
+const STATIC_EXAM_STATS = {
+  total: 100,
+  daily: 72,
+  weekly: 19,
+  written: 9,
+  totalQuestions: 4343,
+};
 
-  return { total, daily, weekly, written, totalQuestions };
+export function getExamStats() {
+  return STATIC_EXAM_STATS;
 }
 
 /**

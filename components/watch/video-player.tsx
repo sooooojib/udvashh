@@ -883,11 +883,13 @@ export function VideoPlayer({
   React.useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
     if (isPlaying) {
-      // Periodic heartbeat sync every 180 seconds (3 minutes) while actively playing.
-      // Immediate syncs already fire on pause (state 2), video end (state 0), and tab close (beforeunload).
+      // Rare 15-minute fallback heartbeat during long uninterrupted playback.
+      // High-accuracy syncs already fire on Pause (state 2), Video End (state 0),
+      // and Tab Close/Navigation (beforeunload & unmount).
+      // This saves massive Neon compute hours by allowing Postgres to auto-suspend.
       interval = setInterval(() => {
         syncProgress();
-      }, 180000);
+      }, 900000); // 15 minutes
     }
     return () => {
       if (interval) clearInterval(interval);

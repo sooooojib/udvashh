@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { sql } from "@/lib/db";
 import { getSession } from "@/lib/auth/session";
 
@@ -53,6 +53,7 @@ export async function toggleWatched(
   revalidatePath("/live-classes");
   revalidatePath("/intensive-classes");
   revalidatePath("/subject-hacks");
+  revalidateTag(`user-progress-${session.id}`, "default");
 }
 
 export async function updatePlaybackProgress(
@@ -107,6 +108,7 @@ export async function updatePlaybackProgress(
   // Avoid heavy dashboard re-rendering on routine playback heartbeat pings
   if (isNearlyFinished) {
     revalidatePath("/dashboard");
+    revalidateTag(`user-progress-${session.id}`, "default");
   }
 }
 

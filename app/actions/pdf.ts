@@ -40,6 +40,7 @@ function revalidatePdfRoutes() {
   revalidatePath("/dashboard", "page");
   revalidatePath("/watch/[videoId]", "page");
   revalidateTag("videos-catalog", "default");
+  revalidateTag("video-pdfs", "default");
 }
 
 /**

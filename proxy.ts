@@ -19,7 +19,8 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith("/watch") ||
     pathname.startsWith("/live-classes") ||
     pathname.startsWith("/intensive-classes") ||
-    pathname.startsWith("/subject-hacks");
+    pathname.startsWith("/subject-hacks") ||
+    pathname.startsWith("/exams");
 
   const isAuthPath =
     pathname.startsWith("/login") || pathname.startsWith("/signup");
