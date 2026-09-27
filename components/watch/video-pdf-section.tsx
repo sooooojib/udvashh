@@ -15,6 +15,7 @@ import {
   Loader2,
   CheckCircle2,
   AlertCircle,
+  HardDrive,
   ChevronDown,
   ChevronUp,
   RotateCw,
@@ -40,6 +41,7 @@ interface ActiveUploadTask {
   fileSize: number;
   progress: number;
   statusText: string;
+  mode: "drive" | "supabase";
   status: "queued" | "uploading" | "completed" | "error";
   errorMessage?: string;
 }
@@ -62,8 +64,8 @@ export function VideoPdfSection({
   const [isAddModalOpen, setIsAddModalOpen] = React.useState(false);
   const [previewPdf, setPreviewPdf] = React.useState<VideoPdfItem | null>(null);
 
-  // Simple 2-tab modal: "upload" (direct file drop) or "link" (paste Google Drive URL)
-  const [modalTab, setModalTab] = React.useState<"upload" | "link">("upload");
+  // 3 Upload Modes: "drive" (Google Drive direct), "supabase" (Supabase Storage), "link" (Google Drive URL)
+  const [uploadMode, setUploadMode] = React.useState<"drive" | "supabase" | "link">("drive");
 
   // Multi-File Upload State
   const [selectedFiles, setSelectedFiles] = React.useState<File[]>([]);
@@ -190,7 +192,7 @@ export function VideoPdfSection({
   };
 
   /**
-   * Executes a single upload with auto-retry and Google Apps Script bridge
+   * Executes a single upload with total correctness for both Supabase & Drive
    */
   const executeSingleUpload = async (
     task: ActiveUploadTask,
@@ -202,109 +204,188 @@ export function VideoPdfSection({
     updateTask(task.id, {
       status: "uploading",
       progress: 15,
-      statusText: "Preparing...",
+      statusText:
+        task.mode === "supabase"
+          ? "Connecting to Supabase Storage..."
+          : "Connecting to Drive bridge...",
     });
 
     try {
-      // 1. Get Google Apps Script URL if needed
-      if (!resolvedScriptUrl) {
-        const configRes = await fetch("/api/upload/drive/config");
-        if (!configRes.ok) {
-          const errData = await configRes.json().catch(() => ({}));
-          throw new Error(errData.message || "Failed to connect to Google Drive bridge.");
+      if (task.mode === "supabase") {
+        // --- 1. Supabase Storage Upload ---
+        const signRes = await fetch("/api/upload/supabase/sign", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ videoId, fileName: file.name }),
+        });
+
+        if (!signRes.ok) {
+          const errData = await signRes.json().catch(() => ({}));
+          throw new Error(errData.message || "Failed to initialize Supabase upload.");
         }
-        const cfg = await configRes.json();
-        resolvedScriptUrl = cfg.scriptUrl;
-      }
 
-      updateTask(task.id, { progress: 30, statusText: "Processing file..." });
+        const { signedUrl, storagePath } = await signRes.json();
 
-      // 2. Read as base64
-      const base64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-          const result = reader.result as string;
-          const commaIdx = result.indexOf(",");
-          resolve(commaIdx !== -1 ? result.slice(commaIdx + 1) : result);
-        };
-        reader.onerror = () => reject(new Error("Failed to read PDF file"));
-        reader.readAsDataURL(file);
-      });
+        updateTask(task.id, { progress: 45, statusText: "Uploading to Supabase..." });
 
-      updateTask(task.id, { progress: 60, statusText: "Uploading to Drive..." });
+        // PUT directly to Supabase storage with retry
+        let uploadOk = false;
+        let lastError: Error | null = null;
+        for (let attempt = 1; attempt <= 2; attempt++) {
+          try {
+            if (attempt > 1) {
+              updateTask(task.id, {
+                statusText: `Retrying Supabase upload (${attempt}/2)...`,
+                progress: 50,
+              });
+              await new Promise((r) => setTimeout(r, 2000));
+            }
 
-      // 3. Upload to Apps Script Web App with automatic retry
-      let scriptData: { fileId?: string; webViewLink?: string } | null = null;
-      const maxAttempts = 2;
-
-      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-        try {
-          if (attempt > 1) {
-            updateTask(task.id, {
-              statusText: `Retrying (${attempt}/${maxAttempts})...`,
-              progress: 55,
+            const uploadRes = await fetch(signedUrl, {
+              method: "PUT",
+              headers: { "Content-Type": "application/pdf" },
+              body: file,
             });
-            await new Promise((r) => setTimeout(r, 2500));
+
+            if (uploadRes.ok) {
+              uploadOk = true;
+              break;
+            } else {
+              throw new Error(`Supabase returned status ${uploadRes.status}`);
+            }
+          } catch (err: unknown) {
+            lastError = err instanceof Error ? err : new Error(String(err));
           }
-
-          const scriptRes = await fetch(resolvedScriptUrl, {
-            method: "POST",
-            headers: { "Content-Type": "text/plain;charset=utf-8" },
-            body: JSON.stringify({
-              fileName: file.name,
-              base64,
-            }),
-          });
-
-          if (!scriptRes.ok) {
-            throw new Error(`Upload bridge returned status ${scriptRes.status}`);
-          }
-
-          const data = await scriptRes.json();
-          if (!data.success || !data.fileId) {
-            throw new Error(data.error || "Upload was not completed by Drive.");
-          }
-
-          scriptData = data;
-          break;
-        } catch (err: unknown) {
-          if (attempt >= maxAttempts) throw err;
-          console.warn(`Attempt ${attempt} failed, retrying...`, err);
         }
+
+        if (!uploadOk) {
+          throw lastError || new Error("Failed to upload to Supabase Storage.");
+        }
+
+        updateTask(task.id, { progress: 85, statusText: "Saving to database..." });
+
+        const completeRes = await fetch("/api/upload/supabase/complete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            videoId,
+            title: task.title,
+            storagePath,
+            fileSize: file.size,
+          }),
+        });
+
+        const completeData = await completeRes.json();
+        if (!completeRes.ok || !completeData.success) {
+          throw new Error(completeData.message || "Failed to finalize Supabase record.");
+        }
+
+        setPdfs((prev) => [...prev, completeData.pdf]);
+        updateTask(task.id, {
+          status: "completed",
+          progress: 100,
+          statusText: "Uploaded to Supabase",
+        });
+        toast.success(`Uploaded: ${task.title}`);
+        return { success: true };
+      } else {
+        // --- 2. Google Drive Direct Upload (via Apps Script) ---
+        if (!resolvedScriptUrl) {
+          const configRes = await fetch("/api/upload/drive/config");
+          if (!configRes.ok) {
+            const errData = await configRes.json().catch(() => ({}));
+            throw new Error(errData.message || "Failed to connect to Google Drive bridge.");
+          }
+          const cfg = await configRes.json();
+          resolvedScriptUrl = cfg.scriptUrl;
+        }
+
+        updateTask(task.id, { progress: 30, statusText: "Processing file data..." });
+
+        const base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const result = reader.result as string;
+            const commaIdx = result.indexOf(",");
+            resolve(commaIdx !== -1 ? result.slice(commaIdx + 1) : result);
+          };
+          reader.onerror = () => reject(new Error("Failed to read PDF file"));
+          reader.readAsDataURL(file);
+        });
+
+        updateTask(task.id, { progress: 60, statusText: "Uploading to Drive..." });
+
+        let scriptData: { fileId?: string; webViewLink?: string } | null = null;
+        const maxAttempts = 2;
+
+        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+          try {
+            if (attempt > 1) {
+              updateTask(task.id, {
+                statusText: `Retrying Drive upload (${attempt}/${maxAttempts})...`,
+                progress: 55,
+              });
+              await new Promise((r) => setTimeout(r, 2500));
+            }
+
+            const scriptRes = await fetch(resolvedScriptUrl, {
+              method: "POST",
+              headers: { "Content-Type": "text/plain;charset=utf-8" },
+              body: JSON.stringify({
+                fileName: file.name,
+                base64,
+              }),
+            });
+
+            if (!scriptRes.ok) {
+              throw new Error(`Drive bridge returned status ${scriptRes.status}`);
+            }
+
+            const data = await scriptRes.json();
+            if (!data.success || !data.fileId) {
+              throw new Error(data.error || "Upload was not completed by Drive.");
+            }
+
+            scriptData = data;
+            break;
+          } catch (err: unknown) {
+            if (attempt >= maxAttempts) throw err;
+            console.warn(`Drive attempt ${attempt} failed, retrying...`, err);
+          }
+        }
+
+        if (!scriptData || !scriptData.fileId) {
+          throw new Error("Could not retrieve Drive file ID.");
+        }
+
+        updateTask(task.id, { progress: 90, statusText: "Saving to database..." });
+
+        const completeRes = await fetch("/api/upload/drive/complete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            videoId,
+            title: task.title,
+            fileId: scriptData.fileId,
+            webViewLink: scriptData.webViewLink,
+            fileSize: file.size,
+          }),
+        });
+
+        const completeData = await completeRes.json();
+        if (!completeRes.ok || !completeData.success) {
+          throw new Error(completeData.message || "Failed to record Drive PDF.");
+        }
+
+        setPdfs((prev) => [...prev, completeData.pdf]);
+        updateTask(task.id, {
+          status: "completed",
+          progress: 100,
+          statusText: "Uploaded to Drive",
+        });
+        toast.success(`Uploaded: ${task.title}`);
+        return { success: true, scriptUrl: resolvedScriptUrl };
       }
-
-      if (!scriptData || !scriptData.fileId) {
-        throw new Error("Could not retrieve Drive file ID.");
-      }
-
-      updateTask(task.id, { progress: 90, statusText: "Saving..." });
-
-      // 4. Save to Database
-      const completeRes = await fetch("/api/upload/drive/complete", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          videoId,
-          title: task.title,
-          fileId: scriptData.fileId,
-          webViewLink: scriptData.webViewLink,
-          fileSize: file.size,
-        }),
-      });
-
-      const completeData = await completeRes.json();
-      if (!completeRes.ok || !completeData.success) {
-        throw new Error(completeData.message || "Failed to save record.");
-      }
-
-      setPdfs((prev) => [...prev, completeData.pdf]);
-      updateTask(task.id, {
-        status: "completed",
-        progress: 100,
-        statusText: "Completed",
-      });
-      toast.success(`Added: ${task.title}`);
-      return { success: true, scriptUrl: resolvedScriptUrl };
     } catch (err: unknown) {
       console.error(`Upload error for ${task.fileName}:`, err);
       const msg = err instanceof Error ? err.message : "Upload failed.";
@@ -313,7 +394,7 @@ export function VideoPdfSection({
         errorMessage: msg,
         statusText: "Failed",
       });
-      toast.error(`Failed to upload ${task.fileName}`);
+      toast.error(`Failed: ${task.fileName}`);
       return { success: false, scriptUrl: resolvedScriptUrl };
     }
   };
@@ -344,6 +425,8 @@ export function VideoPdfSection({
     if (selectedFiles.length === 0) return;
 
     const filesToUpload = [...selectedFiles];
+    const modeToUpload: "drive" | "supabase" =
+      uploadMode === "supabase" ? "supabase" : "drive";
     const customSingle = singleTitle.trim();
 
     // Close modal immediately so user continues without waiting
@@ -364,6 +447,7 @@ export function VideoPdfSection({
         fileSize: f.size,
         progress: 0,
         statusText: "Queued",
+        mode: modeToUpload,
         status: "queued" as const,
       };
     });
@@ -456,7 +540,7 @@ export function VideoPdfSection({
     setSingleTitle("");
     setLinkTitle("");
     setLinkUrl("");
-    setModalTab("upload");
+    setUploadMode("drive");
   };
 
   // Queue state summaries
@@ -479,7 +563,7 @@ export function VideoPdfSection({
 
   return (
     <section className="mt-6">
-      {/* ── Header ── */}
+      {/* ── Section Header ── */}
       <div className="flex items-center justify-between gap-3 mb-3.5">
         <div className="flex items-center gap-2">
           <h3 className="font-semibold text-sm tracking-tight text-foreground dark:text-[#E8EDF0]">
@@ -519,7 +603,7 @@ export function VideoPdfSection({
             </p>
             <p className="text-[11px] text-muted-foreground/60 dark:text-[#657682] mt-0.5">
               {isAdmin
-                ? "Click \"Add Note\" to upload or link PDFs"
+                ? 'Click "Add Note" to upload or attach PDFs'
                 : "Lecture notes will appear here"}
             </p>
           </div>
@@ -535,7 +619,7 @@ export function VideoPdfSection({
               <div className="flex items-center gap-2.5 min-w-0">
                 <Loader2 className="h-4 w-4 animate-spin text-emerald-500 shrink-0" />
                 <p className="text-xs font-medium text-foreground dark:text-[#E8EDF0] truncate">
-                  Uploading {inProgressUploads[0]?.title || "note"}...
+                  Uploading {inProgressUploads[0]?.title || "note"} ({inProgressUploads[0]?.mode === "supabase" ? "Supabase" : "Drive"})...
                 </p>
               </div>
               <div className="flex items-center gap-2 shrink-0">
@@ -566,9 +650,16 @@ export function VideoPdfSection({
                   "hover:border-border/70 dark:hover:border-white/10 hover:shadow-sm"
                 )}
               >
-                {/* Left: Icon + Title + Size */}
+                {/* Left: Icon + Title + Meta */}
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-rose-500/10 text-rose-500 shrink-0">
+                  <div
+                    className={cn(
+                      "flex items-center justify-center w-8 h-8 rounded-lg shrink-0",
+                      isDrive
+                        ? "bg-emerald-500/10 text-emerald-500"
+                        : "bg-blue-500/10 text-blue-500"
+                    )}
+                  >
                     <FileText className="h-4 w-4" />
                   </div>
                   <div className="min-w-0">
@@ -578,11 +669,23 @@ export function VideoPdfSection({
                     >
                       {pdf.title}
                     </p>
-                    {pdf.file_size && (
-                      <p className="text-[10px] text-muted-foreground/70 dark:text-[#657682] font-mono mt-0.5">
-                        {formatFileSize(pdf.file_size)}
-                      </p>
-                    )}
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span
+                        className={cn(
+                          "text-[9px] font-semibold px-1.5 py-0.2 rounded font-mono uppercase",
+                          isDrive
+                            ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                            : "bg-blue-500/10 text-blue-600 dark:text-blue-400"
+                        )}
+                      >
+                        {isDrive ? "Drive" : "Supabase"}
+                      </span>
+                      {pdf.file_size && (
+                        <span className="text-[10px] text-muted-foreground/70 dark:text-[#657682] font-mono">
+                          {formatFileSize(pdf.file_size)}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -688,7 +791,7 @@ export function VideoPdfSection({
         </div>
       )}
 
-      {/* ── Modern, Clean "Add Note" Modal ── */}
+      {/* ── Modern, Clean "Add Note" Modal (Drive / Supabase / Link) ── */}
       {isAddModalOpen && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md"
@@ -696,7 +799,7 @@ export function VideoPdfSection({
             if (e.target === e.currentTarget) closeAndResetModal();
           }}
         >
-          <div className="relative w-full max-w-[400px] rounded-2xl border border-border/50 bg-card shadow-2xl dark:border-white/10 dark:bg-[#0E151D] animate-in fade-in zoom-in-95 duration-150 overflow-hidden">
+          <div className="relative w-full max-w-[420px] rounded-2xl border border-border/50 bg-card shadow-2xl dark:border-white/10 dark:bg-[#0E151D] animate-in fade-in zoom-in-95 duration-150 overflow-hidden">
             {/* Modal Header */}
             <div className="flex items-center justify-between px-5 py-3.5 border-b border-border/40 dark:border-white/5">
               <h3 className="font-semibold text-sm text-foreground dark:text-[#E8EDF0]">
@@ -712,38 +815,51 @@ export function VideoPdfSection({
             </div>
 
             <div className="p-5">
-              {/* Minimal 2-Pill Switcher */}
-              <div className="grid grid-cols-2 p-1 mb-4 rounded-xl bg-muted/40 dark:bg-[#121921] border border-border/30 dark:border-white/5">
+              {/* Sleek 3-Pill Switcher */}
+              <div className="grid grid-cols-3 p-1 mb-4 rounded-xl bg-muted/40 dark:bg-[#121921] border border-border/30 dark:border-white/5">
                 <button
                   type="button"
-                  onClick={() => setModalTab("upload")}
+                  onClick={() => setUploadMode("drive")}
                   className={cn(
                     "flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-150 cursor-pointer",
-                    modalTab === "upload"
+                    uploadMode === "drive"
                       ? "bg-card dark:bg-[#1A2530] text-foreground dark:text-white shadow-sm ring-1 ring-black/5 dark:ring-white/10"
                       : "text-muted-foreground hover:text-foreground dark:text-[#8A9BA8] dark:hover:text-white"
                   )}
                 >
                   <UploadCloud className="h-3.5 w-3.5 text-emerald-500" />
-                  Upload PDF
+                  Drive
                 </button>
                 <button
                   type="button"
-                  onClick={() => setModalTab("link")}
+                  onClick={() => setUploadMode("supabase")}
                   className={cn(
                     "flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-150 cursor-pointer",
-                    modalTab === "link"
+                    uploadMode === "supabase"
                       ? "bg-card dark:bg-[#1A2530] text-foreground dark:text-white shadow-sm ring-1 ring-black/5 dark:ring-white/10"
                       : "text-muted-foreground hover:text-foreground dark:text-[#8A9BA8] dark:hover:text-white"
                   )}
                 >
-                  <Link2 className="h-3.5 w-3.5 text-blue-500" />
-                  Drive Link
+                  <HardDrive className="h-3.5 w-3.5 text-blue-500" />
+                  Supabase
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setUploadMode("link")}
+                  className={cn(
+                    "flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-150 cursor-pointer",
+                    uploadMode === "link"
+                      ? "bg-card dark:bg-[#1A2530] text-foreground dark:text-white shadow-sm ring-1 ring-black/5 dark:ring-white/10"
+                      : "text-muted-foreground hover:text-foreground dark:text-[#8A9BA8] dark:hover:text-white"
+                  )}
+                >
+                  <Link2 className="h-3.5 w-3.5 text-amber-500" />
+                  Link
                 </button>
               </div>
 
-              {/* Tab 1: Upload File */}
-              {modalTab === "upload" ? (
+              {/* Mode 1 & 2: Direct Upload (Drive or Supabase) */}
+              {uploadMode !== "link" ? (
                 <form onSubmit={handleFileUpload} className="space-y-4">
                   <input
                     ref={fileInputRef}
@@ -771,15 +887,28 @@ export function VideoPdfSection({
                       onDragLeave={handleDragLeave}
                       onDrop={handleDrop}
                     >
-                      <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-500">
-                        <UploadCloud className="h-5 w-5" />
+                      <div
+                        className={cn(
+                          "flex items-center justify-center w-10 h-10 rounded-xl",
+                          uploadMode === "drive"
+                            ? "bg-emerald-500/10 text-emerald-500"
+                            : "bg-blue-500/10 text-blue-500"
+                        )}
+                      >
+                        {uploadMode === "drive" ? (
+                          <UploadCloud className="h-5 w-5" />
+                        ) : (
+                          <HardDrive className="h-5 w-5" />
+                        )}
                       </div>
                       <div className="text-center">
                         <p className="text-xs font-medium text-foreground dark:text-[#E8EDF0]">
                           Drop PDF here or <span className="text-emerald-500 underline font-semibold">browse</span>
                         </p>
                         <p className="text-[11px] text-muted-foreground dark:text-[#657682] mt-0.5">
-                          Uploads directly to Google Drive
+                          {uploadMode === "drive"
+                            ? "Direct to Google Drive (unlimited size)"
+                            : "Direct to Supabase Storage (up to 50 MB)"}
                         </p>
                       </div>
                     </div>
@@ -788,7 +917,7 @@ export function VideoPdfSection({
                     <div className="space-y-2.5">
                       <div className="flex items-center justify-between text-xs">
                         <span className="font-medium text-foreground dark:text-[#E8EDF0]">
-                          {selectedFiles.length} {selectedFiles.length === 1 ? "file" : "files"} chosen
+                          {selectedFiles.length} {selectedFiles.length === 1 ? "file" : "files"} chosen ({uploadMode === "drive" ? "Drive" : "Supabase"})
                         </span>
                         <button
                           type="button"
@@ -871,15 +1000,19 @@ export function VideoPdfSection({
                         buttonAccent
                       )}
                     >
-                      <UploadCloud className="h-3.5 w-3.5" />
+                      {uploadMode === "drive" ? (
+                        <UploadCloud className="h-3.5 w-3.5" />
+                      ) : (
+                        <HardDrive className="h-3.5 w-3.5" />
+                      )}
                       {selectedFiles.length > 1
-                        ? `Upload ${selectedFiles.length} Notes`
-                        : "Upload Note"}
+                        ? `Upload ${selectedFiles.length} to ${uploadMode === "drive" ? "Drive" : "Supabase"}`
+                        : `Upload to ${uploadMode === "drive" ? "Drive" : "Supabase"}`}
                     </button>
                   </div>
                 </form>
               ) : (
-                /* Tab 2: Attach Google Drive Link */
+                /* Mode 3: Attach Google Drive Link */
                 <form onSubmit={handleDriveAttach} className="space-y-3.5">
                   <div className="space-y-1">
                     <label className="text-[11px] font-medium text-muted-foreground dark:text-[#8A9BA8]">
@@ -1057,9 +1190,21 @@ export function VideoPdfSection({
                 {activeUploads.map((task) => (
                   <div key={task.id} className="py-2 flex items-center justify-between gap-2">
                     <div className="min-w-0 pr-1">
-                      <p className="text-xs font-medium text-foreground dark:text-[#E8EDF0] truncate">
-                        {task.title}
-                      </p>
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-xs font-medium text-foreground dark:text-[#E8EDF0] truncate">
+                          {task.title}
+                        </p>
+                        <span
+                          className={cn(
+                            "text-[8px] font-semibold px-1 py-0.2 rounded font-mono uppercase shrink-0",
+                            task.mode === "supabase"
+                              ? "bg-blue-500/10 text-blue-600 dark:text-blue-400"
+                              : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                          )}
+                        >
+                          {task.mode === "supabase" ? "Supabase" : "Drive"}
+                        </span>
+                      </div>
                       <p className="text-[10px] text-muted-foreground/80 dark:text-[#657682] mt-0.5">
                         {task.statusText} • {formatFileSize(task.fileSize)}
                       </p>
