@@ -18,16 +18,14 @@ import {
   HardDrive,
   ChevronDown,
   ChevronUp,
-  Layers,
+  RotateCw,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { formatFileSize } from "@/lib/utils/format";
 import {
   addDrivePdf,
   deleteVideoPdf,
-  getGoogleDriveAuthLink,
   type VideoPdfItem,
 } from "@/app/actions/pdf";
 import {
@@ -61,13 +59,12 @@ export function VideoPdfSection({
   initialPdfs,
   isAdmin = false,
   moduleType = "live",
-  isDriveConnected = false,
 }: VideoPdfSectionProps) {
   const [pdfs, setPdfs] = React.useState<VideoPdfItem[]>(initialPdfs);
   const [isAddModalOpen, setIsAddModalOpen] = React.useState(false);
   const [previewPdf, setPreviewPdf] = React.useState<VideoPdfItem | null>(null);
 
-  // Three modes: "drive" (upload to Google Drive), "supabase" (upload to Supabase), "link" (paste Drive URL)
+  // Upload mode: "drive" (default, direct via Apps Script), "supabase" (Supabase storage), "link" (paste link)
   const [uploadMode, setUploadMode] = React.useState<"drive" | "supabase" | "link">("drive");
 
   // Multi-File Upload State
@@ -78,6 +75,9 @@ export function VideoPdfSection({
   const [isDragOver, setIsDragOver] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
+  // File handle cache for one-click re-try
+  const fileMapRef = React.useRef<Map<string, File>>(new Map());
+
   // Link Form State
   const [driveTitle, setDriveTitle] = React.useState("");
   const [driveUrl, setDriveUrl] = React.useState("");
@@ -86,22 +86,11 @@ export function VideoPdfSection({
   // Deletion state
   const [deletingId, setDeletingId] = React.useState<string | null>(null);
 
-  // Auth link for Google Drive
-  const [authUrl, setAuthUrl] = React.useState<string | null>(null);
-
   React.useEffect(() => {
     setPdfs(initialPdfs);
   }, [initialPdfs]);
 
-  React.useEffect(() => {
-    if (isAddModalOpen && isAdmin) {
-      getGoogleDriveAuthLink()
-        .then((url) => setAuthUrl(url))
-        .catch(() => {});
-    }
-  }, [isAddModalOpen, isAdmin]);
-
-  // Lock background scrolling when PDF preview modal (or add modal) is open
+  // Lock background scrolling when PDF preview modal or add modal is open
   React.useEffect(() => {
     if (previewPdf || isAddModalOpen) {
       const originalHtmlOverflow = document.documentElement.style.overflow;
@@ -112,13 +101,13 @@ export function VideoPdfSection({
       document.documentElement.style.overflow = "hidden";
       document.documentElement.style.overscrollBehavior = "none";
       document.body.style.overflow = "hidden";
-      document.body.style.overscrollBehavior = "none";
+      document.body.style.overflow = "none";
 
       return () => {
         document.documentElement.style.overflow = originalHtmlOverflow;
         document.documentElement.style.overscrollBehavior = originalHtmlOverscroll;
         document.body.style.overflow = originalBodyOverflow;
-        document.body.style.overscrollBehavior = originalBodyOverscroll;
+        document.body.style.overflow = originalBodyOverscroll;
       };
     }
   }, [previewPdf, isAddModalOpen]);
@@ -128,7 +117,7 @@ export function VideoPdfSection({
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         if (previewPdf) setPreviewPdf(null);
-        if (isAddModalOpen) setIsAddModalOpen(false);
+        if (isAddModalOpen) closeAndResetModal();
       }
     };
     window.addEventListener("keydown", handleKeyDown);
@@ -149,12 +138,12 @@ export function VideoPdfSection({
       ? "bg-blue-600 hover:bg-blue-700 text-white"
       : "bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white";
 
-  const iconAccent =
-    moduleType === "intensive"
-      ? "text-amber-500"
-      : moduleType === "subject-hacks"
-      ? "text-blue-500"
-      : "text-emerald-600 dark:text-emerald-400";
+  // Helper to update individual active upload task
+  const updateTask = (taskId: string, partial: Partial<ActiveUploadTask>) => {
+    setActiveUploads((prev) =>
+      prev.map((t) => (t.id === taskId ? { ...t, ...partial } : t))
+    );
+  };
 
   // Handle multi-file selection
   const handleFilesChange = (files: FileList | File[] | null) => {
@@ -192,7 +181,7 @@ export function VideoPdfSection({
     setSelectedFiles((prev) => prev.filter((_, i) => i !== indexToRemove));
   };
 
-  // Handle drag & drop
+  // Drag & drop handlers
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -212,110 +201,55 @@ export function VideoPdfSection({
     }
   };
 
-  // Handle batch file upload in background (YouTube-style queue, zero waiting time!)
-  const handleFileUpload = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (selectedFiles.length === 0) {
-      toast.error("Please choose at least one PDF file.");
-      return;
-    }
+  /**
+   * Executes a single file upload with automatic retry on transient failure
+   */
+  const executeSingleUpload = async (
+    task: ActiveUploadTask,
+    file: File,
+    scriptUrlHint?: string
+  ): Promise<{ success: boolean; scriptUrl?: string }> => {
+    let resolvedScriptUrl = scriptUrlHint || "";
 
-    const filesToUpload = [...selectedFiles];
-    const modeToUpload: "drive" | "supabase" =
-      uploadMode === "supabase" ? "supabase" : "drive";
-    const customSingleTitle = uploadTitle.trim();
-
-    // Close the modal immediately so the user can continue watching uninterrupted!
-    closeAndResetModal();
-
-    const newTasks: ActiveUploadTask[] = filesToUpload.map((f, idx) => {
-      const cleanName = f.name.replace(/\.pdf$/i, "").replace(/[_-]+/g, " ");
-      const title =
-        filesToUpload.length === 1 && customSingleTitle
-          ? customSingleTitle
-          : cleanName;
-      return {
-        id: `${Date.now()}-${idx}-${f.name}`,
-        title,
-        fileName: f.name,
-        fileSize: f.size,
-        progress: 0,
-        statusText: "Waiting in queue...",
-        mode: modeToUpload,
-        status: "queued" as const,
-      };
+    updateTask(task.id, {
+      status: "uploading",
+      progress: 15,
+      statusText:
+        task.mode === "supabase"
+          ? "Connecting to Supabase Storage..."
+          : "Connecting to Google Drive bridge...",
     });
 
-    setActiveUploads((prev) => [...prev, ...newTasks]);
+    try {
+      if (task.mode === "supabase") {
+        // --- Supabase Upload Flow ---
+        const signRes = await fetch("/api/upload/supabase/sign", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ videoId, fileName: file.name }),
+        });
 
-    // Background Queue Runner (processes sequential uploads so personal accounts aren't throttled)
-    (async () => {
-      let cachedScriptUrl = "";
-      if (modeToUpload === "drive") {
-        try {
-          const configRes = await fetch("/api/upload/drive/config");
-          if (configRes.ok) {
-            const cfg = await configRes.json();
-            cachedScriptUrl = cfg.scriptUrl || "";
-          }
-        } catch (cfgErr) {
-          console.error("Failed to load drive config:", cfgErr);
+        if (!signRes.ok) {
+          const errData = await signRes.json().catch(() => ({}));
+          throw new Error(errData.message || "Failed to initialize Supabase upload.");
         }
-      }
 
-      for (let i = 0; i < filesToUpload.length; i++) {
-        const file = filesToUpload[i];
-        const task = newTasks[i];
+        const { signedUrl, storagePath } = await signRes.json();
 
-        // Mark current file as actively uploading
-        setActiveUploads((prev) =>
-          prev.map((t) =>
-            t.id === task.id
-              ? {
-                  ...t,
-                  status: "uploading",
-                  progress: 10,
-                  statusText:
-                    modeToUpload === "supabase"
-                      ? "Connecting to Supabase Storage..."
-                      : "Connecting to Google Drive bridge...",
-                }
-              : t
-          )
-        );
+        updateTask(task.id, { progress: 45, statusText: "Uploading to storage..." });
 
-        try {
-          if (modeToUpload === "supabase") {
-            // 1. Get signed upload URL
-            setActiveUploads((prev) =>
-              prev.map((t) =>
-                t.id === task.id
-                  ? { ...t, progress: 25, statusText: "Authorizing upload..." }
-                  : t
-              )
-            );
-
-            const signRes = await fetch("/api/upload/supabase/sign", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ videoId, fileName: file.name }),
-            });
-
-            if (!signRes.ok) {
-              const errData = await signRes.json().catch(() => ({}));
-              throw new Error(errData.message || "Failed to initialize Supabase upload.");
+        // Upload directly to Supabase storage with retry
+        let uploadOk = false;
+        let lastError: Error | null = null;
+        for (let attempt = 1; attempt <= 2; attempt++) {
+          try {
+            if (attempt > 1) {
+              updateTask(task.id, {
+                statusText: "Network busy, auto-retrying...",
+                progress: 50,
+              });
+              await new Promise((r) => setTimeout(r, 2000));
             }
-
-            const { signedUrl, storagePath } = await signRes.json();
-
-            // 2. Upload directly to Supabase Storage
-            setActiveUploads((prev) =>
-              prev.map((t) =>
-                t.id === task.id
-                  ? { ...t, progress: 50, statusText: "Uploading to Supabase Storage..." }
-                  : t
-              )
-            );
 
             const uploadRes = await fetch(signedUrl, {
               method: "PUT",
@@ -323,91 +257,90 @@ export function VideoPdfSection({
               body: file,
             });
 
-            if (!uploadRes.ok) {
-              throw new Error(`Supabase upload failed (status ${uploadRes.status}).`);
+            if (uploadRes.ok) {
+              uploadOk = true;
+              break;
+            } else {
+              throw new Error(`Upload returned status ${uploadRes.status}`);
+            }
+          } catch (err: unknown) {
+            lastError = err instanceof Error ? err : new Error(String(err));
+          }
+        }
+
+        if (!uploadOk) {
+          throw lastError || new Error("Failed to upload to Supabase Storage.");
+        }
+
+        updateTask(task.id, { progress: 85, statusText: "Finalizing PDF record..." });
+
+        const completeRes = await fetch("/api/upload/supabase/complete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            videoId,
+            title: task.title,
+            storagePath,
+            fileSize: file.size,
+          }),
+        });
+
+        const completeData = await completeRes.json();
+        if (!completeRes.ok || !completeData.success) {
+          throw new Error(completeData.message || "Failed to finalize PDF record.");
+        }
+
+        setPdfs((prev) => [...prev, completeData.pdf]);
+        updateTask(task.id, {
+          status: "completed",
+          progress: 100,
+          statusText: "Uploaded to Supabase!",
+        });
+        toast.success(`Uploaded: ${task.title}`);
+        return { success: true };
+      } else {
+        // --- Google Drive Direct Flow (via Apps Script) ---
+        if (!resolvedScriptUrl) {
+          const configRes = await fetch("/api/upload/drive/config");
+          if (!configRes.ok) {
+            const errData = await configRes.json().catch(() => ({}));
+            throw new Error(errData.message || "Failed to connect to Google Drive bridge.");
+          }
+          const cfg = await configRes.json();
+          resolvedScriptUrl = cfg.scriptUrl;
+        }
+
+        updateTask(task.id, { progress: 30, statusText: "Processing PDF data..." });
+
+        // Convert file to base64
+        const base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const result = reader.result as string;
+            const commaIdx = result.indexOf(",");
+            resolve(commaIdx !== -1 ? result.slice(commaIdx + 1) : result);
+          };
+          reader.onerror = () => reject(new Error("Failed to read PDF file"));
+          reader.readAsDataURL(file);
+        });
+
+        updateTask(task.id, { progress: 60, statusText: "Uploading to Google Drive..." });
+
+        // Upload with automatic retry on transient network/Apps Script errors
+        let scriptData: { fileId?: string; webViewLink?: string } | null = null;
+        const maxAttempts = 2;
+
+        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+          try {
+            if (attempt > 1) {
+              updateTask(task.id, {
+                statusText: `Connection busy, auto-retrying (${attempt}/${maxAttempts})...`,
+                progress: 55,
+              });
+              await new Promise((r) => setTimeout(r, 2500));
             }
 
-            // 3. Save database record
-            setActiveUploads((prev) =>
-              prev.map((t) =>
-                t.id === task.id
-                  ? { ...t, progress: 85, statusText: "Finalizing PDF record..." }
-                  : t
-              )
-            );
-
-            const completeRes = await fetch("/api/upload/supabase/complete", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                videoId,
-                title: task.title,
-                storagePath,
-                fileSize: file.size,
-              }),
-            });
-
-            const completeData = await completeRes.json();
-            if (!completeRes.ok || !completeData.success) {
-              throw new Error(completeData.message || "Failed to finalize PDF record.");
-            }
-
-            setPdfs((prev) => [...prev, completeData.pdf]);
-            setActiveUploads((prev) =>
-              prev.map((t) =>
-                t.id === task.id
-                  ? {
-                      ...t,
-                      status: "completed",
-                      progress: 100,
-                      statusText: "Uploaded to Supabase!",
-                    }
-                  : t
-              )
-            );
-            toast.success(`Uploaded: ${task.title}`);
-          } else {
-            // GOOGLE DRIVE UPLOAD
-            if (!cachedScriptUrl) {
-              const configRes = await fetch("/api/upload/drive/config");
-              if (!configRes.ok) {
-                const errData = await configRes.json().catch(() => ({}));
-                throw new Error(errData.message || "Failed to connect to Google Drive bridge.");
-              }
-              const cfg = await configRes.json();
-              cachedScriptUrl = cfg.scriptUrl;
-            }
-
-            // 2. Read PDF as base64 in browser
-            setActiveUploads((prev) =>
-              prev.map((t) =>
-                t.id === task.id
-                  ? { ...t, progress: 30, statusText: "Processing PDF..." }
-                  : t
-              )
-            );
-
-            const base64 = await new Promise<string>((resolve, reject) => {
-              const reader = new FileReader();
-              reader.onload = () => {
-                const result = reader.result as string;
-                const commaIdx = result.indexOf(",");
-                resolve(commaIdx !== -1 ? result.slice(commaIdx + 1) : result);
-              };
-              reader.onerror = () => reject(new Error("Failed to read PDF file"));
-              reader.readAsDataURL(file);
-            });
-
-            // 3. Upload directly to Google Drive via Apps Script
-            setActiveUploads((prev) =>
-              prev.map((t) =>
-                t.id === task.id
-                  ? { ...t, progress: 60, statusText: "Uploading to Google Drive..." }
-                  : t
-              )
-            );
-
-            const scriptRes = await fetch(cachedScriptUrl, {
+            const scriptRes = await fetch(resolvedScriptUrl, {
               method: "POST",
               headers: { "Content-Type": "text/plain;charset=utf-8" },
               body: JSON.stringify({
@@ -420,75 +353,150 @@ export function VideoPdfSection({
               throw new Error(`Google Drive bridge returned status ${scriptRes.status}`);
             }
 
-            const scriptData = await scriptRes.json();
-            if (!scriptData.success || !scriptData.fileId) {
-              throw new Error(scriptData.error || "Google Drive upload was unsuccessful.");
+            const data = await scriptRes.json();
+            if (!data.success || !data.fileId) {
+              throw new Error(data.error || "Google Drive upload failed.");
             }
 
-            // 4. Save record in database
-            setActiveUploads((prev) =>
-              prev.map((t) =>
-                t.id === task.id
-                  ? { ...t, progress: 90, statusText: "Finalizing Drive record..." }
-                  : t
-              )
-            );
-
-            const completeRes = await fetch("/api/upload/drive/complete", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                videoId,
-                title: task.title,
-                fileId: scriptData.fileId,
-                webViewLink: scriptData.webViewLink,
-                fileSize: file.size,
-              }),
-            });
-
-            const completeData = await completeRes.json();
-            if (!completeRes.ok || !completeData.success) {
-              throw new Error(completeData.message || "Failed to save Drive PDF record.");
-            }
-
-            setPdfs((prev) => [...prev, completeData.pdf]);
-            setActiveUploads((prev) =>
-              prev.map((t) =>
-                t.id === task.id
-                  ? {
-                      ...t,
-                      status: "completed",
-                      progress: 100,
-                      statusText: "Uploaded to Google Drive!",
-                    }
-                  : t
-              )
-            );
-            toast.success(`Uploaded: ${task.title}`);
+            scriptData = data;
+            break; // Succeeded!
+          } catch (err: unknown) {
+            if (attempt >= maxAttempts) throw err;
+            console.warn(`Drive upload attempt ${attempt} failed, will auto-retry:`, err);
           }
-        } catch (err: unknown) {
-          console.error(`Upload error for ${file.name}:`, err);
-          const msg =
-            err instanceof Error ? err.message : "Upload failed.";
-          setActiveUploads((prev) =>
-            prev.map((t) =>
-              t.id === task.id
-                ? {
-                    ...t,
-                    status: "error",
-                    errorMessage: msg,
-                    statusText: msg,
-                  }
-                : t
-            )
-          );
-          toast.error(`Failed to upload ${file.name}: ${msg}`);
+        }
+
+        if (!scriptData || !scriptData.fileId) {
+          throw new Error("Google Drive upload did not return a valid file ID.");
+        }
+
+        updateTask(task.id, { progress: 90, statusText: "Finalizing Drive record..." });
+
+        const completeRes = await fetch("/api/upload/drive/complete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            videoId,
+            title: task.title,
+            fileId: scriptData.fileId,
+            webViewLink: scriptData.webViewLink,
+            fileSize: file.size,
+          }),
+        });
+
+        const completeData = await completeRes.json();
+        if (!completeRes.ok || !completeData.success) {
+          throw new Error(completeData.message || "Failed to record Drive PDF.");
+        }
+
+        setPdfs((prev) => [...prev, completeData.pdf]);
+        updateTask(task.id, {
+          status: "completed",
+          progress: 100,
+          statusText: "Uploaded to Google Drive!",
+        });
+        toast.success(`Uploaded: ${task.title}`);
+        return { success: true, scriptUrl: resolvedScriptUrl };
+      }
+    } catch (err: unknown) {
+      console.error(`Upload error for ${task.fileName}:`, err);
+      const msg = err instanceof Error ? err.message : "Upload failed.";
+      updateTask(task.id, {
+        status: "error",
+        errorMessage: msg,
+        statusText: `Failed: ${msg}`,
+      });
+      toast.error(`Failed to upload ${task.fileName}: ${msg}`);
+      return { success: false, scriptUrl: resolvedScriptUrl };
+    }
+  };
+
+  // Re-try a single failed task on demand
+  const handleRetryTask = async (taskId: string) => {
+    const task = activeUploads.find((t) => t.id === taskId);
+    const file = fileMapRef.current.get(taskId);
+
+    if (!task || !file) {
+      toast.error("File reference expired. Please re-select the file.");
+      return;
+    }
+
+    updateTask(taskId, {
+      status: "uploading",
+      progress: 10,
+      statusText: "Retrying upload...",
+      errorMessage: undefined,
+    });
+
+    await executeSingleUpload(task, file);
+  };
+
+  // Batch upload submission handler
+  const handleFileUpload = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (selectedFiles.length === 0) {
+      toast.error("Please choose at least one PDF file.");
+      return;
+    }
+
+    const filesToUpload = [...selectedFiles];
+    const modeToUpload: "drive" | "supabase" =
+      uploadMode === "supabase" ? "supabase" : "drive";
+    const customSingleTitle = uploadTitle.trim();
+
+    // Close the modal immediately so the user can continue viewing videos without waiting
+    closeAndResetModal();
+
+    const newTasks: ActiveUploadTask[] = filesToUpload.map((f, idx) => {
+      const cleanName = f.name.replace(/\.pdf$/i, "").replace(/[_-]+/g, " ");
+      const title =
+        filesToUpload.length === 1 && customSingleTitle
+          ? customSingleTitle
+          : cleanName;
+      const taskId = `${Date.now()}-${idx}-${f.name}`;
+
+      // Save file reference in memory for potential one-click retry
+      fileMapRef.current.set(taskId, f);
+
+      return {
+        id: taskId,
+        title,
+        fileName: f.name,
+        fileSize: f.size,
+        progress: 0,
+        statusText: "Waiting in queue...",
+        mode: modeToUpload,
+        status: "queued" as const,
+      };
+    });
+
+    setActiveUploads((prev) => [...prev, ...newTasks]);
+
+    // Sequential Queue Runner with inter-file cooldown delay
+    (async () => {
+      let cachedScriptUrl = "";
+
+      for (let i = 0; i < newTasks.length; i++) {
+        const task = newTasks[i];
+        const file = filesToUpload[i];
+
+        const res = await executeSingleUpload(task, file, cachedScriptUrl);
+        if (res.scriptUrl) {
+          cachedScriptUrl = res.scriptUrl;
+        }
+
+        // Inter-file cooldown delay: give Google Apps Script instance & network 2000ms to recycle
+        if (i < newTasks.length - 1) {
+          updateTask(task.id, {
+            statusText: "Uploaded! Cooldown before next file...",
+          });
+          await new Promise((r) => setTimeout(r, 2000));
         }
       }
     })();
   };
 
-  // Handle Google Drive Link Attachment
+  // Google Drive Link Attachment
   const detectedDriveId = extractGoogleDriveFileId(driveUrl);
 
   const handleDriveAttach = async (e: React.FormEvent) => {
@@ -525,7 +533,7 @@ export function VideoPdfSection({
     }
   };
 
-  // Handle PDF deletion
+  // PDF deletion
   const handleDeletePdf = async (pdfId: string) => {
     if (!confirm("Are you sure you want to delete this PDF?")) return;
     setDeletingId(pdfId);
@@ -554,6 +562,13 @@ export function VideoPdfSection({
     setDriveUrl("");
     setUploadMode("drive");
   };
+
+  // Queue status summary
+  const hasActiveUploads = activeUploads.length > 0;
+  const inProgressUploads = activeUploads.filter(
+    (t) => t.status === "uploading" || t.status === "queued"
+  );
+  const isAnyUploading = inProgressUploads.length > 0;
 
   return (
     <section className="mt-5">
@@ -588,18 +603,43 @@ export function VideoPdfSection({
             onClick={() => setIsAddModalOpen(true)}
             className={cn(
               "inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-semibold transition-all duration-200",
-              "active:scale-[0.97] hover:shadow-md",
+              "active:scale-[0.97] hover:shadow-md cursor-pointer",
               buttonAccent
             )}
           >
             <Plus className="h-3.5 w-3.5 stroke-[2.5]" />
-            Add
+            Add Note
           </button>
         )}
       </div>
 
+      {/* ── Minimal Pending Upload Strip (Modern, non-intrusive) ── */}
+      {isAnyUploading && (
+        <div
+          onClick={() => setIsDrawerExpanded(true)}
+          className="mb-2 flex items-center justify-between px-3 py-2 rounded-xl border border-dashed cursor-pointer transition-all duration-200 hover:opacity-95"
+          style={{
+            borderColor: `${accentColor}40`,
+            backgroundColor: `${accentColor}0a`,
+          }}
+        >
+          <div className="flex items-center gap-2 min-w-0">
+            <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" style={{ color: accentColor }} />
+            <p className="text-xs font-medium text-foreground dark:text-[#E8EDF0] truncate">
+              Uploading {inProgressUploads.length} {inProgressUploads.length === 1 ? "note" : "notes"} in background...
+            </p>
+          </div>
+          <span
+            className="text-[11px] font-medium shrink-0 ml-2 hover:underline"
+            style={{ color: accentColor }}
+          >
+            View queue
+          </span>
+        </div>
+      )}
+
       {/* ── PDF List ── */}
-      {pdfs.length === 0 && activeUploads.length === 0 ? (
+      {pdfs.length === 0 && !isAnyUploading ? (
         <div className="flex items-center gap-3 py-4 px-4 rounded-xl border border-dashed border-border/50 dark:border-[#1F2C34]/60 bg-muted/10 dark:bg-[#111820]/40">
           <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-muted/30 dark:bg-[#141E28]/60">
             <FileText className="h-4 w-4 text-muted-foreground/50 dark:text-[#5C6A72]" />
@@ -610,71 +650,13 @@ export function VideoPdfSection({
             </p>
             <p className="text-[11px] text-muted-foreground/60 dark:text-[#5C6A72] mt-0.5">
               {isAdmin
-                ? 'Click "Add" to attach lecture PDFs'
+                ? 'Click "Add Note" to attach lecture PDFs'
                 : "Lecture notes will appear here when added"}
             </p>
           </div>
         </div>
       ) : (
         <div className="space-y-1.5">
-          {/* Optimistic Ghost Cards while uploading/queued */}
-          {activeUploads
-            .filter((t) => t.status === "uploading" || t.status === "queued")
-            .map((task) => (
-              <div
-                key={task.id}
-                className="flex items-center justify-between gap-3 px-3.5 py-3 rounded-xl border border-dashed transition-all duration-200 animate-pulse"
-                style={{
-                  borderColor: `${accentColor}50`,
-                  backgroundColor: `${accentColor}08`,
-                }}
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div
-                    className="flex items-center justify-center w-9 h-9 rounded-lg shrink-0"
-                    style={{ backgroundColor: `${accentColor}18` }}
-                  >
-                    <Loader2 className="h-4 w-4 animate-spin" style={{ color: accentColor }} />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="text-xs font-semibold text-foreground dark:text-[#E8EDF0] truncate">
-                        {task.title}
-                      </p>
-                      <span
-                        className="px-1.5 py-0.5 text-[9px] font-bold rounded"
-                        style={{
-                          backgroundColor: `${accentColor}20`,
-                          color: accentColor,
-                        }}
-                      >
-                        {task.mode === "drive" ? "Drive" : "Supabase"}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground dark:text-[#9AA7AE] mt-0.5">
-                      <span>{task.statusText}</span>
-                      {task.status === "uploading" && (
-                        <>
-                          <span>•</span>
-                          <span className="font-mono font-medium">{task.progress}%</span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                <div className="w-20 hidden sm:block shrink-0">
-                  <div className="w-full h-1.5 bg-muted/40 dark:bg-[#1A2530] rounded-full overflow-hidden">
-                    <div
-                      className="h-full rounded-full transition-all duration-300"
-                      style={{
-                        width: task.status === "uploading" ? `${task.progress}%` : "15%",
-                        backgroundColor: accentColor,
-                      }}
-                    />
-                  </div>
-                </div>
-              </div>
-            ))}
           {pdfs.map((pdf, idx) => {
             const isDrive = pdf.source_type === "drive";
             const downloadUrl =
@@ -691,7 +673,7 @@ export function VideoPdfSection({
                   "hover:border-border/60 dark:hover:border-[#1F2C34] hover:shadow-sm"
                 )}
                 style={{
-                  animationDelay: `${idx * 50}ms`,
+                  animationDelay: `${idx * 40}ms`,
                 }}
               >
                 {/* PDF Icon */}
@@ -813,7 +795,7 @@ export function VideoPdfSection({
                 <button
                   type="button"
                   onClick={() => setPreviewPdf(null)}
-                  className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 dark:text-[#9AA7AE] dark:hover:text-white dark:hover:bg-[#1F2C34] transition-colors"
+                  className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 dark:text-[#9AA7AE] dark:hover:text-white dark:hover:bg-[#1F2C34] transition-colors cursor-pointer"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -837,10 +819,10 @@ export function VideoPdfSection({
         </div>
       )}
 
-      {/* ── Add PDF Modal ── */}
+      {/* ── Modern Add PDF Modal (Clean, No Redundancies) ── */}
       {isAddModalOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm overscroll-contain"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md overscroll-contain"
           onClick={(e) => {
             if (e.target === e.currentTarget) closeAndResetModal();
           }}
@@ -848,84 +830,74 @@ export function VideoPdfSection({
             if (e.target === e.currentTarget) e.preventDefault();
           }}
         >
-          <div className="relative w-full max-w-[420px] rounded-2xl border border-border/50 bg-card shadow-2xl dark:border-[#1F2C34] dark:bg-[#0D1318] animate-in fade-in zoom-in-95 duration-200 overflow-hidden">
+          <div className="relative w-full max-w-[440px] rounded-2xl border border-border/50 bg-card shadow-2xl dark:border-[#1F2C34] dark:bg-[#0D1318] animate-in fade-in zoom-in-95 duration-200 overflow-hidden">
             {/* Modal Header */}
-            <div className="flex items-center justify-between px-5 py-3.5 border-b border-border/40 dark:border-[#1F2C34]">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border/40 dark:border-[#1F2C34]">
               <div className="flex items-center gap-2.5">
                 <div
                   className="flex items-center justify-center w-7 h-7 rounded-lg"
-                  style={{ backgroundColor: `${accentColor}15` }}
+                  style={{ backgroundColor: `${accentColor}18` }}
                 >
-                  <Plus className="h-3.5 w-3.5" style={{ color: accentColor }} />
+                  <UploadCloud className="h-4 w-4" style={{ color: accentColor }} />
                 </div>
-                <h3 className="font-semibold text-sm text-foreground dark:text-[#E8EDF0]">
-                  Add PDF
-                </h3>
+                <div>
+                  <h3 className="font-semibold text-sm text-foreground dark:text-[#E8EDF0]">
+                    Add Lecture PDF
+                  </h3>
+                  <p className="text-[11px] text-muted-foreground dark:text-[#788896]">
+                    Direct upload or attach cloud link
+                  </p>
+                </div>
               </div>
               <button
                 type="button"
                 onClick={closeAndResetModal}
-                className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 dark:text-[#9AA7AE] dark:hover:text-white dark:hover:bg-[#1F2C34] transition-colors"
+                className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 dark:text-[#9AA7AE] dark:hover:text-white dark:hover:bg-[#1F2C34] transition-colors cursor-pointer"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
 
             <div className="p-5">
-              {/* Mode Toggle — 3 tabs */}
-              <div className="relative flex p-1 mb-5 rounded-xl bg-muted/30 border border-border/30 dark:border-[#1F2C34]/80 dark:bg-[#111820]">
-                {/* Sliding indicator */}
-                <div
-                  className="absolute top-1 bottom-1 rounded-[10px] transition-all duration-300 ease-out shadow-sm"
-                  style={{
-                    left:
-                      uploadMode === "drive"
-                        ? "4px"
-                        : uploadMode === "supabase"
-                        ? "calc(33.333% + 0px)"
-                        : "calc(66.666% - 4px)",
-                    width: "calc(33.333% - 4px)",
-                    backgroundColor: `${accentColor}18`,
-                    border: `1px solid ${accentColor}30`,
-                  }}
-                />
+              {/* Modern Segmented Control */}
+              <div className="grid grid-cols-3 p-1 mb-4 rounded-xl bg-muted/40 dark:bg-[#111820] border border-border/40 dark:border-[#1F2C34]">
                 <button
                   type="button"
                   onClick={() => setUploadMode("drive")}
                   className={cn(
-                    "relative z-10 flex-1 flex items-center justify-center gap-1.5 py-2 rounded-[10px] text-[11px] font-semibold transition-colors duration-200",
+                    "flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all duration-200 cursor-pointer",
                     uploadMode === "drive"
-                      ? "text-foreground dark:text-white"
-                      : "text-muted-foreground dark:text-[#9AA7AE] hover:text-foreground dark:hover:text-white"
+                      ? "bg-card dark:bg-[#1A2530] text-foreground dark:text-white shadow-sm ring-1 ring-black/5 dark:ring-white/10"
+                      : "text-muted-foreground hover:text-foreground dark:text-[#9AA7AE] dark:hover:text-white"
                   )}
                 >
-                  <UploadCloud className="h-3.5 w-3.5" />
+                  <UploadCloud className="h-3.5 w-3.5 text-emerald-500" />
                   Drive
                 </button>
                 <button
                   type="button"
                   onClick={() => setUploadMode("supabase")}
                   className={cn(
-                    "relative z-10 flex-1 flex items-center justify-center gap-1.5 py-2 rounded-[10px] text-[11px] font-semibold transition-colors duration-200",
+                    "flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all duration-200 cursor-pointer",
                     uploadMode === "supabase"
-                      ? "text-foreground dark:text-white"
-                      : "text-muted-foreground dark:text-[#9AA7AE] hover:text-foreground dark:hover:text-white"
+                      ? "bg-card dark:bg-[#1A2530] text-foreground dark:text-white shadow-sm ring-1 ring-black/5 dark:ring-white/10"
+                      : "text-muted-foreground hover:text-foreground dark:text-[#9AA7AE] dark:hover:text-white"
                   )}
                 >
-                  <HardDrive className="h-3.5 w-3.5" />
+                  <HardDrive className="h-3.5 w-3.5 text-blue-500" />
                   Supabase
                 </button>
                 <button
                   type="button"
                   onClick={() => setUploadMode("link")}
                   className={cn(
-                    "relative z-10 flex-1 flex items-center justify-center gap-1.5 py-2 rounded-[10px] text-[11px] font-semibold transition-colors duration-200",
+                    "flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all duration-200 cursor-pointer",
                     uploadMode === "link"
-                      ? "text-foreground dark:text-white"
-                      : "text-muted-foreground dark:text-[#9AA7AE] hover:text-foreground dark:hover:text-white"
+                      ? "bg-card dark:bg-[#1A2530] text-foreground dark:text-white shadow-sm ring-1 ring-black/5 dark:ring-white/10"
+                      : "text-muted-foreground hover:text-foreground dark:text-[#9AA7AE] dark:hover:text-white"
                   )}
                 >
-                  <Link2 className="h-3.5 w-3.5" />
+                  <Link2 className="h-3.5 w-3.5 text-amber-500" />
                   Link
                 </button>
               </div>
@@ -933,42 +905,6 @@ export function VideoPdfSection({
               {/* Upload File Mode (Drive or Supabase) */}
               {uploadMode !== "link" ? (
                 <form onSubmit={handleFileUpload} className="space-y-4">
-                  {/* Drive Connection Status (only show in drive mode) */}
-                  {uploadMode === "drive" && !isDriveConnected && authUrl && (
-                    <div className="flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl border border-amber-500/20 bg-amber-500/5 dark:bg-amber-500/8">
-                      <div className="flex items-center gap-2 text-xs text-amber-700 dark:text-amber-300">
-                        <AlertCircle className="h-3.5 w-3.5 shrink-0 text-amber-500" />
-                        <span>Connect Google Drive first</span>
-                      </div>
-                      <a
-                        href={authUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="px-3 py-1.5 rounded-lg text-[11px] font-semibold bg-amber-500 hover:bg-amber-600 text-white shrink-0 transition-colors"
-                      >
-                        Connect
-                      </a>
-                    </div>
-                  )}
-
-                  {uploadMode === "drive" && isDriveConnected && (
-                    <div className="flex items-center gap-2 px-3 py-2 rounded-xl border border-emerald-500/15 bg-emerald-500/5 dark:bg-emerald-500/8">
-                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-                      <span className="text-[11px] text-emerald-700 dark:text-emerald-300 font-medium">
-                        Google Drive connected
-                      </span>
-                    </div>
-                  )}
-
-                  {uploadMode === "supabase" && (
-                    <div className="flex items-center gap-2 px-3 py-2 rounded-xl border border-blue-500/15 bg-blue-500/5 dark:bg-blue-500/8">
-                      <HardDrive className="h-3.5 w-3.5 text-blue-500 shrink-0" />
-                      <span className="text-[11px] text-blue-700 dark:text-blue-300 font-medium">
-                        Uploads to Supabase Storage (50 MB limit)
-                      </span>
-                    </div>
-                  )}
-
                   {/* Hidden file input */}
                   <input
                     ref={fileInputRef}
@@ -983,51 +919,42 @@ export function VideoPdfSection({
                   />
 
                   {/* Drag & Drop Zone */}
-                  <div
-                    className={cn(
-                      "relative flex flex-col items-center justify-center gap-2 p-5 rounded-xl border-2 border-dashed cursor-pointer transition-all duration-200",
-                      isDragOver
-                        ? "border-current bg-current/5 scale-[1.01]"
-                        : selectedFiles.length > 0
-                        ? "border-emerald-500/40 bg-emerald-500/5 dark:bg-emerald-500/8"
-                        : "border-border/50 bg-muted/10 hover:border-border/80 hover:bg-muted/20 dark:border-[#1F2C34] dark:bg-[#111820]/50 dark:hover:border-[#253342]"
-                    )}
-                    style={isDragOver ? { color: accentColor } : undefined}
-                    onClick={() => fileInputRef.current?.click()}
-                    onDragOver={handleDragOver}
-                    onDragLeave={handleDragLeave}
-                    onDrop={handleDrop}
-                  >
-                    <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-muted/30 dark:bg-[#141E28]">
-                      {selectedFiles.length > 0 ? (
-                        <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-                      ) : (
-                        <UploadCloud className="h-5 w-5 text-muted-foreground/60 dark:text-[#5C6A72]" />
+                  {selectedFiles.length === 0 ? (
+                    <div
+                      className={cn(
+                        "relative flex flex-col items-center justify-center gap-2.5 p-6 rounded-2xl border-2 border-dashed cursor-pointer transition-all duration-200",
+                        isDragOver
+                          ? "border-emerald-500 bg-emerald-500/10 scale-[1.01]"
+                          : "border-border/60 hover:border-border hover:bg-muted/20 dark:border-[#22313F] dark:hover:border-[#2F4457] dark:bg-[#10171F]/50"
                       )}
+                      onClick={() => fileInputRef.current?.click()}
+                      onDragOver={handleDragOver}
+                      onDragLeave={handleDragLeave}
+                      onDrop={handleDrop}
+                    >
+                      <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-muted/40 dark:bg-[#141E28] transition-transform duration-200 group-hover:scale-110">
+                        <UploadCloud className="h-6 w-6 text-muted-foreground dark:text-[#788896]" />
+                      </div>
+                      <div className="text-center">
+                        <p className="text-xs font-semibold text-foreground dark:text-[#E8EDF0]">
+                          Choose PDF files or drop them here
+                        </p>
+                        <p className="text-[11px] text-muted-foreground dark:text-[#788896] mt-0.5">
+                          {uploadMode === "drive"
+                            ? "Direct to Google Drive (no file size limits)"
+                            : "Direct to Supabase Storage (up to 50 MB)"}
+                        </p>
+                      </div>
                     </div>
-                    <div className="text-center">
-                      <p className="text-xs font-medium text-foreground dark:text-[#E8EDF0]">
-                        {selectedFiles.length > 0
-                          ? `${selectedFiles.length} ${selectedFiles.length === 1 ? "PDF" : "PDFs"} selected`
-                          : "Drop PDF(s) here or browse"}
-                      </p>
-                      <p className="text-[10px] text-muted-foreground/60 dark:text-[#5C6A72] mt-0.5">
-                        {selectedFiles.length > 0
-                          ? "Click to choose or drop more PDFs"
-                          : "Supports multiple PDF selection at once"}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Selected Files List */}
-                  {selectedFiles.length > 0 && (
-                    <div className="space-y-1.5 pt-1">
-                      <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-                        <span className="font-semibold text-foreground/80 dark:text-[#E8EDF0]">
-                          Files to upload ({selectedFiles.length})
+                  ) : (
+                    /* Selected Files View */
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-semibold text-foreground dark:text-[#E8EDF0]">
+                          {selectedFiles.length} {selectedFiles.length === 1 ? "file" : "files"} selected
                         </span>
                         <div className="flex items-center gap-2">
-                          <span className="font-mono text-[10px]">
+                          <span className="font-mono text-[10px] text-muted-foreground bg-muted/50 dark:bg-[#1A2530] px-2 py-0.5 rounded-full">
                             {formatFileSize(
                               selectedFiles.reduce((acc, f) => acc + f.size, 0)
                             )}
@@ -1045,14 +972,15 @@ export function VideoPdfSection({
                         </div>
                       </div>
 
-                      <div className="max-h-36 overflow-y-auto space-y-1.5 pr-1">
+                      {/* File Chips / Scroll List */}
+                      <div className="max-h-40 overflow-y-auto space-y-1.5 pr-1">
                         {selectedFiles.map((file, idx) => (
                           <div
                             key={`${file.name}-${idx}`}
-                            className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg border border-border/40 dark:border-[#1F2C34] bg-muted/20 dark:bg-[#111820]"
+                            className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl border border-border/50 dark:border-[#1F2C34] bg-muted/20 dark:bg-[#111820]"
                           >
                             <div className="flex items-center gap-2 min-w-0">
-                              <FileText className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                              <FileText className="h-4 w-4 text-emerald-500 shrink-0" />
                               <div className="min-w-0">
                                 <p className="text-xs font-medium truncate text-foreground dark:text-[#E8EDF0]">
                                   {file.name}
@@ -1064,11 +992,8 @@ export function VideoPdfSection({
                             </div>
                             <button
                               type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                removeSelectedFile(idx);
-                              }}
-                              className="p-1 rounded-md text-muted-foreground hover:text-rose-500 transition-colors cursor-pointer shrink-0"
+                              onClick={() => removeSelectedFile(idx)}
+                              className="p-1 rounded-lg text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer shrink-0"
                               title="Remove file"
                             >
                               <X className="h-3.5 w-3.5" />
@@ -1076,45 +1001,43 @@ export function VideoPdfSection({
                           </div>
                         ))}
                       </div>
-                    </div>
-                  )}
 
-                  {/* Title Input (only if exactly 1 file is selected) */}
-                  {selectedFiles.length === 1 && (
-                    <div className="space-y-1.5">
-                      <label
-                        htmlFor="upload-title"
-                        className="text-[11px] font-semibold text-muted-foreground dark:text-[#9AA7AE] uppercase tracking-wider"
+                      {/* Add more button */}
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="w-full py-1.5 text-[11px] font-medium text-muted-foreground hover:text-foreground dark:text-[#9AA7AE] dark:hover:text-white border border-dashed border-border/50 dark:border-[#1F2C34] rounded-lg transition-colors cursor-pointer text-center"
                       >
-                        Title (Optional)
-                      </label>
-                      <Input
-                        id="upload-title"
-                        placeholder="e.g. Lecture 01 — Problem Solving"
-                        value={uploadTitle}
-                        onChange={(e) => setUploadTitle(e.target.value)}
-                        className="h-9 text-xs rounded-xl border-border/40 dark:border-[#1F2C34] dark:bg-[#111820] focus-visible:ring-1"
-                        style={
-                          {
-                            "--tw-ring-color": `${accentColor}50`,
-                          } as React.CSSProperties
-                        }
-                      />
-                    </div>
-                  )}
+                        + Add more PDFs
+                      </button>
 
-                  {selectedFiles.length > 1 && (
-                    <p className="text-[11px] text-muted-foreground/70 dark:text-[#788896]">
-                      * Each PDF will automatically be titled using its clean file name.
-                    </p>
+                      {/* Title Input (only if exactly 1 file is selected) */}
+                      {selectedFiles.length === 1 && (
+                        <div className="space-y-1 pt-1">
+                          <label
+                            htmlFor="upload-title"
+                            className="text-[11px] font-semibold text-muted-foreground dark:text-[#9AA7AE]"
+                          >
+                            Title (Optional)
+                          </label>
+                          <Input
+                            id="upload-title"
+                            placeholder="e.g. Lecture 01 — Problem Solving"
+                            value={uploadTitle}
+                            onChange={(e) => setUploadTitle(e.target.value)}
+                            className="h-9 text-xs rounded-xl border-border/40 dark:border-[#1F2C34] dark:bg-[#111820]"
+                          />
+                        </div>
+                      )}
+                    </div>
                   )}
 
                   {/* Actions */}
-                  <div className="flex justify-end gap-2 pt-1">
+                  <div className="flex justify-end gap-2 pt-2 border-t border-border/30 dark:border-[#1F2C34]/60">
                     <button
                       type="button"
                       onClick={closeAndResetModal}
-                      className="h-9 rounded-xl text-xs px-4 border border-border/70 bg-card text-muted-foreground hover:text-foreground hover:bg-muted/80 dark:border-[#1F2C34] dark:bg-[#141E28] dark:text-[#9AA7AE] dark:hover:bg-[#1F2C34] dark:hover:text-white font-medium transition-all active:scale-[0.98] cursor-pointer"
+                      className="h-9 rounded-xl text-xs px-4 border border-border/60 bg-card text-muted-foreground hover:text-foreground hover:bg-muted/80 dark:border-[#1F2C34] dark:bg-[#141E28] dark:text-[#9AA7AE] dark:hover:bg-[#1F2C34] dark:hover:text-white font-medium transition-all active:scale-[0.98] cursor-pointer"
                     >
                       Cancel
                     </button>
@@ -1123,33 +1046,27 @@ export function VideoPdfSection({
                       disabled={selectedFiles.length === 0}
                       className={cn(
                         "inline-flex items-center justify-center gap-1.5 h-9 px-4 rounded-xl text-xs font-semibold transition-all duration-200",
-                        "disabled:opacity-40 disabled:cursor-not-allowed",
+                        "disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer",
                         "active:scale-[0.97]",
                         buttonAccent
                       )}
                     >
-                      {uploadMode === "supabase" ? (
-                        <HardDrive className="h-3.5 w-3.5" />
-                      ) : (
-                        <UploadCloud className="h-3.5 w-3.5" />
-                      )}
+                      <UploadCloud className="h-3.5 w-3.5" />
                       {selectedFiles.length > 1
-                        ? `Upload ${selectedFiles.length} PDFs to ${uploadMode === "supabase" ? "Supabase" : "Drive"}`
-                        : uploadMode === "supabase"
-                        ? "Upload to Supabase"
-                        : "Upload to Drive"}
+                        ? `Upload ${selectedFiles.length} PDFs`
+                        : "Upload PDF"}
                     </button>
                   </div>
                 </form>
               ) : (
-                /* Paste Link Mode */
+                /* Paste Google Drive Link Mode */
                 <form onSubmit={handleDriveAttach} className="space-y-4">
                   <div className="space-y-1.5">
                     <label
                       htmlFor="drive-title"
-                      className="text-[11px] font-semibold text-muted-foreground dark:text-[#9AA7AE] uppercase tracking-wider"
+                      className="text-[11px] font-semibold text-muted-foreground dark:text-[#9AA7AE]"
                     >
-                      Title
+                      Note Title
                     </label>
                     <Input
                       id="drive-title"
@@ -1157,21 +1074,16 @@ export function VideoPdfSection({
                       value={driveTitle}
                       onChange={(e) => setDriveTitle(e.target.value)}
                       disabled={isAttachingDrive}
-                      className="h-9 text-xs rounded-xl border-border/40 dark:border-[#1F2C34] dark:bg-[#111820] focus-visible:ring-1"
-                      style={
-                        {
-                          "--tw-ring-color": `${accentColor}50`,
-                        } as React.CSSProperties
-                      }
+                      className="h-9 text-xs rounded-xl border-border/40 dark:border-[#1F2C34] dark:bg-[#111820]"
                     />
                   </div>
 
                   <div className="space-y-1.5">
                     <label
                       htmlFor="drive-url"
-                      className="text-[11px] font-semibold text-muted-foreground dark:text-[#9AA7AE] uppercase tracking-wider"
+                      className="text-[11px] font-semibold text-muted-foreground dark:text-[#9AA7AE]"
                     >
-                      Google Drive URL
+                      Google Drive Share Link
                     </label>
                     <Input
                       id="drive-url"
@@ -1179,24 +1091,19 @@ export function VideoPdfSection({
                       value={driveUrl}
                       onChange={(e) => setDriveUrl(e.target.value)}
                       disabled={isAttachingDrive}
-                      className="h-9 text-xs rounded-xl font-mono border-border/40 dark:border-[#1F2C34] dark:bg-[#111820] focus-visible:ring-1"
-                      style={
-                        {
-                          "--tw-ring-color": `${accentColor}50`,
-                        } as React.CSSProperties
-                      }
+                      className="h-9 text-xs rounded-xl font-mono border-border/40 dark:border-[#1F2C34] dark:bg-[#111820]"
                     />
                     {driveUrl && (
                       <div className="flex items-center gap-1.5 mt-1.5">
                         {detectedDriveId ? (
                           <span className="flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
                             <CheckCircle2 className="h-3 w-3" />
-                            Valid Drive link detected
+                            Valid Google Drive link
                           </span>
                         ) : (
                           <span className="flex items-center gap-1 text-[11px] text-amber-600 dark:text-amber-400">
                             <AlertCircle className="h-3 w-3" />
-                            Enter a valid Google Drive share link
+                            Please enter a valid shareable Drive link
                           </span>
                         )}
                       </div>
@@ -1204,12 +1111,12 @@ export function VideoPdfSection({
                   </div>
 
                   {/* Actions */}
-                  <div className="flex justify-end gap-2 pt-1">
+                  <div className="flex justify-end gap-2 pt-2 border-t border-border/30 dark:border-[#1F2C34]/60">
                     <button
                       type="button"
                       onClick={closeAndResetModal}
                       disabled={isAttachingDrive}
-                      className="h-9 rounded-xl text-xs px-4 border border-border/70 bg-card text-muted-foreground hover:text-foreground hover:bg-muted/80 dark:border-[#1F2C34] dark:bg-[#141E28] dark:text-[#9AA7AE] dark:hover:bg-[#1F2C34] dark:hover:text-white font-medium transition-all active:scale-[0.98] cursor-pointer"
+                      className="h-9 rounded-xl text-xs px-4 border border-border/60 bg-card text-muted-foreground hover:text-foreground hover:bg-muted/80 dark:border-[#1F2C34] dark:bg-[#141E28] dark:text-[#9AA7AE] dark:hover:bg-[#1F2C34] dark:hover:text-white font-medium transition-all active:scale-[0.98] cursor-pointer"
                     >
                       Cancel
                     </button>
@@ -1217,7 +1124,7 @@ export function VideoPdfSection({
                       type="submit"
                       disabled={!driveTitle.trim() || !driveUrl.trim() || isAttachingDrive}
                       className={cn(
-                        "inline-flex items-center justify-center gap-1.5 h-9 px-4 rounded-xl text-xs font-semibold transition-all duration-200",
+                        "inline-flex items-center justify-center gap-1.5 h-9 px-4 rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer",
                         "disabled:opacity-40 disabled:cursor-not-allowed",
                         "active:scale-[0.97]",
                         buttonAccent
@@ -1231,7 +1138,7 @@ export function VideoPdfSection({
                       ) : (
                         <>
                           <Link2 className="h-3.5 w-3.5" />
-                          Attach
+                          Attach Link
                         </>
                       )}
                     </button>
@@ -1243,12 +1150,13 @@ export function VideoPdfSection({
         </div>
       )}
 
-      {/* ── YouTube-Style Floating Upload Manager ── */}
-      {activeUploads.length > 0 && (() => {
+      {/* ── YouTube-Style Floating Upload Manager (Sleek, Persistent, Auto-Retry) ── */}
+      {hasActiveUploads && (() => {
         const total = activeUploads.length;
         const completedCount = activeUploads.filter((t) => t.status === "completed").length;
-        const hasErrors = activeUploads.some((t) => t.status === "error");
+        const errorCount = activeUploads.filter((t) => t.status === "error").length;
         const allCompleted = completedCount === total && total > 0;
+        const hasErrors = errorCount > 0;
         const overallProgress = Math.round(
           activeUploads.reduce(
             (acc, t) => acc + (t.status === "completed" ? 100 : t.progress),
@@ -1260,19 +1168,20 @@ export function VideoPdfSection({
           <aside
             aria-label="Upload manager"
             className={cn(
-              "fixed bottom-5 right-5 z-50 w-[340px] sm:w-[380px] rounded-2xl border shadow-2xl transition-all duration-300 overflow-hidden",
-              "bg-background/95 dark:bg-[#10171F]/95 backdrop-blur-xl border-border/80 dark:border-[#222F3D]",
+              "fixed bottom-5 right-5 z-50 rounded-2xl border shadow-2xl transition-all duration-300 overflow-hidden",
+              "bg-background/95 dark:bg-[#0D1318]/95 backdrop-blur-xl border-border/80 dark:border-[#222F3D]",
+              isDrawerExpanded ? "w-[350px] sm:w-[390px]" : "w-auto max-w-[340px]",
               allCompleted
-                ? "border-emerald-500/50 ring-1 ring-emerald-500/20"
+                ? "border-emerald-500/40 ring-1 ring-emerald-500/20"
                 : hasErrors
                 ? "border-amber-500/40 ring-1 ring-amber-500/20"
                 : "ring-1 ring-black/5 dark:ring-white/5"
             )}
           >
-            {/* Header summary bar (Clickable to expand/collapse) */}
+            {/* Header summary bar */}
             <div
               onClick={() => setIsDrawerExpanded((prev) => !prev)}
-              className="flex items-center justify-between gap-3 px-4 py-3 cursor-pointer hover:bg-muted/40 dark:hover:bg-[#141D26] transition-colors select-none"
+              className="flex items-center justify-between gap-3 px-3.5 py-2.5 cursor-pointer hover:bg-muted/30 dark:hover:bg-[#141D26] transition-colors select-none"
             >
               <div className="flex items-center gap-2.5 min-w-0">
                 <div
@@ -1293,10 +1202,12 @@ export function VideoPdfSection({
                     <Loader2 className="h-4 w-4 animate-spin" style={{ color: accentColor }} />
                   )}
                 </div>
-                <div className="min-w-0">
+                <div className="min-w-0 pr-1">
                   <p className="text-xs font-semibold text-foreground dark:text-[#E8EDF0] truncate">
                     {allCompleted
                       ? `${total} ${total === 1 ? "PDF" : "PDFs"} uploaded`
+                      : hasErrors && !isAnyUploading
+                      ? `${errorCount} upload failed`
                       : total === 1
                       ? `Uploading ${activeUploads[0].title}`
                       : `Uploading ${total} PDFs (${completedCount}/${total} done)`}
@@ -1320,12 +1231,12 @@ export function VideoPdfSection({
                   title={isDrawerExpanded ? "Collapse" : "Expand"}
                 >
                   {isDrawerExpanded ? (
-                    <ChevronDown className="h-4 w-4" />
+                    <ChevronDown className="h-3.5 w-3.5" />
                   ) : (
-                    <ChevronUp className="h-4 w-4" />
+                    <ChevronUp className="h-3.5 w-3.5" />
                   )}
                 </button>
-                {(allCompleted || hasErrors) && (
+                {(allCompleted || !isAnyUploading) && (
                   <button
                     type="button"
                     onClick={(e) => {
@@ -1334,7 +1245,7 @@ export function VideoPdfSection({
                       setIsDrawerExpanded(false);
                     }}
                     className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors cursor-pointer"
-                    title="Dismiss all"
+                    title="Dismiss"
                   >
                     <X className="h-3.5 w-3.5" />
                   </button>
@@ -1342,7 +1253,7 @@ export function VideoPdfSection({
               </div>
             </div>
 
-            {/* Overall Batch Progress Bar */}
+            {/* Overall Progress Line */}
             <div className="w-full h-1 bg-muted/40 dark:bg-[#1A2530] overflow-hidden">
               <div
                 className="h-full transition-all duration-300"
@@ -1369,23 +1280,34 @@ export function VideoPdfSection({
                           {task.title}
                         </span>
                       </div>
-                      <span className="text-[10px] font-mono shrink-0">
+                      <div className="flex items-center gap-1.5 shrink-0">
                         {task.status === "completed" ? (
-                          <span className="text-emerald-500 font-semibold flex items-center gap-0.5">
+                          <span className="text-emerald-500 font-semibold text-[10px] flex items-center gap-1">
                             <CheckCircle2 className="h-3 w-3 inline" /> Done
                           </span>
                         ) : task.status === "error" ? (
-                          <span className="text-rose-500 font-semibold flex items-center gap-0.5">
-                            <AlertCircle className="h-3 w-3 inline" /> Failed
-                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-rose-500 font-medium text-[10px] flex items-center gap-0.5">
+                              <AlertCircle className="h-3 w-3 inline" /> Failed
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleRetryTask(task.id)}
+                              className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-semibold rounded bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 transition-colors cursor-pointer"
+                              title="Retry upload"
+                            >
+                              <RotateCw className="h-2.5 w-2.5" />
+                              Retry
+                            </button>
+                          </div>
                         ) : task.status === "uploading" ? (
-                          <span style={{ color: accentColor }} className="font-semibold">
+                          <span style={{ color: accentColor }} className="font-semibold text-[10px] font-mono">
                             {task.progress}%
                           </span>
                         ) : (
-                          <span className="text-muted-foreground">Queued</span>
+                          <span className="text-muted-foreground text-[10px]">Queued</span>
                         )}
-                      </span>
+                      </div>
                     </div>
 
                     {task.status === "uploading" && (
@@ -1398,8 +1320,8 @@ export function VideoPdfSection({
                     )}
 
                     <div className="flex items-center justify-between text-[10px] text-muted-foreground/70 dark:text-[#788896] mt-1">
-                      <span className="truncate">{task.statusText}</span>
-                      <span>{formatFileSize(task.fileSize)}</span>
+                      <span className="truncate pr-2">{task.statusText}</span>
+                      <span className="shrink-0 font-mono">{formatFileSize(task.fileSize)}</span>
                     </div>
                   </div>
                 ))}
