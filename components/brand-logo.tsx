@@ -102,6 +102,12 @@ export function BrandLogo({ className, href = "/dashboard" }: BrandLogoProps) {
   return (
     <Link
       href={href}
+      onClick={(e) => {
+        if (!e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey && e.button === 0) {
+          e.preventDefault();
+          window.location.href = href;
+        }
+      }}
       className={cn(
         "group inline-flex items-center gap-2.5 cursor-pointer select-none transition-all duration-200 hover:scale-105 active:scale-95",
         className
