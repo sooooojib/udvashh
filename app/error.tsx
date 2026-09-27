@@ -12,22 +12,26 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
-  const isActionError =
+  const isRecoverableError =
     Boolean(error?.message?.includes("Server Action")) ||
-    Boolean(error?.message?.includes("was not found on the server"));
+    Boolean(error?.message?.includes("was not found on the server")) ||
+    Boolean(error?.message?.includes("Connection closed")) ||
+    Boolean(error?.message?.includes("#412")) ||
+    Boolean(error?.message?.includes("412")) ||
+    Boolean(error?.message?.includes("Failed to fetch"));
 
   React.useEffect(() => {
     console.error("[Application Error]:", error);
 
-    // If an action failed due to a new deployment, automatically reload once to fetch new bundle
-    if (isActionError) {
-      const key = "next_action_skew_" + (error.digest || "reload");
+    // If an action failed due to a new deployment or connection interruption, automatically reload once
+    if (isRecoverableError) {
+      const key = "next_action_skew_" + (error.digest || "recover");
       if (!sessionStorage.getItem(key)) {
         sessionStorage.setItem(key, "1");
         window.location.reload();
       }
     }
-  }, [error, isActionError]);
+  }, [error, isRecoverableError]);
 
   return (
     <main className="flex min-h-[calc(100vh-4rem)] flex-1 flex-col items-center justify-center p-6 text-center animate-fade-in-up">
@@ -38,14 +42,14 @@ export default function GlobalError({
 
         <div className="space-y-2">
           <span className="font-mono text-xs font-bold uppercase tracking-widest text-destructive dark:text-red-400">
-            {isActionError ? "Update Available" : "Something Went Wrong"}
+            {isRecoverableError ? "Connection / Update" : "Something Went Wrong"}
           </span>
           <h1 className="font-heading text-2xl font-bold tracking-tight text-foreground dark:text-[#E8EDF0]">
-            {isActionError ? "App Updated to New Version" : "An Error Occurred"}
+            {isRecoverableError ? "Connection Restored" : "An Error Occurred"}
           </h1>
           <p className="text-xs text-muted-foreground dark:text-[#9AA7AE] leading-relaxed">
-            {isActionError
-              ? "A new version of the app was just deployed. Please refresh your browser to load the latest update."
+            {isRecoverableError
+              ? "A new update was deployed or the connection was momentarily interrupted. Please refresh to load the latest version."
               : error?.message || "An unexpected error occurred while loading this page."}
           </p>
         </div>
@@ -53,7 +57,7 @@ export default function GlobalError({
         <div className="flex flex-col sm:flex-row w-full gap-3 pt-2">
           <Button
             onClick={() => {
-              if (isActionError) {
+              if (isRecoverableError) {
                 window.location.reload();
               } else {
                 reset();
@@ -62,7 +66,7 @@ export default function GlobalError({
             className="flex-1 h-10 rounded-xl gap-2 text-xs font-semibold shadow-sm bg-teal-600 text-white hover:bg-teal-700 dark:bg-[#25A8A2] dark:text-white dark:hover:bg-[#20928D]"
           >
             <RefreshCw className="h-3.5 w-3.5" />
-            <span>{isActionError ? "Refresh Page" : "Try Again"}</span>
+            <span>{isRecoverableError ? "Refresh Page" : "Try Again"}</span>
           </Button>
 
           <Button

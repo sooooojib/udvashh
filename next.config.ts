@@ -18,6 +18,11 @@ const nextConfig: NextConfig = {
       bodySizeLimit: "100mb",
     },
     proxyClientMaxBodySize: "100mb",
+    optimizePackageImports: ["lucide-react"],
+    staleTimes: {
+      dynamic: 30,
+      static: 180,
+    },
   },
 };
 

@@ -96,3 +96,15 @@ export async function getUserExamAttempts(): Promise<Record<string, { score: num
     return {};
   }
 }
+
+/**
+ * Loads questions for a single exam on-demand from local server memory (0 DB queries).
+ * Eliminates embedding 5.09 MB of question JSON in the initial /exams page load.
+ */
+export async function getExamQuestions(examId: string) {
+  const { getAllExams } = await import("@/lib/exams");
+  const exams = getAllExams();
+  const exam = exams.find((e) => e.id === examId);
+  return exam?.questions || [];
+}
+

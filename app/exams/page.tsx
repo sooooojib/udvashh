@@ -20,6 +20,13 @@ export default async function ExamsPage() {
     getUserExamAttempts(),
   ]);
 
+  // Strip massive 4,343 questions array from initial list payload (drops page HTML from 5.09 MB to ~15 KB!)
+  // Questions for a specific exam are fetched on-demand when a user clicks to view/take the exam.
+  const examSummaries = exams.map(({ questions, ...summary }) => ({
+    ...summary,
+    questions: [],
+  }));
+
   return (
     <main className="flex-1 px-3.5 sm:px-5 lg:px-6 py-6 sm:py-8 max-w-[1400px] mx-auto w-full space-y-6 sm:space-y-8 min-h-[calc(100dvh-4rem)] animate-page-enter overflow-x-hidden">
       {/* Academic Page Header: Deep Burgundy (#881337) Icon & Clean Heading */}
@@ -33,7 +40,7 @@ export default async function ExamsPage() {
       </div>
 
       {/* Interactive Exam Hub */}
-      <ExamHub initialExams={exams} initialUserAttempts={userAttempts} />
+      <ExamHub initialExams={examSummaries} initialUserAttempts={userAttempts} />
     </main>
   );
 }

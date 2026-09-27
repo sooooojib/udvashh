@@ -62,7 +62,7 @@ export function PdfViewerModal({ pdf, onClose }: PdfViewerModalProps) {
   return (
     <div
       className={cn(
-        "fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md animate-in fade-in duration-150",
+        "fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 dark:bg-black/85 backdrop-blur-sm animate-in fade-in duration-150",
         isStretched ? "p-0" : "p-2 sm:p-4 md:p-6"
       )}
       onClick={(e) => {
@@ -73,24 +73,24 @@ export function PdfViewerModal({ pdf, onClose }: PdfViewerModalProps) {
     >
       <div
         className={cn(
-          "relative flex flex-col w-full bg-card dark:bg-[#0D1318] text-foreground border shadow-2xl overflow-hidden transition-all duration-150",
+          "relative flex flex-col w-full bg-white dark:bg-[#0D1318] text-foreground border shadow-2xl ring-1 ring-slate-900/5 dark:ring-white/10 overflow-hidden transition-all duration-150",
           isStretched
-            ? "fixed inset-0 w-screen h-screen max-w-none max-h-none rounded-none border-none z-50"
-            : "max-w-6xl h-[90vh] rounded-2xl border-border/40 dark:border-white/10"
+            ? "fixed inset-0 w-screen h-screen max-w-none max-h-none rounded-none border-none ring-0 z-50"
+            : "max-w-6xl h-[90vh] rounded-2xl border-slate-200/80 dark:border-white/10"
         )}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-2 border-b border-border/40 dark:border-white/10 bg-muted/30 dark:bg-[#111820] select-none shrink-0 h-11">
+        <div className="flex items-center justify-between px-4 py-2 border-b border-slate-200/80 dark:border-white/10 bg-white dark:bg-[#111820] select-none shrink-0 h-11">
           <div className="flex items-center gap-2.5 min-w-0 pr-3">
-            <div className="p-1 rounded-md bg-rose-500/10 text-rose-500 shrink-0">
+            <div className="p-1 rounded-md bg-rose-50 text-rose-600 border border-rose-100/80 dark:border-transparent dark:bg-rose-500/10 dark:text-rose-400 shrink-0">
               <FileText className="h-4 w-4" />
             </div>
             <div className="min-w-0">
-              <h3 className="font-medium text-xs sm:text-sm text-foreground dark:text-[#E8EDF0] truncate">
+              <h3 className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-[#E8EDF0] truncate">
                 {pdf.title}
               </h3>
-              <div className="flex items-center gap-2 text-[10px] text-muted-foreground dark:text-white/50">
-                <span className="uppercase font-mono">
+              <div className="flex items-center gap-2 text-[10px] text-slate-500 dark:text-white/50">
+                <span className="uppercase font-mono font-medium">
                   {pdf.source_type === "drive" ? "Google Drive" : "Supabase"}
                 </span>
                 {pdf.file_size && (
@@ -116,8 +116,8 @@ export function PdfViewerModal({ pdf, onClose }: PdfViewerModalProps) {
               className={cn(
                 "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer",
                 isStretched
-                  ? "bg-white/15 text-foreground dark:text-white"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted/60 dark:hover:bg-white/10"
+                  ? "bg-slate-100 text-slate-900 dark:bg-white/15 dark:text-white font-semibold"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-white/70 dark:hover:text-white dark:hover:bg-white/10"
               )}
             >
               {isStretched ? (
@@ -139,7 +139,7 @@ export function PdfViewerModal({ pdf, onClose }: PdfViewerModalProps) {
               target="_blank"
               rel="noopener noreferrer"
               title="Open in new tab"
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted/60 dark:hover:bg-white/10 transition-colors"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-white/70 dark:hover:text-white dark:hover:bg-white/10 transition-colors"
             >
               <ExternalLink className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Open</span>
@@ -152,7 +152,7 @@ export function PdfViewerModal({ pdf, onClose }: PdfViewerModalProps) {
               rel="noopener noreferrer"
               download={!isDrive}
               title="Download PDF"
-              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 dark:hover:bg-white/10 transition-colors cursor-pointer"
+              className="p-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-white/70 dark:hover:text-white dark:hover:bg-white/10 transition-colors cursor-pointer"
             >
               <Download className="h-4 w-4" />
             </a>
@@ -162,7 +162,7 @@ export function PdfViewerModal({ pdf, onClose }: PdfViewerModalProps) {
               type="button"
               onClick={onClose}
               title="Close (Esc)"
-              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 dark:hover:bg-white/10 transition-colors cursor-pointer ml-1"
+              className="p-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-white/70 dark:hover:text-white dark:hover:bg-white/10 transition-colors cursor-pointer ml-1"
             >
               <X className="h-4 w-4" />
             </button>
@@ -170,11 +170,11 @@ export function PdfViewerModal({ pdf, onClose }: PdfViewerModalProps) {
         </div>
 
         {/* Document Frame */}
-        <div className="flex-1 w-full h-[calc(100%-44px)] bg-black relative">
+        <div className="flex-1 w-full h-[calc(100%-44px)] bg-[#F1F3F4] dark:bg-[#0B0F14] relative">
           <iframe
             src={previewSrc}
             title={pdf.title}
-            className="w-full h-full border-none block"
+            className="w-full h-full border-none block bg-[#F1F3F4] dark:bg-[#0B0F14]"
             allow="autoplay"
           />
         </div>

@@ -382,7 +382,7 @@ export function VideoPlayer({
     playerRef.current = event.target;
     setIsPlayerReady(true);
     setTimeout(() => {
-      containerRef.current?.focus();
+      containerRef.current?.focus({ preventScroll: true });
     }, 50);
     try {
       const iframe = event.target.getIframe?.();
@@ -409,10 +409,9 @@ export function VideoPlayer({
         setIsMuted(initialMuted);
       }
 
-      // Resume from previous progress if > 5 seconds and not at end (deduplicated: exactly once per video)
+      // Show resume notification if resuming from previous progress (deduplicated: exactly once per video)
       if (initialProgressSeconds > 5 && !isNearEnd && !hasResumedRef.current) {
         hasResumedRef.current = true;
-        event.target.seekTo?.(initialProgressSeconds, true);
         toast.info(`Resumed from ${formatDuration(initialProgressSeconds)}`, {
           id: `video-resume-${videoId}`,
           duration: 3000,
@@ -1206,7 +1205,6 @@ export function VideoPlayer({
             onClick={(e) => {
               e.stopPropagation();
               e.preventDefault();
-              togglePlayPause();
             }}
             onMouseDown={(e) => {
               e.stopPropagation();
@@ -1215,19 +1213,16 @@ export function VideoPlayer({
             onTouchStart={(e) => {
               e.stopPropagation();
               e.preventDefault();
-              togglePlayPause();
             }}
-            title="Channel details"
-            className="absolute top-0 left-0 right-48 sm:right-56 h-16 sm:h-20 z-20 cursor-pointer pointer-events-auto bg-transparent"
+            className="absolute top-0 left-0 right-48 sm:right-56 h-16 sm:h-20 z-20 pointer-events-auto bg-transparent"
             aria-hidden="true"
           />
 
-          {/* 2. Bottom Right Shield: Covers 'Watch on YouTube' pill or 'YouTube' logo firmly at bottom-0 */}
+          {/* 2. Bottom Right Shield: Covers 'Watch on YouTube' watermark pill at bottom-right corner without blocking controls */}
           <div
             onClick={(e) => {
               e.stopPropagation();
               e.preventDefault();
-              togglePlayPause();
             }}
             onMouseDown={(e) => {
               e.stopPropagation();
@@ -1236,40 +1231,10 @@ export function VideoPlayer({
             onTouchStart={(e) => {
               e.stopPropagation();
               e.preventDefault();
-              togglePlayPause();
             }}
-            title="Toggle playback"
-            className={cn(
-              "absolute bottom-0 right-0 z-30 cursor-pointer pointer-events-auto bg-transparent transition-all",
-              isPlaying
-                ? "w-44 h-14"
-                : "w-72 sm:w-84 h-20 sm:h-24"
-            )}
+            className="absolute bottom-0 right-0 w-32 h-10 sm:w-36 sm:h-12 z-20 pointer-events-auto bg-transparent"
             aria-hidden="true"
           />
-
-          {/* 3. Bottom Left Shield: Covers 'Copy link' button when paused/stopped */}
-          {!isPlaying && (
-            <div
-              onClick={(e) => {
-                e.stopPropagation();
-                e.preventDefault();
-                togglePlayPause();
-              }}
-              onMouseDown={(e) => {
-                e.stopPropagation();
-                e.preventDefault();
-              }}
-              onTouchStart={(e) => {
-                e.stopPropagation();
-                e.preventDefault();
-                togglePlayPause();
-              }}
-              title="Toggle playback"
-              className="absolute bottom-0 left-0 w-28 sm:w-32 h-20 sm:h-24 z-30 cursor-pointer pointer-events-auto bg-transparent"
-              aria-hidden="true"
-            />
-          )}
 
           {/* ── Theater & Fullscreen Toggle Buttons on Video Frame Bottom-Right (Idea B - Classic Spot) ── */}
           <div className="absolute bottom-2.5 right-2.5 sm:bottom-3 sm:right-3 z-40 flex items-center gap-1.5 opacity-90 sm:opacity-0 sm:group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-200 pointer-events-auto">

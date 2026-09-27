@@ -95,7 +95,7 @@ const themeStyles = {
   },
 } as const;
 
-export function VideoCard({
+export const VideoCard = React.memo(function VideoCard({
   video,
   initialWatched,
   index,
@@ -306,4 +306,4 @@ export function VideoCard({
       </CardContent>
     </Card>
   );
-}
+});

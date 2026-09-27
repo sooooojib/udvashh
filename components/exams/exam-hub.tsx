@@ -13,11 +13,13 @@ import {
   Filter,
   Flame,
   Layers,
+  Loader2,
   Tv,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import dynamic from "next/dynamic";
 import { ExamItem, SUBJECTS, SubjectType } from "@/lib/exams";
+import { getExamQuestions } from "@/app/actions/exams";
 
 const ExamModal = dynamic(
   () => import("@/components/exams/exam-modal").then((mod) => mod.ExamModal),
@@ -36,9 +38,41 @@ export function ExamHub({ initialExams, initialUserAttempts }: ExamHubProps) {
   const [selectedType, setSelectedType] = React.useState<"all" | "daily" | "weekly" | "written">("all");
   const [selectedSubject, setSelectedSubject] = React.useState<string>("all");
   const [activeExam, setActiveExam] = React.useState<ExamItem | null>(null);
+  const [loadingExamId, setLoadingExamId] = React.useState<string | null>(null);
+  const questionsCacheRef = React.useRef<Record<string, any[]>>({});
   const [userAttempts, setUserAttempts] = React.useState<
     Record<string, { score: number; total: number; selectedAnswers: Record<string, string> }>
   >(initialUserAttempts || {});
+
+  // Load questions on-demand from local server memory (0 Neon DB queries)
+  const handleOpenExam = async (exam: ExamItem) => {
+    if (exam.questions && exam.questions.length > 0) {
+      setActiveExam(exam);
+      return;
+    }
+
+    if (questionsCacheRef.current[exam.id]) {
+      setActiveExam({
+        ...exam,
+        questions: questionsCacheRef.current[exam.id],
+      });
+      return;
+    }
+
+    setLoadingExamId(exam.id);
+    try {
+      const questions = await getExamQuestions(exam.id);
+      questionsCacheRef.current[exam.id] = questions;
+      setActiveExam({
+        ...exam,
+        questions,
+      });
+    } catch {
+      setActiveExam(exam);
+    } finally {
+      setLoadingExamId(null);
+    }
+  };
 
   const [isTypeOpen, setIsTypeOpen] = React.useState(false);
   const [isSubjectOpen, setIsSubjectOpen] = React.useState(false);
@@ -614,16 +648,26 @@ export function ExamHub({ initialExams, initialUserAttempts }: ExamHubProps) {
                   {/* Action CTA Button: Burgundy (#881337) with Crimson Hover (#BE123C) */}
                   <button
                     type="button"
-                    onClick={() => setActiveExam(exam)}
+                    disabled={loadingExamId === exam.id}
+                    onClick={() => handleOpenExam(exam)}
                     className={cn(
-                      "group/btn w-full inline-flex items-center justify-center gap-2 rounded-xl py-2.5 px-3 text-xs font-bold transition-all duration-200 cursor-pointer active:scale-98 shadow-xs",
+                      "group/btn w-full inline-flex items-center justify-center gap-2 rounded-xl py-2.5 px-3 text-xs font-bold transition-all duration-200 cursor-pointer active:scale-98 shadow-xs disabled:pointer-events-none disabled:opacity-70",
                       isAttempted
                         ? "bg-muted/70 hover:bg-[#FFF1F2] text-[#27272A] border border-border/80 hover:border-[#881337]/30 hover:text-[#881337] dark:bg-[#141E28] dark:text-[#E8EDF0] dark:hover:bg-[#881337]/20 dark:hover:text-[#FDA4AF] dark:hover:border-[#881337]/40 shadow-none"
                         : "text-white bg-[#881337] hover:bg-[#BE123C] shadow-xs active:bg-[#70102e]"
                     )}
                   >
-                    <span>{isAttempted ? "Review & Retake" : "View Exam & Solutions"}</span>
-                    <ArrowRight className="h-3.5 w-3.5 transition-transform duration-200 group-hover/btn:translate-x-1" />
+                    {loadingExamId === exam.id ? (
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        <span>Loading Questions...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>{isAttempted ? "Review & Retake" : "View Exam & Solutions"}</span>
+                        <ArrowRight className="h-3.5 w-3.5 transition-transform duration-200 group-hover/btn:translate-x-1" />
+                      </>
+                    )}
                   </button>
                 </div>
               </div>
