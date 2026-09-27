@@ -33,6 +33,7 @@ import {
   getDrivePreviewUrl,
   getDriveDownloadUrl,
 } from "@/lib/utils/google-drive";
+import { PdfViewerModal } from "./pdf-viewer-modal";
 
 interface ActiveUploadTask {
   id: string;
@@ -731,59 +732,12 @@ export function VideoPdfSection({
         </div>
       )}
 
-      {/* ── Document Preview Modal ── */}
+      {/* ── Document Preview Modal with Pinch & Pan Zoom ── */}
       {previewPdf && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-md"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setPreviewPdf(null);
-          }}
-        >
-          <div className="relative flex flex-col w-full max-w-5xl h-[88vh] rounded-2xl border border-border/40 bg-card shadow-2xl overflow-hidden dark:border-white/10 dark:bg-[#0D1318] animate-in fade-in zoom-in-95 duration-150">
-            {/* Header */}
-            <div className="flex items-center justify-between px-4 py-2.5 border-b border-border/40 dark:border-white/10 bg-muted/30 dark:bg-[#111820]">
-              <div className="flex items-center gap-2.5 min-w-0 pr-3">
-                <FileText className="h-4 w-4 text-rose-500 shrink-0" />
-                <h3 className="font-medium text-xs sm:text-sm text-foreground dark:text-[#E8EDF0] truncate">
-                  {previewPdf.title}
-                </h3>
-              </div>
-
-              <div className="flex items-center gap-1 shrink-0">
-                <a
-                  href={previewPdf.file_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted/60 dark:hover:bg-white/10 transition-colors"
-                >
-                  <ExternalLink className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">Open in new tab</span>
-                </a>
-                <button
-                  type="button"
-                  onClick={() => setPreviewPdf(null)}
-                  className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 dark:hover:bg-white/10 transition-colors cursor-pointer"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-
-            {/* Document Frame */}
-            <div className="flex-1 w-full bg-black/90 relative">
-              <iframe
-                src={
-                  previewPdf.source_type === "drive" && previewPdf.file_id
-                    ? getDrivePreviewUrl(previewPdf.file_id)
-                    : `${previewPdf.file_url}#toolbar=1`
-                }
-                title={previewPdf.title}
-                className="w-full h-full border-none"
-                allow="autoplay"
-              />
-            </div>
-          </div>
-        </div>
+        <PdfViewerModal
+          pdf={previewPdf}
+          onClose={() => setPreviewPdf(null)}
+        />
       )}
 
       {/* ── Modern, Clean "Add Note" Modal (Drive / Supabase / Link) ── */}
