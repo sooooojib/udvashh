@@ -47,12 +47,16 @@ export async function POST(request: NextRequest) {
 
     if (error || !data) {
       console.error("Supabase signed upload URL error:", error);
-      const isFetchFailed = error?.message === "fetch failed";
+      const isFetchFailed =
+        error?.message === "fetch failed" ||
+        String(error?.message || "").includes("fetch") ||
+        (error as { cause?: { code?: string } })?.cause?.code === "ENOTFOUND";
+
       return NextResponse.json(
         {
           success: false,
           message: isFetchFailed
-            ? "Cannot connect to Supabase. Check NEXT_PUBLIC_SUPABASE_URL & SUPABASE_SERVICE_ROLE_KEY in Vercel."
+            ? "Cannot connect to Supabase (DNS lookup failed). Your Supabase project is paused due to inactivity. Please unpause it in your Supabase Dashboard, or use Google Drive."
             : error?.message || "Failed to create signed upload URL.",
         },
         { status: 500 }

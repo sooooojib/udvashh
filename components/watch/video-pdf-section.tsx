@@ -392,9 +392,9 @@ export function VideoPdfSection({
       updateTask(task.id, {
         status: "error",
         errorMessage: msg,
-        statusText: "Failed",
+        statusText: msg,
       });
-      toast.error(`Failed: ${task.fileName}`);
+      toast.error(msg);
       return { success: false, scriptUrl: resolvedScriptUrl };
     }
   };
