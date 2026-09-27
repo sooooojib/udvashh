@@ -23,8 +23,8 @@ interface PdfViewerModalProps {
 }
 
 export function PdfViewerModal({ pdf, onClose }: PdfViewerModalProps) {
-  const [isFullscreen, setIsFullscreen] = React.useState<boolean>(false);
-  const cardRef = React.useRef<HTMLDivElement>(null);
+  // Stretched / Full-viewport state (pure in-browser stretch, no OS fullscreen)
+  const [isStretched, setIsStretched] = React.useState<boolean>(false);
 
   const isDrive = pdf.source_type === "drive" && !!pdf.file_id;
   const previewSrc = isDrive
@@ -34,75 +34,53 @@ export function PdfViewerModal({ pdf, onClose }: PdfViewerModalProps) {
     ? getDriveDownloadUrl(pdf.file_id!)
     : pdf.file_url;
 
-  // Toggle Fullscreen (supports both native Fullscreen API and CSS fullscreen)
-  const toggleFullscreen = () => {
-    if (!document.fullscreenElement) {
-      if (cardRef.current?.requestFullscreen) {
-        cardRef.current.requestFullscreen().catch(() => {
-          setIsFullscreen(true);
-        });
-      } else {
-        setIsFullscreen(true);
-      }
-    } else {
-      if (document.exitFullscreen) {
-        document.exitFullscreen().catch(() => {
-          setIsFullscreen(false);
-        });
-      } else {
-        setIsFullscreen(false);
-      }
-    }
-  };
-
-  // Sync state if user exits fullscreen via Esc / OS gesture
-  React.useEffect(() => {
-    const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
-    };
-
-    document.addEventListener("fullscreenchange", handleFullscreenChange);
-    document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
-    return () => {
-      document.removeEventListener("fullscreenchange", handleFullscreenChange);
-      document.removeEventListener("webkitfullscreenchange", handleFullscreenChange);
-    };
-  }, []);
-
-  // Keyboard shortcut: Esc to close (when not in native fullscreen)
+  // Keyboard shortcut: Esc to restore/close, F to toggle stretch
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !document.fullscreenElement) {
-        onClose();
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement
+      ) {
+        return;
+      }
+
+      if (e.key === "Escape") {
+        if (isStretched) {
+          setIsStretched(false);
+        } else {
+          onClose();
+        }
+      } else if (e.key === "f" || e.key === "F") {
+        setIsStretched((prev) => !prev);
       }
     };
+
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onClose]);
+  }, [isStretched, onClose]);
 
   return (
     <div
       className={cn(
-        "fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md animate-in fade-in duration-150",
-        isFullscreen ? "p-0" : "p-3 sm:p-6"
+        "fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md animate-in fade-in duration-150",
+        isStretched ? "p-0" : "p-2 sm:p-4 md:p-6"
       )}
       onClick={(e) => {
-        if (!isFullscreen && e.target === e.currentTarget) {
+        if (!isStretched && e.target === e.currentTarget) {
           onClose();
         }
       }}
     >
       <div
-        ref={cardRef}
         className={cn(
-          "relative flex flex-col w-full bg-card dark:bg-[#0D1318] text-foreground border border-border/40 dark:border-white/10 shadow-2xl overflow-hidden transition-all duration-150",
-          isFullscreen
-            ? "fixed inset-0 w-screen h-screen rounded-none z-50 border-none"
-            : "max-w-5xl h-[88vh] rounded-2xl"
+          "relative flex flex-col w-full bg-card dark:bg-[#0D1318] text-foreground border shadow-2xl overflow-hidden transition-all duration-150",
+          isStretched
+            ? "fixed inset-0 w-screen h-screen max-w-none max-h-none rounded-none border-none z-50"
+            : "max-w-6xl h-[90vh] rounded-2xl border-border/40 dark:border-white/10"
         )}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-2.5 border-b border-border/40 dark:border-white/10 bg-muted/30 dark:bg-[#111820] select-none shrink-0">
+        <div className="flex items-center justify-between px-4 py-2 border-b border-border/40 dark:border-white/10 bg-muted/30 dark:bg-[#111820] select-none shrink-0 h-11">
           <div className="flex items-center gap-2.5 min-w-0 pr-3">
             <div className="p-1 rounded-md bg-rose-500/10 text-rose-500 shrink-0">
               <FileText className="h-4 w-4" />
@@ -126,22 +104,31 @@ export function PdfViewerModal({ pdf, onClose }: PdfViewerModalProps) {
           </div>
 
           <div className="flex items-center gap-1 shrink-0">
-            {/* Fullscreen Toggle */}
+            {/* Stretch Screen Toggle (In-browser Fullscreen) */}
             <button
               type="button"
-              onClick={toggleFullscreen}
-              title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted/60 dark:hover:bg-white/10 transition-colors cursor-pointer"
+              onClick={() => setIsStretched((prev) => !prev)}
+              title={
+                isStretched
+                  ? "Restore windowed view (F or Esc)"
+                  : "Stretch to full screen (F)"
+              }
+              className={cn(
+                "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer",
+                isStretched
+                  ? "bg-white/15 text-foreground dark:text-white"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/60 dark:hover:bg-white/10"
+              )}
             >
-              {isFullscreen ? (
+              {isStretched ? (
                 <>
                   <Minimize2 className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">Exit Fullscreen</span>
+                  <span className="hidden sm:inline">Restore</span>
                 </>
               ) : (
                 <>
                   <Maximize2 className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">Fullscreen</span>
+                  <span className="hidden sm:inline">Stretch Screen</span>
                 </>
               )}
             </button>
@@ -173,12 +160,7 @@ export function PdfViewerModal({ pdf, onClose }: PdfViewerModalProps) {
             {/* Close */}
             <button
               type="button"
-              onClick={() => {
-                if (document.fullscreenElement) {
-                  document.exitFullscreen?.().catch(() => {});
-                }
-                onClose();
-              }}
+              onClick={onClose}
               title="Close (Esc)"
               className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 dark:hover:bg-white/10 transition-colors cursor-pointer ml-1"
             >
@@ -188,11 +170,11 @@ export function PdfViewerModal({ pdf, onClose }: PdfViewerModalProps) {
         </div>
 
         {/* Document Frame */}
-        <div className="flex-1 w-full bg-black/90 relative">
+        <div className="flex-1 w-full h-[calc(100%-44px)] bg-black relative">
           <iframe
             src={previewSrc}
             title={pdf.title}
-            className="w-full h-full border-none"
+            className="w-full h-full border-none block"
             allow="autoplay"
           />
         </div>
