@@ -23,16 +23,24 @@ interface PdfViewerModalProps {
   onClose: () => void;
 }
 
+// In-memory session cache so reopened PDFs load instantly (0ms) without re-downloading
+const pdfBlobCache = new Map<string, string>();
+
 export function PdfViewerModal({ pdf, onClose }: PdfViewerModalProps) {
   // Stretched / Full-viewport state (pure in-browser stretch, no OS fullscreen)
   const [isStretched, setIsStretched] = React.useState<boolean>(false);
 
+  const cacheKey = pdf.file_id || pdf.file_url;
+  const cachedBlobUrl = pdfBlobCache.get(cacheKey);
+
   // Progressive download & percentage tracking
-  const [isLoading, setIsLoading] = React.useState<boolean>(true);
-  const [progress, setProgress] = React.useState<number>(0);
+  const [isLoading, setIsLoading] = React.useState<boolean>(!cachedBlobUrl);
+  const [progress, setProgress] = React.useState<number>(cachedBlobUrl ? 100 : 0);
   const [loadedBytes, setLoadedBytes] = React.useState<number>(0);
   const [totalBytes, setTotalBytes] = React.useState<number>(pdf.file_size || 0);
-  const [pdfBlobUrl, setPdfBlobUrl] = React.useState<string | null>(null);
+  const [pdfBlobUrl, setPdfBlobUrl] = React.useState<string | null>(
+    cachedBlobUrl || null
+  );
 
   const isDrive = pdf.source_type === "drive" && !!pdf.file_id;
   const rawStreamUrl = isDrive
@@ -44,6 +52,13 @@ export function PdfViewerModal({ pdf, onClose }: PdfViewerModalProps) {
 
   // Fetch the PDF using a ReadableStream to compute live percentage
   React.useEffect(() => {
+    // If already cached in this session, open immediately
+    if (pdfBlobCache.has(cacheKey)) {
+      setPdfBlobUrl(pdfBlobCache.get(cacheKey)!);
+      setIsLoading(false);
+      return;
+    }
+
     let isCancelled = false;
     let createdUrl: string | null = null;
     const abortController = new AbortController();
@@ -108,7 +123,12 @@ export function PdfViewerModal({ pdf, onClose }: PdfViewerModalProps) {
           type: "application/pdf",
         });
         createdUrl = URL.createObjectURL(blob);
-        setPdfBlobUrl(`${createdUrl}#toolbar=1&zoom=page-width`);
+        const finalUrl = `${createdUrl}#toolbar=1&zoom=page-width`;
+
+        // Cache in memory for instant reuse during this browser session
+        pdfBlobCache.set(cacheKey, finalUrl);
+
+        setPdfBlobUrl(finalUrl);
         setProgress(100);
 
         // Brief 150ms buffer for browser to mount PDF canvas before hiding overlay
@@ -132,11 +152,8 @@ export function PdfViewerModal({ pdf, onClose }: PdfViewerModalProps) {
     return () => {
       isCancelled = true;
       abortController.abort();
-      if (createdUrl) {
-        URL.revokeObjectURL(createdUrl);
-      }
     };
-  }, [isDrive, pdf.file_id, pdf.file_url, pdf.file_size, pdf.title, rawStreamUrl]);
+  }, [cacheKey, isDrive, pdf.file_id, pdf.file_url, pdf.file_size, pdf.title, rawStreamUrl]);
 
   // Keyboard shortcut: Esc to restore/close, F to toggle stretch
   React.useEffect(() => {
