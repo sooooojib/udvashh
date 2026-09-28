@@ -85,6 +85,8 @@ interface VideoPlayerProps {
   } | null;
 }
 
+const PLAYBACK_SPEEDS = [1, 1.25, 1.5, 1.75, 2] as const;
+
 export function VideoPlayer({
   videoId,
   youtubeVideoId,
@@ -445,7 +447,7 @@ export function VideoPlayer({
     } catch {}
   }, []);
 
-  // Incremental speed changer via keyboard ('s' for +0.5x, 'a' for -0.5x)
+  // Incremental speed changer via keyboard ('s' / '>' for faster, 'a' / '<' for slower)
   const stepPlaybackSpeed = React.useCallback(
     (delta: number) => {
       if (!playerRef.current) return;
@@ -454,15 +456,14 @@ export function VideoPlayer({
 
       try {
         const current = getPlayerRate();
-        const availableSpeeds = [0.5, 1.0, 1.5, 2.0];
         let newSpeed: number;
 
         if (delta > 0) {
-          const next = availableSpeeds.find((s) => s > current + 0.05);
-          newSpeed = next !== undefined ? next : 2.0;
+          const next = PLAYBACK_SPEEDS.find((s) => s > current + 0.05);
+          newSpeed = next !== undefined ? next : 2;
         } else {
-          const prevList = availableSpeeds.filter((s) => s < current - 0.05);
-          newSpeed = prevList.length > 0 ? prevList[prevList.length - 1] : 0.5;
+          const prevList = PLAYBACK_SPEEDS.filter((s) => s < current - 0.05);
+          newSpeed = prevList.length > 0 ? prevList[prevList.length - 1] : 1;
         }
 
         playerRef.current.setPlaybackRate?.(newSpeed);
@@ -793,17 +794,25 @@ export function VideoPlayer({
         return;
       }
 
-      // Only small 's': Increase playback speed by 0.5x (max 2.0x)
-      if (e.key === "s" && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      // Increase playback speed (max 2.0x): 's' or '>' (Shift + .)
+      if (
+        (e.key === "s" && !e.ctrlKey && !e.metaKey && !e.altKey) ||
+        e.key === ">" ||
+        (e.shiftKey && (e.key === "." || e.code === "Period"))
+      ) {
         e.preventDefault();
-        stepPlaybackSpeed(0.5);
+        stepPlaybackSpeed(1);
         return;
       }
 
-      // Only small 'a': Decrease playback speed by 0.5x (min 0.5x)
-      if (e.key === "a" && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      // Decrease playback speed (min 1.0x): 'a' or '<' (Shift + ,)
+      if (
+        (e.key === "a" && !e.ctrlKey && !e.metaKey && !e.altKey) ||
+        e.key === "<" ||
+        (e.shiftKey && (e.key === "," || e.code === "Comma"))
+      ) {
         e.preventDefault();
-        stepPlaybackSpeed(-0.5);
+        stepPlaybackSpeed(-1);
         return;
       }
     };
@@ -1166,7 +1175,7 @@ export function VideoPlayer({
           >
             <Gauge className="h-4 w-4 text-amber-400 shrink-0" />
             <span className="font-mono text-xs font-bold tracking-wider">
-              {speedFeedback.speed.toFixed(1)}x Speed
+              {speedFeedback.speed}x Speed
             </span>
           </div>
         )}
@@ -1390,7 +1399,7 @@ export function VideoPlayer({
           <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
             {/* Speed Presets */}
             <div className="flex items-center rounded-xl border border-border/60 bg-muted/40 p-1 dark:border-[#1F2C34] dark:bg-[#141E28]">
-              {([1, 1.25, 1.5, 2] as const).map((speed) => (
+              {PLAYBACK_SPEEDS.map((speed) => (
                 <button
                   key={speed}
                   type="button"
