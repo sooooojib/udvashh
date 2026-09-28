@@ -130,8 +130,13 @@ export function VideoPlayer({
     isMuted: boolean;
     key: number;
   } | null>(null);
+  const [speedFeedback, setSpeedFeedback] = React.useState<{
+    speed: number;
+    key: number;
+  } | null>(null);
   const seekTimerRef = React.useRef<NodeJS.Timeout | null>(null);
   const volumeTimerRef = React.useRef<NodeJS.Timeout | null>(null);
+  const speedTimerRef = React.useRef<NodeJS.Timeout | null>(null);
 
   // Reset player ready state when switching to a different video
   React.useEffect(() => {
@@ -440,6 +445,46 @@ export function VideoPlayer({
     } catch {}
   }, []);
 
+  // Incremental speed changer via keyboard ('s' for +0.5x, 'a' for -0.5x)
+  const stepPlaybackSpeed = React.useCallback(
+    (delta: number) => {
+      if (!playerRef.current) return;
+      // Do not interrupt active 2x spacebar hold
+      if (isHoldingSpaceRef.current || is2xActiveFromSpaceRef.current) return;
+
+      try {
+        const current = getPlayerRate();
+        const availableSpeeds = [0.5, 1.0, 1.5, 2.0];
+        let newSpeed: number;
+
+        if (delta > 0) {
+          const next = availableSpeeds.find((s) => s > current + 0.05);
+          newSpeed = next !== undefined ? next : 2.0;
+        } else {
+          const prevList = availableSpeeds.filter((s) => s < current - 0.05);
+          newSpeed = prevList.length > 0 ? prevList[prevList.length - 1] : 0.5;
+        }
+
+        playerRef.current.setPlaybackRate?.(newSpeed);
+        setCurrentRate(newSpeed);
+        previousRateRef.current = newSpeed;
+
+        setSpeedFeedback({
+          speed: newSpeed,
+          key: Date.now(),
+        });
+
+        if (speedTimerRef.current) {
+          clearTimeout(speedTimerRef.current);
+        }
+        speedTimerRef.current = setTimeout(() => {
+          setSpeedFeedback(null);
+        }, 1200);
+      } catch {}
+    },
+    [getPlayerRate]
+  );
+
   // Start 2x speed (Spacebar hold or touch/click hold)
   const start2xSpeed = React.useCallback(() => {
     if (!playerRef.current) return;
@@ -605,6 +650,7 @@ export function VideoPlayer({
     handleSeek,
     changeVolume,
     toggleMute,
+    stepPlaybackSpeed,
     toggleTheaterMode,
     toggleFullscreen,
     isTheaterMode,
@@ -619,6 +665,7 @@ export function VideoPlayer({
       handleSeek,
       changeVolume,
       toggleMute,
+      stepPlaybackSpeed,
       toggleTheaterMode,
       toggleFullscreen,
       isTheaterMode,
@@ -644,6 +691,7 @@ export function VideoPlayer({
         handleSeek,
         changeVolume,
         toggleMute,
+        stepPlaybackSpeed,
         toggleTheaterMode,
         toggleFullscreen,
         isTheaterMode,
@@ -744,6 +792,20 @@ export function VideoPlayer({
         toggleMute();
         return;
       }
+
+      // Only small 's': Increase playback speed by 0.5x (max 2.0x)
+      if (e.key === "s" && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault();
+        stepPlaybackSpeed(0.5);
+        return;
+      }
+
+      // Only small 'a': Decrease playback speed by 0.5x (min 0.5x)
+      if (e.key === "a" && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault();
+        stepPlaybackSpeed(-0.5);
+        return;
+      }
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
@@ -798,6 +860,9 @@ export function VideoPlayer({
     return () => {
       if (spaceHoldTimerRef.current) {
         clearTimeout(spaceHoldTimerRef.current);
+      }
+      if (speedTimerRef.current) {
+        clearTimeout(speedTimerRef.current);
       }
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
@@ -1092,6 +1157,19 @@ export function VideoPlayer({
           </span>
           <ChevronsRight className="h-4 w-4 fill-white text-white" />
         </div>
+
+        {/* On-Screen Speed Indicator Overlay */}
+        {speedFeedback && !is2xSpeed && (
+          <div
+            key={speedFeedback.key}
+            className="pointer-events-none absolute top-4 sm:top-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-full bg-black/85 px-4 py-2 text-white shadow-2xl backdrop-blur-md border border-white/15 animate-in fade-in zoom-in-90 duration-150 select-none"
+          >
+            <Gauge className="h-4 w-4 text-amber-400 shrink-0" />
+            <span className="font-mono text-xs font-bold tracking-wider">
+              {speedFeedback.speed.toFixed(1)}x Speed
+            </span>
+          </div>
+        )}
 
         {/* On-Screen Volume Indicator Overlay */}
         {volumeFeedback && (
