@@ -206,10 +206,6 @@ export function CurrentlyWatching({ videos }: CurrentlyWatchingProps) {
             duration > 0
               ? Math.min(100, Math.max(1, Math.round((progress / duration) * 100)))
               : 0;
-          const remainingPercent =
-            duration > 0
-              ? Math.max(0, Math.min(100, Math.round((remainingSeconds / duration) * 100)))
-              : 0;
 
           const resumeHref = `/watch/${video.youtube_video_id}?t=${progress}`;
           const fallbackThumbnail = `https://i.ytimg.com/vi/${video.youtube_video_id}/hqdefault.jpg`;
@@ -255,10 +251,20 @@ export function CurrentlyWatching({ videos }: CurrentlyWatchingProps) {
                   </div>
                 </div>
 
-                {/* Duration Badge */}
+                {/* Duration / Left-off Progress Badge */}
                 {duration > 0 && (
-                  <div className="absolute top-3 left-3 rounded-md bg-black/75 px-1.5 py-0.5 text-[10px] font-mono font-medium text-white/90 shadow-xs backdrop-blur-md border border-white/15">
-                    {formatDuration(duration)}
+                  <div className="absolute top-3 left-3 rounded-md bg-black/75 px-2 py-0.5 text-[10px] font-mono font-medium text-white/90 shadow-xs backdrop-blur-md border border-white/15 flex items-center gap-1">
+                    {progress > 0 ? (
+                      <>
+                        <span className={cn("font-semibold", theme.badge)}>
+                          {formatDuration(progress)}
+                        </span>
+                        <span className="text-white/40">/</span>
+                        <span>{formatDuration(duration)}</span>
+                      </>
+                    ) : (
+                      <span>{formatDuration(duration)}</span>
+                    )}
                   </div>
                 )}
 
@@ -269,7 +275,7 @@ export function CurrentlyWatching({ videos }: CurrentlyWatchingProps) {
                     {cleanTitle}
                   </h3>
 
-                  {/* Metadata Line: LIVE CLASS · 🕒 2h 20m left */}
+                  {/* Metadata Line: LIVE CLASS · 🕒 1h 28m left */}
                   <div className="flex items-center gap-2 text-xs flex-wrap font-sans text-zinc-300">
                     <span
                       className={cn(
@@ -284,10 +290,7 @@ export function CurrentlyWatching({ videos }: CurrentlyWatchingProps) {
 
                     <span className="inline-flex items-center gap-1.5 text-zinc-300 shrink-0 font-medium">
                       <Clock className="h-3 w-3 shrink-0" />
-                      <span>
-                        {formatTimeLeft(remainingSeconds)}
-                        {remainingSeconds > 0 && ` (${remainingPercent}% left)`}
-                      </span>
+                      <span>{formatTimeLeft(remainingSeconds)}</span>
                     </span>
                   </div>
                 </div>
