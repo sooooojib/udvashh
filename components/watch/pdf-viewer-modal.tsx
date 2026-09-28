@@ -280,62 +280,56 @@ export function PdfViewerModal({ pdf, onClose }: PdfViewerModalProps) {
           {/* Progress / Loading Screen */}
           {isLoading && (
             <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#F8FAFC] dark:bg-[#0A0E13] p-4 text-center animate-in fade-in duration-150 select-none">
-              {/* Subtle ambient light glow */}
-              <div className="absolute w-72 h-72 rounded-full bg-rose-500/10 dark:bg-rose-500/15 blur-3xl pointer-events-none" />
+              {/* Dynamic Circular Progress */}
+              <div className="relative flex items-center justify-center mb-3">
+                <svg
+                  className="w-20 h-20 -rotate-90 transform"
+                  viewBox="0 0 76 76"
+                  aria-hidden="true"
+                >
+                  {/* Track circle */}
+                  <circle
+                    cx="38"
+                    cy="38"
+                    r="32"
+                    fill="transparent"
+                    strokeWidth="3.5"
+                    className="text-slate-200 dark:text-white/10 stroke-current"
+                  />
+                  {/* Animated filling circle */}
+                  <circle
+                    cx="38"
+                    cy="38"
+                    r="32"
+                    fill="transparent"
+                    strokeWidth="3.5"
+                    strokeLinecap="round"
+                    strokeDasharray={201.06}
+                    strokeDashoffset={
+                      201.06 - (Math.min(100, Math.max(progress, 0)) / 100) * 201.06
+                    }
+                    className="text-rose-500 stroke-current transition-[stroke-dashoffset] duration-200 ease-out"
+                  />
+                </svg>
 
-              {/* Minimalist Floating Card */}
-              <div className="relative z-10 w-full max-w-[320px] sm:max-w-[360px] p-4 sm:p-5 rounded-2xl bg-white/95 dark:bg-[#111822]/90 backdrop-blur-xl border border-slate-200/80 dark:border-white/10 shadow-2xl shadow-slate-900/10 dark:shadow-black/60 flex flex-col gap-3.5">
-                {/* Header row: Icon + Document Title + Tabular % */}
-                <div className="flex items-center justify-between gap-3 text-left">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="relative w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-rose-50 dark:bg-rose-500/10 border border-rose-100 dark:border-rose-500/20 flex items-center justify-center shrink-0">
-                      <FileText className="w-4 h-4 text-rose-500" />
-                      <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
-                      </span>
-                    </div>
-                    <div className="min-w-0">
-                      <h4 className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-white truncate leading-tight">
-                        {pdf.title}
-                      </h4>
-                      <p className="text-[10px] text-slate-500 dark:text-white/45 truncate mt-0.5">
-                        {progress >= 100
-                          ? "Opening native viewer..."
-                          : "Downloading document..."}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="shrink-0 text-right">
-                    <span className="text-base sm:text-lg font-bold font-mono tabular-nums text-slate-900 dark:text-white">
-                      {progress}
-                      <span className="text-xs font-semibold text-rose-500 ml-0.5">%</span>
-                    </span>
-                  </div>
-                </div>
-
-                {/* Precision Micro Progress Bar */}
-                <div className="w-full h-1.5 bg-slate-100 dark:bg-white/10 rounded-full overflow-hidden relative">
-                  <div
-                    className="h-full bg-gradient-to-r from-rose-500 via-rose-400 to-amber-400 rounded-full transition-all duration-150 ease-out relative"
-                    style={{ width: `${Math.max(progress, 3)}%` }}
-                  >
-                    <div className="absolute inset-0 bg-white/25 animate-pulse" />
-                  </div>
-                </div>
-
-                {/* Footer metrics: Loaded size vs Total + Source Badge */}
-                <div className="flex items-center justify-between text-[11px] font-mono text-slate-500 dark:text-white/40 pt-0.5">
-                  <span>
-                    {loadedBytes > 0 ? formatFileSize(loadedBytes) : "0 B"}
-                    {totalBytes > 0 && ` / ${formatFileSize(totalBytes)}`}
-                  </span>
-                  <span className="text-[9px] uppercase font-sans font-semibold tracking-wider px-1.5 py-0.5 rounded bg-slate-100 dark:bg-white/5 border border-slate-200/50 dark:border-white/5 text-slate-600 dark:text-white/60">
-                    {pdf.source_type === "drive" ? "Google Drive" : "Storage"}
+                {/* Centered percentage */}
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-sm font-bold font-mono tabular-nums text-slate-900 dark:text-white">
+                    {progress}%
                   </span>
                 </div>
               </div>
+
+              {/* Single text */}
+              <p className="text-xs sm:text-sm font-medium text-slate-800 dark:text-slate-200 tracking-tight">
+                {progress >= 100 ? "Opening PDF..." : "Downloading PDF..."}
+              </p>
+
+              {/* Just file size */}
+              <p className="text-[11px] font-mono text-slate-500 dark:text-white/40 mt-1">
+                {loadedBytes > 0 ? formatFileSize(loadedBytes) : "0 B"}
+                {totalBytes > 0 && ` / ${formatFileSize(totalBytes)}`}
+              </p>
             </div>
           )}
 
