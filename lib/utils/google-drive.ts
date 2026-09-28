@@ -37,3 +37,8 @@ export function getDriveDownloadUrl(fileId: string): string {
 export function getDriveViewUrl(fileId: string): string {
   return `https://drive.google.com/file/d/${fileId}/view`;
 }
+
+export function getDriveStreamUrl(fileId: string, title?: string): string {
+  const query = title ? `?title=${encodeURIComponent(title)}` : "";
+  return `/api/pdf/${fileId}${query}#toolbar=1&zoom=page-width`;
+}
