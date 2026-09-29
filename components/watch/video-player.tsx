@@ -5,7 +5,11 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useTheme } from "next-themes";
 import { useOptimistic, useTransition } from "react";
-import { toggleWatched, updatePlaybackProgress } from "@/app/actions/progress";
+import {
+  saveVideoDuration,
+  toggleWatched,
+  updatePlaybackProgress,
+} from "@/app/actions/progress";
 import { toggleVideoPrivacy } from "@/app/actions/toggle-privacy";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -699,6 +703,9 @@ export function VideoPlayer({
       const d = event.target.getDuration?.();
       if (typeof d === "number" && d > 0) {
         setVideoDuration(d);
+        if (!duration || duration <= 0) {
+          saveVideoDuration(videoId, Math.round(d));
+        }
       }
       syncQualities();
 
@@ -1246,16 +1253,24 @@ export function VideoPlayer({
     if (!playerRef.current) return;
     try {
       const current = playerRef.current.getCurrentTime?.();
+      const realDur = playerRef.current.getDuration?.();
+      const effectiveDuration =
+        typeof realDur === "number" && realDur > 0
+          ? realDur
+          : videoDuration > 0
+          ? videoDuration
+          : duration;
+
       if (typeof current === "number" && current >= 0) {
         const floorSec = Math.floor(current);
         // Only update if changed by at least 5 seconds
         if (Math.abs(floorSec - lastSyncedSecondsRef.current) >= 5) {
           lastSyncedSecondsRef.current = floorSec;
-          updatePlaybackProgress(videoId, floorSec, duration);
+          updatePlaybackProgress(videoId, floorSec, effectiveDuration);
         }
       }
     } catch {}
-  }, [videoId, duration]);
+  }, [videoId, duration, videoDuration]);
 
   React.useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
@@ -1404,10 +1419,10 @@ export function VideoPlayer({
           {title}
         </h1>
         <div className="flex flex-wrap items-center gap-2.5 text-xs text-muted-foreground">
-          {duration > 0 && (
+          {(duration > 0 || videoDuration > 0) && (
             <span className="inline-flex items-center gap-1.5 rounded-lg border border-border/60 bg-card/80 px-2.5 py-1 font-mono font-medium shadow-2xs dark:border-[#1F2C34] dark:bg-[#111820]">
               <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-              <span>{formatDuration(duration)}</span>
+              <span>{formatDuration(duration > 0 ? duration : videoDuration)}</span>
             </span>
           )}
 

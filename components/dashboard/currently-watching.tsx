@@ -70,7 +70,7 @@ const moduleThemes: Record<
  * Formats seconds left into clean streaming format (e.g. "2m left", "2h 20m left")
  */
 function formatTimeLeft(seconds: number): string {
-  if (seconds <= 0) return "Finished";
+  if (seconds <= 0) return "< 1m left";
   if (seconds < 60) return "< 1m left";
 
   const hours = Math.floor(seconds / 3600);
@@ -252,9 +252,9 @@ export function CurrentlyWatching({ videos }: CurrentlyWatchingProps) {
                 </div>
 
                 {/* Duration / Left-off Progress Badge */}
-                {duration > 0 && (
+                {(duration > 0 || progress > 0) && (
                   <div className="absolute top-3 left-3 rounded-md bg-black/75 px-2 py-0.5 text-[10px] font-mono font-medium text-white/90 shadow-xs backdrop-blur-md border border-white/15 flex items-center gap-1">
-                    {progress > 0 ? (
+                    {duration > 0 && progress > 0 ? (
                       <>
                         <span className={cn("font-semibold", theme.badge)}>
                           {formatDuration(progress)}
@@ -262,8 +262,12 @@ export function CurrentlyWatching({ videos }: CurrentlyWatchingProps) {
                         <span className="text-white/40">/</span>
                         <span>{formatDuration(duration)}</span>
                       </>
-                    ) : (
+                    ) : duration > 0 ? (
                       <span>{formatDuration(duration)}</span>
+                    ) : (
+                      <span className={cn("font-semibold", theme.badge)}>
+                        {formatDuration(progress)}
+                      </span>
                     )}
                   </div>
                 )}
@@ -290,7 +294,13 @@ export function CurrentlyWatching({ videos }: CurrentlyWatchingProps) {
 
                     <span className="inline-flex items-center gap-1.5 text-zinc-300 shrink-0 font-medium">
                       <Clock className="h-3 w-3 shrink-0" />
-                      <span>{formatTimeLeft(remainingSeconds)}</span>
+                      <span>
+                        {duration > 0
+                          ? formatTimeLeft(remainingSeconds)
+                          : progress > 0
+                          ? `${formatDuration(progress)} watched`
+                          : "In Progress"}
+                      </span>
                     </span>
                   </div>
                 </div>

@@ -56,6 +56,28 @@ export async function toggleWatched(
   revalidateTag(`user-progress-${session.id}`, "default");
 }
 
+export async function saveVideoDuration(
+  videoId: string,
+  durationSeconds: number
+): Promise<void> {
+  if (!videoId || !durationSeconds || durationSeconds <= 0) return;
+  const cleanDuration = Math.round(durationSeconds);
+  try {
+    const updated = await sql`
+      UPDATE videos
+      SET duration = ${cleanDuration}, updated_at = NOW()
+      WHERE id = ${videoId} AND (duration IS NULL OR duration <= 0)
+      RETURNING id
+    `;
+    if (updated.length > 0) {
+      revalidateTag("videos-catalog", "default");
+      revalidatePath("/dashboard");
+    }
+  } catch (error) {
+    console.error("Failed to save video duration:", error);
+  }
+}
+
 export async function updatePlaybackProgress(
   videoId: string,
   progressSeconds: number,
