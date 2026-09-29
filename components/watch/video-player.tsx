@@ -479,7 +479,7 @@ export function VideoPlayer({
         const b = playerRef.current?.getVideoLoadedFraction?.();
         if (typeof b === "number") setBufferedFraction(b);
         const d = playerRef.current?.getDuration?.();
-        if (typeof d === "number" && d > 0) setVideoDuration(d);
+        if (typeof d === "number" && d > 0) handleDurationDetected(d);
       } catch {}
     }, 100);
     return () => clearInterval(poll);
@@ -669,6 +669,20 @@ export function VideoPlayer({
     }
   }, [isFullscreen]);
 
+  const hasSavedDurationRef = React.useRef(duration > 0);
+  const handleDurationDetected = React.useCallback(
+    (d: number) => {
+      if (typeof d === "number" && d > 0) {
+        setVideoDuration(d);
+        if (!hasSavedDurationRef.current && (!duration || duration <= 0)) {
+          hasSavedDurationRef.current = true;
+          saveVideoDuration(videoId, Math.round(d));
+        }
+      }
+    },
+    [duration, videoId]
+  );
+
   // Initialize YouTube player instance and enforce proper iframe attributes
   const handlePlayerReady = (event: any) => {
     playerRef.current = event.target;
@@ -702,10 +716,7 @@ export function VideoPlayer({
       }
       const d = event.target.getDuration?.();
       if (typeof d === "number" && d > 0) {
-        setVideoDuration(d);
-        if (!duration || duration <= 0) {
-          saveVideoDuration(videoId, Math.round(d));
-        }
+        handleDurationDetected(d);
       }
       syncQualities();
 
@@ -1254,6 +1265,9 @@ export function VideoPlayer({
     try {
       const current = playerRef.current.getCurrentTime?.();
       const realDur = playerRef.current.getDuration?.();
+      if (typeof realDur === "number" && realDur > 0) {
+        handleDurationDetected(realDur);
+      }
       const effectiveDuration =
         typeof realDur === "number" && realDur > 0
           ? realDur
@@ -1309,7 +1323,7 @@ export function VideoPlayer({
       setIsBuffering(false);
       try {
         const d = event.target?.getDuration?.();
-        if (typeof d === "number" && d > 0) setVideoDuration(d);
+        if (typeof d === "number" && d > 0) handleDurationDetected(d);
       } catch {}
       syncQualities(event.target);
       setTimeout(() => { containerRef.current?.focus(); }, 50);
