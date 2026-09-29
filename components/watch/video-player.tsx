@@ -15,6 +15,7 @@ import {
   Check,
   CheckCircle2,
   ChevronRight,
+  ChevronLeft,
   ChevronsLeft,
   ChevronsRight,
   Circle,
@@ -34,7 +35,9 @@ import {
   Play,
   RotateCcw,
   RotateCw,
+  Settings,
   SkipForward,
+  SlidersHorizontal,
   Tv,
   Volume1,
   Volume2,
@@ -87,6 +90,75 @@ interface VideoPlayerProps {
 
 const PLAYBACK_SPEEDS = [1, 1.25, 1.5, 1.75, 2] as const;
 
+const QUALITY_LABELS: Record<string, string> = {
+  highres: "4K+ Ultra HD",
+  hd2160: "2160p (4K)",
+  hd1440: "1440p (2K)",
+  hd1080: "1080p HD",
+  hd720: "720p HD",
+  large: "480p",
+  medium: "360p",
+  small: "240p",
+  tiny: "144p",
+  auto: "Auto",
+  default: "Auto",
+};
+
+const DEFAULT_QUALITIES = [
+  "auto",
+  "hd1080",
+  "hd720",
+  "large",
+  "medium",
+  "small",
+  "tiny",
+];
+
+// ── ClickSurface: Debounced single/double-click to prevent race condition ──
+// Without this, double-clicking fires onClick TWICE before onDoubleClick.
+// This 200ms debounce cancels the single-click if a double-click arrives.
+function ClickSurface({
+  onSingleClick,
+  onDoubleClick,
+  className,
+}: {
+  onSingleClick: () => void;
+  onDoubleClick: (e: React.MouseEvent) => void;
+  className?: string;
+}) {
+  const clickTimerRef = React.useRef<NodeJS.Timeout | null>(null);
+  const lastClickEventRef = React.useRef<React.MouseEvent | null>(null);
+
+  const handleClick = React.useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      lastClickEventRef.current = e;
+      if (clickTimerRef.current) {
+        // Second click within 200ms → double-click
+        clearTimeout(clickTimerRef.current);
+        clickTimerRef.current = null;
+        onDoubleClick(e);
+      } else {
+        // First click → wait 200ms to see if it's a double
+        clickTimerRef.current = setTimeout(() => {
+          clickTimerRef.current = null;
+          onSingleClick();
+        }, 200);
+      }
+    },
+    [onSingleClick, onDoubleClick]
+  );
+
+  // Cleanup on unmount
+  React.useEffect(() => {
+    return () => {
+      if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
+    };
+  }, []);
+
+  return <div onClick={handleClick} className={className} />;
+}
+
 export function VideoPlayer({
   videoId,
   youtubeVideoId,
@@ -115,6 +187,7 @@ export function VideoPlayer({
   const [isTogglingPrivacy, startPrivacyTransition] = useTransition();
   const [hasAutoMarked, setHasAutoMarked] = React.useState(false);
   const [isPlaying, setIsPlaying] = React.useState(false);
+  const [isBuffering, setIsBuffering] = React.useState(false);
   const [is2xSpeed, setIs2xSpeed] = React.useState(false);
   const [currentRate, setCurrentRate] = React.useState<number>(1);
   const [seekFeedback, setSeekFeedback] = React.useState<{
@@ -136,6 +209,66 @@ export function VideoPlayer({
     speed: number;
     key: number;
   } | null>(null);
+
+  // ── Custom Control Bar State ──
+  const [currentTime, setCurrentTime] = React.useState(0);
+  const [videoDuration, setVideoDuration] = React.useState(duration || 0);
+  const [bufferedFraction, setBufferedFraction] = React.useState(0);
+  const [isSeeking, setIsSeeking] = React.useState(false);
+  const [seekPreview, setSeekPreview] = React.useState(0);
+  const [showControls, setShowControls] = React.useState(true);
+  const [showVolumeSlider, setShowVolumeSlider] = React.useState(false);
+  const [seekHoverFraction, setSeekHoverFraction] = React.useState<number | null>(null);
+  const [showSettingsMenu, setShowSettingsMenu] = React.useState(false);
+  const [settingsView, setSettingsView] = React.useState<"main" | "speed" | "quality">("main");
+  const [currentQuality, setCurrentQuality] = React.useState<string>("auto");
+  const [availableQualities, setAvailableQualities] = React.useState<string[]>(DEFAULT_QUALITIES);
+  const hideControlsTimerRef = React.useRef<NodeJS.Timeout | null>(null);
+  const seekBarRef = React.useRef<HTMLDivElement>(null);
+  const volumeSliderRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (!showSettingsMenu) return;
+    const handleOutsideClick = () => {
+      setShowSettingsMenu(false);
+      setSettingsView("main");
+    };
+    window.addEventListener("click", handleOutsideClick);
+    return () => window.removeEventListener("click", handleOutsideClick);
+  }, [showSettingsMenu]);
+
+  // Sync available quality levels from YouTube player.
+  // Accepts an optional event target for synchronous access (youtube-player
+  // promisifies all methods on playerRef, but event.target is synchronous).
+  const syncQualities = React.useCallback((target?: any) => {
+    const p = target || playerRef.current;
+    if (!p) return;
+    try {
+      const levels = p.getAvailableQualityLevels?.();
+      if (Array.isArray(levels) && levels.length > 0) {
+        const fullLevels = levels.includes("auto") ? levels : ["auto", ...levels];
+        setAvailableQualities(fullLevels);
+      }
+      const q = p.getPlaybackQuality?.();
+      if (q && q !== "unknown") {
+        setCurrentQuality(q);
+      }
+    } catch {}
+  }, []);
+
+  // Dedicated quality changer with feedback toast
+  const setPlayerQuality = React.useCallback((quality: string) => {
+    if (!playerRef.current) return;
+    try {
+      playerRef.current.setPlaybackQuality?.(quality);
+      setCurrentQuality(quality);
+      toast.success(`Quality set to ${QUALITY_LABELS[quality] || quality}`, {
+        id: "player-quality-change",
+        duration: 2000,
+      });
+    } catch {}
+  }, []);
+
   const seekTimerRef = React.useRef<NodeJS.Timeout | null>(null);
   const volumeTimerRef = React.useRef<NodeJS.Timeout | null>(null);
   const speedTimerRef = React.useRef<NodeJS.Timeout | null>(null);
@@ -276,6 +409,13 @@ export function VideoPlayer({
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const playerRef = React.useRef<any>(null);
+  // ── isPlayingRef: synchronous mirror of isPlaying state ──
+  // youtube-player promisifies ALL API methods including getPlayerState().
+  // That means playerRef.current.getPlayerState?.() returns a Promise, not a
+  // number — so comparing it to === 1 is always false and the toggle always
+  // went to the wrong branch. We solve this by maintaining a plain ref that is
+  // updated synchronously inside handlePlayerStateChange (the reliable event).
+  const isPlayingRef = React.useRef<boolean>(false);
   const containerRef = React.useRef<HTMLDivElement>(null);
   const previousRateRef = React.useRef<number>(1);
   const isHoldingSpaceRef = React.useRef<boolean>(false);
@@ -310,18 +450,159 @@ export function VideoPlayer({
           initialStartSecondsRef.current && initialStartSecondsRef.current > 5 && !isNearEnd
             ? Math.floor(initialStartSecondsRef.current)
             : undefined,
-        controls: 1,
+        controls: 0,
+        disablekb: 1,
         modestbranding: 1,
         rel: 0,
         fs: 0,
         enablejsapi: 1,
         playsinline: 1,
         iv_load_policy: 3,
-        cc_load_policy: 0,
+        showinfo: 0,
       },
     }),
     [youtubeVideoId, isNearEnd]
   );
+
+  // ── Progress Polling: Update currentTime & buffered every 100ms while playing ──
+  React.useEffect(() => {
+    if (!isPlaying || !playerRef.current) return;
+    const poll = setInterval(() => {
+      if (isSeeking) return;
+      try {
+        const t = playerRef.current?.getCurrentTime?.();
+        if (typeof t === "number") setCurrentTime(t);
+        const b = playerRef.current?.getVideoLoadedFraction?.();
+        if (typeof b === "number") setBufferedFraction(b);
+        const d = playerRef.current?.getDuration?.();
+        if (typeof d === "number" && d > 0) setVideoDuration(d);
+      } catch {}
+    }, 100);
+    return () => clearInterval(poll);
+  }, [isPlaying, isSeeking]);
+
+  // ── Auto-hide Controls: Show on mouse activity, hide after 2.5s of idle ONLY when playing ──
+  const resetControlsTimer = React.useCallback(() => {
+    setShowControls((prev) => { if (!prev) return true; return prev; });
+    if (hideControlsTimerRef.current) clearTimeout(hideControlsTimerRef.current);
+    if (isPlaying) {
+      hideControlsTimerRef.current = setTimeout(() => {
+        if (!isSeeking && !showVolumeSlider && !showSettingsMenu) setShowControls(false);
+      }, 2500);
+    }
+  }, [isPlaying, isSeeking, showVolumeSlider, showSettingsMenu]);
+
+  // Controls stay visible 100% of the time when paused
+  React.useEffect(() => {
+    if (!isPlaying) {
+      setShowControls(true);
+      if (hideControlsTimerRef.current) clearTimeout(hideControlsTimerRef.current);
+    } else {
+      resetControlsTimer();
+    }
+  }, [isPlaying, resetControlsTimer]);
+
+  // ── Seek Bar Interaction Handlers ──
+  const getSeekFraction = React.useCallback((e: React.MouseEvent | MouseEvent | React.TouchEvent | TouchEvent) => {
+    if (!seekBarRef.current) return 0;
+    const rect = seekBarRef.current.getBoundingClientRect();
+    const clientX = "touches" in e ? e.touches[0]?.clientX ?? (e as TouchEvent).changedTouches?.[0]?.clientX ?? 0 : (e as MouseEvent).clientX;
+    return Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+  }, []);
+
+  const handleSeekStart = React.useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setIsSeeking(true);
+    const frac = getSeekFraction(e);
+    setSeekPreview(frac);
+    const seekTime = frac * videoDuration;
+    setCurrentTime(seekTime);
+    try {
+      playerRef.current?.seekTo?.(seekTime, true);
+    } catch {}
+  }, [getSeekFraction, videoDuration]);
+
+  React.useEffect(() => {
+    if (!isSeeking) return;
+    const handleMove = (e: MouseEvent | TouchEvent) => {
+      const frac = getSeekFraction(e);
+      setSeekPreview(frac);
+      const seekTime = frac * videoDuration;
+      setCurrentTime(seekTime);
+      try {
+        playerRef.current?.seekTo?.(seekTime, true);
+      } catch {}
+    };
+    const handleUp = (e: MouseEvent | TouchEvent) => {
+      const frac = getSeekFraction(e);
+      const seekTime = frac * videoDuration;
+      try {
+        playerRef.current?.seekTo?.(seekTime, true);
+      } catch {}
+      setCurrentTime(seekTime);
+      setIsSeeking(false);
+    };
+    window.addEventListener("mousemove", handleMove);
+    window.addEventListener("mouseup", handleUp);
+    window.addEventListener("touchmove", handleMove, { passive: false });
+    window.addEventListener("touchend", handleUp);
+    return () => {
+      window.removeEventListener("mousemove", handleMove);
+      window.removeEventListener("mouseup", handleUp);
+      window.removeEventListener("touchmove", handleMove);
+      window.removeEventListener("touchend", handleUp);
+    };
+  }, [isSeeking, getSeekFraction, videoDuration]);
+
+  // ── Volume Slider Interaction ──
+  const getVolumeFraction = React.useCallback((e: React.MouseEvent | MouseEvent | React.TouchEvent | TouchEvent) => {
+    if (!volumeSliderRef.current) return 0;
+    const rect = volumeSliderRef.current.getBoundingClientRect();
+    const clientX = "touches" in e ? e.touches[0]?.clientX ?? 0 : (e as MouseEvent).clientX;
+    return Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+  }, []);
+
+  const [isVolumeDragging, setIsVolumeDragging] = React.useState(false);
+
+  const handleVolumeStart = React.useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setIsVolumeDragging(true);
+    const frac = getVolumeFraction(e);
+    const vol = Math.round(frac * 100);
+    try {
+      playerRef.current?.setVolume?.(vol);
+      if (vol > 0) playerRef.current?.unMute?.();
+    } catch {}
+    setCurrentVolume(vol);
+    setIsMuted(vol === 0);
+  }, [getVolumeFraction]);
+
+  React.useEffect(() => {
+    if (!isVolumeDragging) return;
+    const handleMove = (e: MouseEvent | TouchEvent) => {
+      const frac = getVolumeFraction(e);
+      const vol = Math.round(frac * 100);
+      try {
+        playerRef.current?.setVolume?.(vol);
+        if (vol > 0) playerRef.current?.unMute?.();
+      } catch {}
+      setCurrentVolume(vol);
+      setIsMuted(vol === 0);
+    };
+    const handleUp = () => setIsVolumeDragging(false);
+    window.addEventListener("mousemove", handleMove);
+    window.addEventListener("mouseup", handleUp);
+    window.addEventListener("touchmove", handleMove, { passive: false });
+    window.addEventListener("touchend", handleUp);
+    return () => {
+      window.removeEventListener("mousemove", handleMove);
+      window.removeEventListener("mouseup", handleUp);
+      window.removeEventListener("touchmove", handleMove);
+      window.removeEventListener("touchend", handleUp);
+    };
+  }, [isVolumeDragging, getVolumeFraction]);
 
   const toggleTheaterMode = React.useCallback(() => {
     // Theater mode is strictly for big screens (>= 768px)
@@ -415,6 +696,11 @@ export function VideoPlayer({
       if (typeof initialMuted === "boolean") {
         setIsMuted(initialMuted);
       }
+      const d = event.target.getDuration?.();
+      if (typeof d === "number" && d > 0) {
+        setVideoDuration(d);
+      }
+      syncQualities();
 
       // Show resume notification if resuming from previous progress (deduplicated: exactly once per video)
       if (initialProgressSeconds > 5 && !isNearEnd && !hasResumedRef.current) {
@@ -440,10 +726,11 @@ export function VideoPlayer({
   // Dedicated speed changer (no toast popup on speed click)
   const setPlayerSpeed = React.useCallback((speed: number) => {
     if (!playerRef.current) return;
+    const clampedSpeed = Math.min(2, Math.max(1, speed));
     try {
-      playerRef.current.setPlaybackRate?.(speed);
-      setCurrentRate(speed);
-      previousRateRef.current = speed;
+      playerRef.current.setPlaybackRate?.(clampedSpeed);
+      setCurrentRate(clampedSpeed);
+      previousRateRef.current = clampedSpeed;
     } catch {}
   }, []);
 
@@ -465,6 +752,8 @@ export function VideoPlayer({
           const prevList = PLAYBACK_SPEEDS.filter((s) => s < current - 0.05);
           newSpeed = prevList.length > 0 ? prevList[prevList.length - 1] : 1;
         }
+
+        newSpeed = Math.min(2, Math.max(1, newSpeed));
 
         playerRef.current.setPlaybackRate?.(newSpeed);
         setCurrentRate(newSpeed);
@@ -520,32 +809,36 @@ export function VideoPlayer({
     } catch {}
   }, []);
 
-  // Safe Play/Pause toggle
+  // ── Play/Pause Toggle ──
+  // Uses isPlayingRef (synchronous) rather than getPlayerState() (async Promise)
+  // so the toggle decision is always correct. UI updates optimistically for
+  // instant snappy feel; handlePlayerStateChange will confirm/correct afterward.
   const togglePlayPause = React.useCallback(() => {
     if (!playerRef.current) return;
-    try {
-      const state = playerRef.current.getPlayerState?.();
-      if (state === 1) {
-        playerRef.current.pauseVideo?.();
-        setIsPlaying(false);
-      } else {
-        playerRef.current.playVideo?.();
-        setIsPlaying(true);
-      }
-    } catch {}
+    const currentlyPlaying = isPlayingRef.current;
+    if (currentlyPlaying) {
+      isPlayingRef.current = false;
+      setIsPlaying(false);
+      try { playerRef.current.pauseVideo?.(); } catch {}
+    } else {
+      isPlayingRef.current = true;
+      setIsPlaying(true);
+      try { playerRef.current.playVideo?.(); } catch {}
+    }
   }, []);
 
-  // Safe seek
+  // Safe seek — uses currentTime from React state (synchronous) instead of
+  // playerRef.getCurrentTime() which returns a Promise via youtube-player.
+  const currentTimeRef = React.useRef(0);
+  React.useEffect(() => { currentTimeRef.current = currentTime; }, [currentTime]);
+
   const seekPlayer = React.useCallback((deltaSeconds: number) => {
     if (!playerRef.current) return;
-    try {
-      const currentTimeVal = playerRef.current.getCurrentTime?.();
-      if (typeof currentTimeVal === "number") {
-        const nextTime = Math.max(0, currentTimeVal + deltaSeconds);
-        playerRef.current.seekTo?.(nextTime, true);
-      }
-    } catch {}
-  }, []);
+    const now = currentTimeRef.current;
+    const nextTime = Math.max(0, Math.min(videoDuration || Infinity, now + deltaSeconds));
+    try { playerRef.current.seekTo?.(nextTime, true); } catch {}
+    setCurrentTime(nextTime);
+  }, [videoDuration]);
 
   // Native YouTube-style seek with accumulated seconds and on-screen ripple animation
   const handleSeek = React.useCallback(
@@ -609,38 +902,28 @@ export function VideoPlayer({
     } catch {}
   }, [currentVolume]);
 
+  // toggleMute — uses isMuted state instead of playerRef.isMuted() (which
+  // returns a Promise via youtube-player, always truthy).
   const toggleMute = React.useCallback(() => {
     if (!playerRef.current) return;
     try {
-      const muted = playerRef.current.isMuted?.();
-      if (muted) {
+      if (isMuted) {
         playerRef.current.unMute?.();
         setIsMuted(false);
-        const vol = playerRef.current.getVolume?.() || 100;
-        setCurrentVolume(vol);
-        setVolumeFeedback({
-          volume: vol,
-          isMuted: false,
-          key: Date.now(),
+        setCurrentVolume((prev) => {
+          const vol = prev > 0 ? prev : 100;
+          setVolumeFeedback({ volume: vol, isMuted: false, key: Date.now() });
+          return vol;
         });
       } else {
         playerRef.current.mute?.();
         setIsMuted(true);
-        setVolumeFeedback({
-          volume: 0,
-          isMuted: true,
-          key: Date.now(),
-        });
+        setVolumeFeedback({ volume: 0, isMuted: true, key: Date.now() });
       }
-
-      if (volumeTimerRef.current) {
-        clearTimeout(volumeTimerRef.current);
-      }
-      volumeTimerRef.current = setTimeout(() => {
-        setVolumeFeedback(null);
-      }, 1200);
+      if (volumeTimerRef.current) clearTimeout(volumeTimerRef.current);
+      volumeTimerRef.current = setTimeout(() => setVolumeFeedback(null), 1200);
     } catch {}
-  }, []);
+  }, [isMuted]);
 
 
 
@@ -756,6 +1039,27 @@ export function VideoPlayer({
       if (e.key === "f" || e.key === "F") {
         e.preventDefault();
         toggleFullscreen();
+        return;
+      }
+
+      // 'K' key: Play/Pause (YouTube standard)
+      if (e.key === "k" || e.key === "K") {
+        e.preventDefault();
+        handlersRef.current.togglePlayPause();
+        return;
+      }
+
+      // 'J' key: Rewind 10s (YouTube standard)
+      if (e.key === "j" || e.key === "J") {
+        e.preventDefault();
+        handleSeek(-10);
+        return;
+      }
+
+      // 'L' key: Forward 10s (YouTube standard)
+      if (e.key === "l" || e.key === "L") {
+        e.preventDefault();
+        handleSeek(10);
         return;
       }
 
@@ -984,19 +1288,36 @@ export function VideoPlayer({
   const handlePlayerStateChange = (event: any) => {
     const state = event.data;
     if (state === 1) {
+      // YouTube confirmed: PLAYING
+      isPlayingRef.current = true;
       setIsPlaying(true);
-      setTimeout(() => {
-        containerRef.current?.focus();
-      }, 50);
+      setIsBuffering(false);
+      try {
+        const d = event.target?.getDuration?.();
+        if (typeof d === "number" && d > 0) setVideoDuration(d);
+      } catch {}
+      syncQualities(event.target);
+      setTimeout(() => { containerRef.current?.focus(); }, 50);
     } else if (state === 2) {
+      // YouTube confirmed: PAUSED
+      isPlayingRef.current = false;
       setIsPlaying(false);
+      setIsBuffering(false);
       syncProgress();
-      setTimeout(() => {
-        containerRef.current?.focus();
-      }, 50);
-    }
-    if (state === 0) {
+      setTimeout(() => { containerRef.current?.focus(); }, 50);
+    } else if (state === 3) {
+      // BUFFERING
+      setIsBuffering(true);
+    } else if (state === 0) {
+      // ENDED
+      isPlayingRef.current = false;
+      setIsPlaying(false);
+      setIsBuffering(false);
       handleVideoEnd();
+    } else if (state === -1) {
+      // UNSTARTED
+      isPlayingRef.current = false;
+      setIsBuffering(false);
     }
   };
 
@@ -1016,6 +1337,13 @@ export function VideoPlayer({
       delete document.documentElement.dataset.currentModule;
     };
   }, [isIntensive, isSubjectHacks]);
+
+  const currentProgressFrac = isSeeking
+    ? seekPreview
+    : videoDuration > 0
+    ? currentTime / videoDuration
+    : 0;
+  const currentProgressPercent = Math.min(100, Math.max(0, currentProgressFrac * 100));
 
   return (
     <div className="video-player-root space-y-5 sm:space-y-6">
@@ -1114,6 +1442,29 @@ export function VideoPlayer({
               </>
             )}
           </span>
+
+          {/* YouTube link copy — admin only, zero DB cost */}
+          {isAdmin && (
+            <button
+              type="button"
+              onClick={() => {
+                const url = `https://www.youtube.com/watch?v=${youtubeVideoId}`;
+                navigator.clipboard.writeText(url).then(() => {
+                  toast.success("YouTube link copied", {
+                    description: url,
+                    duration: 2500,
+                    id: "yt-link-copy",
+                  });
+                }).catch(() => {
+                  toast.error("Failed to copy link");
+                });
+              }}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border/60 bg-card/80 px-2.5 py-1 font-medium text-muted-foreground shadow-2xs transition-colors cursor-pointer hover:border-border hover:bg-muted/60 hover:text-foreground dark:border-[#1F2C34] dark:bg-[#111820] dark:hover:border-[#2A3A47] dark:hover:bg-[#141E28] dark:hover:text-[#E8EDF0]"
+            >
+              <Link2 className="h-3.5 w-3.5 shrink-0" />
+              <span>Copy link</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -1138,6 +1489,8 @@ export function VideoPlayer({
       <div
         ref={containerRef}
         tabIndex={0}
+        role="region"
+        aria-label={`Video player: ${title}`}
         onClick={() => containerRef.current?.focus()}
         onMouseEnter={() => containerRef.current?.focus()}
         className={cn(
@@ -1245,11 +1598,18 @@ export function VideoPlayer({
         {/* Video Frame: strictly keeps 16:9 aspect ratio */}
         <div
           className={cn(
-            "relative select-none overflow-hidden aspect-video bg-black",
+            "relative select-none overflow-hidden aspect-video bg-black group/video",
             isFullscreen
               ? "w-full h-full max-w-[calc(100vh*16/9)] max-h-screen"
               : "w-full"
           )}
+          onMouseMove={resetControlsTimer}
+          onMouseLeave={() => {
+            if (isPlaying && !isSeeking && !showVolumeSlider && !showSettingsMenu) {
+              setShowControls(false);
+            }
+          }}
+          onTouchStart={resetControlsTimer}
         >
           {/* Instant HD Thumbnail & Ambient Poster until YouTube Player is ready */}
           {!isPlayerReady && (
@@ -1276,106 +1636,399 @@ export function VideoPlayer({
             </div>
           )}
 
-          {/* Native YouTube Player with Native 60fps Controls */}
+          {/* YouTube Player - pointer-events-none completely disables YouTube clicks, links, and branding */}
           <YouTube
             videoId={youtubeVideoId}
             onReady={handlePlayerReady}
             onEnd={handleVideoEnd}
             onStateChange={handlePlayerStateChange}
             opts={playerOpts}
-            className="w-full h-full [&>div]:!h-full [&>div]:!w-full [&_iframe]:!h-full [&_iframe]:!w-full pointer-events-auto"
+            className="w-full h-full [&>div]:!h-full [&>div]:!w-full [&_iframe]:!h-full [&_iframe]:!w-full pointer-events-none select-none"
           />
 
-          {/* ── Invisible Click Shields: Blocks YouTube & Channel Navigation ── */}
-          {/* 1. Top Header Shield: Covers channel avatar, channel name, and title on the left; leaves CC & Settings on the right 100% accessible */}
-          <div
-            onClick={(e) => {
-              e.stopPropagation();
-              e.preventDefault();
+          {/* ── Transparent Click Surface with debounced single/double-click ── */}
+          <ClickSurface
+            onSingleClick={togglePlayPause}
+            onDoubleClick={(e) => {
+              const rect = (e.target as HTMLElement).getBoundingClientRect();
+              const ratio = (e.clientX - rect.left) / rect.width;
+              if (ratio < 0.3) {
+                handleSeek(-10);
+              } else if (ratio > 0.7) {
+                handleSeek(10);
+              } else {
+                toggleFullscreen();
+              }
             }}
-            onMouseDown={(e) => {
-              e.stopPropagation();
-              e.preventDefault();
-            }}
-            onTouchStart={(e) => {
-              e.stopPropagation();
-              e.preventDefault();
-            }}
-            className="absolute top-0 left-0 right-48 sm:right-56 h-16 sm:h-20 z-20 pointer-events-auto bg-transparent"
-            aria-hidden="true"
-          />
-
-          {/* 2. Bottom Right Shield: Covers 'Watch on YouTube' watermark pill at bottom-right corner without blocking controls */}
-          <div
-            onClick={(e) => {
-              e.stopPropagation();
-              e.preventDefault();
-            }}
-            onMouseDown={(e) => {
-              e.stopPropagation();
-              e.preventDefault();
-            }}
-            onTouchStart={(e) => {
-              e.stopPropagation();
-              e.preventDefault();
-            }}
-            className="absolute bottom-0 right-0 w-32 h-10 sm:w-36 sm:h-12 z-20 pointer-events-auto bg-transparent"
-            aria-hidden="true"
-          />
-
-          {/* ── Theater & Fullscreen Toggle Buttons on Video Frame Bottom-Right (Idea B - Classic Spot) ── */}
-          <div className="absolute bottom-2.5 right-2.5 sm:bottom-3 sm:right-3 z-40 flex items-center gap-1.5 opacity-90 sm:opacity-0 sm:group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-200 pointer-events-auto">
-            {/* Theater Mode Button (desktop / tablet only) */}
-            {!isFullscreen && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  toggleTheaterMode();
-                }}
-                onMouseDown={(e) => e.stopPropagation()}
-                onTouchStart={(e) => {
-                  e.stopPropagation();
-                  toggleTheaterMode();
-                }}
-                title={isTheaterMode ? "Default view (t)" : "Theater mode (t)"}
-                className="hidden md:flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-xl bg-black/80 text-white/90 hover:text-white hover:bg-black/95 backdrop-blur-md border border-white/20 transition-all active:scale-95 cursor-pointer shadow-lg"
-              >
-                {isTheaterMode ? (
-                  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
-                    <rect x="2" y="4" width="20" height="16" rx="2" />
-                    <rect x="6" y="7" width="12" height="10" rx="1" fill="currentColor" opacity="0.6" />
-                  </svg>
-                ) : (
-                  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
-                    <rect x="2" y="4" width="20" height="16" rx="2" />
-                    <rect x="4" y="6" width="16" height="12" rx="1" fill="currentColor" opacity="0.6" />
-                  </svg>
-                )}
-              </button>
+            className={cn(
+              "absolute inset-0 z-20 select-none",
+              !showControls && isPlaying ? "cursor-none" : "cursor-pointer"
             )}
+          />
 
-            {/* Fullscreen Button */}
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                toggleFullscreen();
+
+
+
+          {/* Buffering spinner overlay */}
+          {isBuffering && (
+            <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
+              <Loader2 className={cn("h-10 w-10 animate-spin text-white/80")} />
+            </div>
+          )}
+
+
+          {/* ── Custom Control Bar (Overlay at bottom of video frame - YouTube 1:1) ── */}
+          <div
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
+            className={cn(
+              "absolute inset-x-0 bottom-0 z-30 flex flex-col justify-end pt-10 pb-1.5 px-3 sm:pb-2 sm:px-4 bg-gradient-to-t from-black/85 via-black/40 to-transparent transition-opacity duration-200 pointer-events-auto select-none",
+              showControls || !isPlaying || isSeeking || showSettingsMenu
+                ? "opacity-100 pointer-events-auto"
+                : "opacity-0 pointer-events-none"
+            )}
+          >
+            {/* 1. YouTube-style Timeline / Seekbar */}
+            <div
+              ref={seekBarRef}
+              onMouseDown={handleSeekStart}
+              onTouchStart={handleSeekStart}
+              onMouseMove={(e) => {
+                const frac = getSeekFraction(e);
+                setSeekHoverFraction(frac);
               }}
-              onMouseDown={(e) => e.stopPropagation()}
-              onTouchStart={(e) => {
-                e.stopPropagation();
-                toggleFullscreen();
-              }}
-              title={isFullscreen ? "Exit Fullscreen (f / Esc)" : "Fullscreen (f)"}
-              className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-xl bg-black/80 text-white/90 hover:text-white hover:bg-black/95 backdrop-blur-md border border-white/20 transition-all active:scale-95 cursor-pointer shadow-lg"
+              onMouseLeave={() => setSeekHoverFraction(null)}
+              className="group/seek relative w-full h-4 sm:h-5 flex items-center cursor-pointer select-none py-1"
             >
-              {isFullscreen ? (
-                <Minimize className="h-4 w-4" />
-              ) : (
-                <Maximize className="h-4 w-4" />
+              {/* Hover Tooltip Timestamp */}
+              {seekHoverFraction !== null && videoDuration > 0 && (
+                <div
+                  className="absolute -top-7 -translate-x-1/2 px-2 py-0.5 rounded bg-[#1c1c1c]/95 text-white font-sans text-xs font-normal shadow-lg pointer-events-none select-none border border-white/10"
+                  style={{ left: `${Math.max(0.04, Math.min(0.96, seekHoverFraction)) * 100}%` }}
+                >
+                  {formatDuration(seekHoverFraction * videoDuration)}
+                </div>
               )}
-            </button>
+
+              {/* Visual Track Bar */}
+              <div className="relative w-full h-[3px] group-hover/seek:h-[5px] transition-[height] duration-100 bg-white/20 overflow-hidden">
+                {/* Buffer Bar */}
+                <div
+                  className="absolute left-0 top-0 bottom-0 bg-white/40 transition-[width] duration-150"
+                  style={{ width: `${Math.min(100, Math.max(0, bufferedFraction * 100))}%` }}
+                />
+                {/* Hover Ghost Bar */}
+                {seekHoverFraction !== null && (
+                  <div
+                    className="absolute left-0 top-0 bottom-0 bg-white/25 pointer-events-none"
+                    style={{ width: `${Math.min(100, Math.max(0, seekHoverFraction * 100))}%` }}
+                  />
+                )}
+                {/* Played Bar (YouTube Red) */}
+                <div
+                  className="absolute left-0 top-0 bottom-0 bg-[#FF0000]"
+                  style={{ width: `${currentProgressPercent}%` }}
+                />
+              </div>
+
+              {/* Scrubber Thumb (YouTube Red Circle) */}
+              <div
+                className={cn(
+                  "absolute top-1/2 -translate-y-1/2 -translate-x-1/2 h-3.5 w-3.5 rounded-full bg-[#FF0000] shadow-md pointer-events-none transition-transform duration-100",
+                  isSeeking ? "scale-125" : "scale-0 group-hover/seek:scale-100"
+                )}
+                style={{ left: `${currentProgressPercent}%` }}
+              />
+            </div>
+
+            {/* 2. Controls Buttons Row */}
+            <div className="flex items-center justify-between pt-1 text-white select-none">
+              {/* Left Controls */}
+              <div className="flex items-center gap-1 sm:gap-2">
+                {/* Play / Pause Button */}
+                <button
+                  type="button"
+                  onClick={togglePlayPause}
+                  aria-label={isPlaying ? "Pause" : "Play"}
+                  title={isPlaying ? "Pause (k)" : "Play (k)"}
+                  className="h-9 w-9 flex items-center justify-center rounded text-white/90 hover:text-white transition-opacity cursor-pointer focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:ring-offset-1 focus-visible:ring-offset-black"
+                >
+                  {isPlaying ? (
+                    <svg viewBox="0 0 24 24" className="h-6 w-6 fill-current">
+                      <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+                    </svg>
+                  ) : (
+                    <svg viewBox="0 0 24 24" className="h-6 w-6 fill-current">
+                      <path d="M8 5v14l11-7z" />
+                    </svg>
+                  )}
+                </button>
+
+                {/* Rewind 10s */}
+                <button
+                  type="button"
+                  onClick={() => handleSeek(-10)}
+                  aria-label="Rewind 10 seconds"
+                  title="Rewind 10 seconds (j / ←)"
+                  className="h-9 w-9 flex items-center justify-center rounded text-white/90 hover:text-white transition-opacity cursor-pointer focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:ring-offset-1 focus-visible:ring-offset-black"
+                >
+                  <RotateCcw className="h-4.5 w-4.5" />
+                </button>
+
+                {/* Forward 10s */}
+                <button
+                  type="button"
+                  onClick={() => handleSeek(10)}
+                  aria-label="Fast forward 10 seconds"
+                  title="Fast forward 10 seconds (l / →)"
+                  className="h-9 w-9 flex items-center justify-center rounded text-white/90 hover:text-white transition-opacity cursor-pointer focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:ring-offset-1 focus-visible:ring-offset-black"
+                >
+                  <RotateCw className="h-4.5 w-4.5" />
+                </button>
+
+                {/* Volume Button & Expandable Slider */}
+                <div
+                  className="group/vol relative flex items-center"
+                  onMouseEnter={() => setShowVolumeSlider(true)}
+                  onMouseLeave={() => {
+                    if (!isVolumeDragging) setShowVolumeSlider(false);
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={toggleMute}
+                    aria-label={isMuted ? "Unmute" : "Mute"}
+                    title={isMuted ? "Unmute (m)" : "Mute (m)"}
+                    className="h-9 w-9 flex items-center justify-center rounded text-white/90 hover:text-white transition-opacity cursor-pointer"
+                  >
+                    {isMuted || currentVolume === 0 ? (
+                      <VolumeX className="h-5 w-5 text-red-400" />
+                    ) : currentVolume < 50 ? (
+                      <Volume1 className="h-5 w-5" />
+                    ) : (
+                      <Volume2 className="h-5 w-5" />
+                    )}
+                  </button>
+
+                  {/* Volume Slider Bar (YouTube style) */}
+                  <div
+                    ref={volumeSliderRef}
+                    onMouseDown={handleVolumeStart}
+                    onTouchStart={handleVolumeStart}
+                    className={cn(
+                      "overflow-hidden transition-all duration-200 h-8 flex items-center cursor-pointer select-none",
+                      showVolumeSlider || isVolumeDragging ? "w-14 sm:w-16 px-1 opacity-100" : "w-0 px-0 opacity-0"
+                    )}
+                  >
+                    <div className="w-full h-[3px] rounded-full bg-white/30 relative">
+                      <div
+                        className="absolute left-0 top-0 bottom-0 bg-white rounded-full"
+                        style={{ width: `${isMuted ? 0 : currentVolume}%` }}
+                      />
+                      <div
+                        className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 h-3 w-3 rounded-full bg-white shadow pointer-events-none"
+                        style={{ left: `${isMuted ? 0 : currentVolume}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Time Display (YouTube font-sans style) */}
+                <div aria-live="off" aria-atomic="true" className="flex items-center gap-1 font-sans text-xs sm:text-[13px] text-[#eee] select-none pl-1">
+                  <span>{formatDuration(currentTime)}</span>
+                  <span className="text-white/50">/</span>
+                  <span className="text-white/70">{formatDuration(videoDuration)}</span>
+                </div>
+              </div>
+
+              {/* Right Controls */}
+              <div className="flex items-center gap-1 sm:gap-2">
+                {/* Settings (Speed & Quality) Menu */}
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowSettingsMenu((prev) => !prev);
+                      setSettingsView("main");
+                    }}
+                    title="Settings (Quality & Speed)"
+                    className={cn(
+                      "relative h-9 w-9 flex items-center justify-center rounded text-white/80 hover:text-white transition-opacity cursor-pointer",
+                      showSettingsMenu && "text-white"
+                    )}
+                  >
+                    <Settings className={cn("h-5 w-5 transition-transform duration-200", showSettingsMenu && "rotate-45")} />
+                    {/* HD Badge indicator on settings icon */}
+                    {(currentQuality.includes("hd") || currentQuality === "highres") && (
+                      <span className="absolute top-1.5 right-1 px-1 py-[0.5px] rounded bg-[#ff0000] text-[8px] font-bold text-white leading-none pointer-events-none">
+                        HD
+                      </span>
+                    )}
+                  </button>
+
+                  {/* Settings Popup Menu (YouTube 1:1) */}
+                  {showSettingsMenu && (
+                    <div
+                      className="absolute bottom-full mb-3 right-0 bg-[#1f1f1f]/95 backdrop-blur-md border border-white/10 rounded-xl py-1 shadow-2xl z-50 min-w-[210px] animate-in fade-in zoom-in-95 duration-100 overflow-hidden"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {settingsView === "main" && (
+                        <div className="flex flex-col py-1">
+                          {/* Quality Option */}
+                          <button
+                            type="button"
+                            onClick={() => setSettingsView("quality")}
+                            className="w-full flex items-center justify-between px-3.5 py-2 text-xs font-sans text-white/90 hover:bg-white/10 transition-colors cursor-pointer text-left"
+                          >
+                            <span className="flex items-center gap-2.5 text-white/85">
+                              <SlidersHorizontal className="h-4 w-4 text-white/60" />
+                              <span>Quality</span>
+                            </span>
+                            <span className="flex items-center gap-1 text-[11px] text-white/60">
+                              <span>{QUALITY_LABELS[currentQuality] || currentQuality}</span>
+                              <ChevronRight className="h-3.5 w-3.5" />
+                            </span>
+                          </button>
+
+                          {/* Speed Option */}
+                          <button
+                            type="button"
+                            onClick={() => setSettingsView("speed")}
+                            className="w-full flex items-center justify-between px-3.5 py-2 text-xs font-sans text-white/90 hover:bg-white/10 transition-colors cursor-pointer text-left"
+                          >
+                            <span className="flex items-center gap-2.5 text-white/85">
+                              <Gauge className="h-4 w-4 text-white/60" />
+                              <span>Playback speed</span>
+                            </span>
+                            <span className="flex items-center gap-1 text-[11px] text-white/60">
+                              <span>{currentRate === 1 ? "Normal" : `${currentRate}x`}</span>
+                              <ChevronRight className="h-3.5 w-3.5" />
+                            </span>
+                          </button>
+                        </div>
+                      )}
+
+                      {settingsView === "quality" && (
+                        <div className="flex flex-col py-1 max-h-64 overflow-y-auto">
+                          {/* Back header */}
+                          <button
+                            type="button"
+                            onClick={() => setSettingsView("main")}
+                            className="w-full flex items-center gap-1.5 px-3 py-1.5 text-xs font-sans font-medium text-white/75 hover:text-white hover:bg-white/10 border-b border-white/10 mb-1 transition-colors cursor-pointer text-left"
+                          >
+                            <ChevronLeft className="h-4 w-4" />
+                            <span>Quality</span>
+                          </button>
+
+                          {availableQualities.map((q) => {
+                            const label = QUALITY_LABELS[q] || q;
+                            const isSelected = currentQuality === q;
+                            return (
+                              <button
+                                key={q}
+                                type="button"
+                                onClick={() => {
+                                  setPlayerQuality(q);
+                                  setShowSettingsMenu(false);
+                                  setSettingsView("main");
+                                }}
+                                className={cn(
+                                  "w-full flex items-center justify-between px-3 py-1.5 text-xs font-sans transition-colors cursor-pointer text-left",
+                                  isSelected
+                                    ? "bg-white/15 text-white font-semibold"
+                                    : "text-white/75 hover:text-white hover:bg-white/10"
+                                )}
+                              >
+                                <span>{label}</span>
+                                {isSelected && <Check className="h-3.5 w-3.5 shrink-0 text-white" />}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {settingsView === "speed" && (
+                        <div className="flex flex-col py-1 max-h-64 overflow-y-auto">
+                          {/* Back header */}
+                          <button
+                            type="button"
+                            onClick={() => setSettingsView("main")}
+                            className="w-full flex items-center gap-1.5 px-3 py-1.5 text-xs font-sans font-medium text-white/75 hover:text-white hover:bg-white/10 border-b border-white/10 mb-1 transition-colors cursor-pointer text-left"
+                          >
+                            <ChevronLeft className="h-4 w-4" />
+                            <span>Playback speed</span>
+                          </button>
+
+                          {PLAYBACK_SPEEDS.map((speed) => (
+                            <button
+                              key={speed}
+                              type="button"
+                              onClick={() => {
+                                setPlayerSpeed(speed);
+                                setShowSettingsMenu(false);
+                                setSettingsView("main");
+                              }}
+                              className={cn(
+                                "w-full flex items-center justify-between px-3 py-1.5 text-xs font-sans transition-colors cursor-pointer text-left",
+                                currentRate === speed && !is2xSpeed
+                                  ? "bg-white/15 text-white font-semibold"
+                                  : "text-white/75 hover:text-white hover:bg-white/10"
+                              )}
+                            >
+                              <span>{speed === 1 ? "Normal" : `${speed}x`}</span>
+                              {currentRate === speed && !is2xSpeed && (
+                                <Check className="h-3.5 w-3.5 shrink-0 text-white" />
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Theater Mode Button */}
+                {!isFullscreen && (
+                  <button
+                    type="button"
+                    onClick={toggleTheaterMode}
+                    title={isTheaterMode ? "Default view (t)" : "Theater mode (t)"}
+                    className="hidden md:flex h-9 w-9 items-center justify-center rounded text-white/80 hover:text-white transition-opacity cursor-pointer"
+                  >
+                    {isTheaterMode ? (
+                      <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect x="2" y="4" width="20" height="16" rx="2" />
+                        <rect x="6" y="7" width="12" height="10" rx="1" fill="currentColor" opacity="0.6" />
+                      </svg>
+                    ) : (
+                      <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect x="2" y="4" width="20" height="16" rx="2" />
+                        <rect x="4" y="6" width="16" height="12" rx="1" fill="currentColor" opacity="0.6" />
+                      </svg>
+                    )}
+                  </button>
+                )}
+
+                {/* Fullscreen Button */}
+                <button
+                  type="button"
+                  onClick={toggleFullscreen}
+                  title={isFullscreen ? "Exit Fullscreen (f)" : "Fullscreen (f)"}
+                  className="flex h-9 w-9 items-center justify-center rounded text-white/80 hover:text-white transition-opacity cursor-pointer"
+                >
+                  {isFullscreen ? (
+                    <svg viewBox="0 0 24 24" className="h-5 w-5 fill-current">
+                      <path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z" />
+                    </svg>
+                  ) : (
+                    <svg viewBox="0 0 24 24" className="h-5 w-5 fill-current">
+                      <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z" />
+                    </svg>
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
