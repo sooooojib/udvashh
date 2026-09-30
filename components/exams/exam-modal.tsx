@@ -85,7 +85,7 @@ export function ExamModal({
     });
   }, []);
 
-  // Keyboard shortcuts: Escape to exit stretch (or close modal), F to toggle stretch
+  // Keyboard shortcuts: Escape to exit stretch (or close modal)
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (
@@ -105,14 +105,12 @@ export function ExamModal({
         } else {
           onClose();
         }
-      } else if (e.key === "f" || e.key === "F") {
-        toggleStretch();
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isStretched, onClose, toggleStretch]);
+  }, [isStretched, onClose]);
 
   // Close question context menu on click outside
   React.useEffect(() => {
@@ -467,17 +465,17 @@ export function ExamModal({
                 )}
                 title={
                   isStretched
-                    ? "Exit stretch mode (F or Esc)"
-                    : "Stretch to full screen (F)"
+                    ? "Restore windowed view (Esc)"
+                    : "Stretch to full screen"
                 }
                 aria-label={
-                  isStretched ? "Exit stretch mode" : "Stretch to full screen"
+                  isStretched ? "Restore windowed view" : "Stretch to full screen"
                 }
               >
                 {isStretched ? (
                   <>
                     <Minimize2 className="h-3.5 w-3.5 shrink-0" />
-                    <span className="hidden sm:inline font-semibold">Exit Stretch</span>
+                    <span className="hidden sm:inline font-semibold">Restore</span>
                   </>
                 ) : (
                   <>
@@ -972,12 +970,12 @@ export function ExamModal({
                   ? "bg-[#881337]/10 text-[#881337] border-[#881337]/30 dark:bg-[#881337]/20 dark:text-[#FDA4AF] dark:border-[#881337]/40"
                   : "border-border/80 bg-muted/60 hover:bg-[#FFF1F2] hover:text-[#881337] hover:border-[#881337]/30 text-foreground dark:border-[#1F2C34] dark:hover:bg-[#881337]/20 dark:hover:text-[#FDA4AF]"
               )}
-              title={isStretched ? "Exit stretch mode (F or Esc)" : "Stretch to full screen (F)"}
+              title={isStretched ? "Restore windowed view (Esc)" : "Stretch to full screen"}
             >
               {isStretched ? (
                 <>
                   <Minimize2 className="h-3.5 w-3.5 text-[#881337] dark:text-[#FDA4AF]" />
-                  <span>Exit Stretch</span>
+                  <span>Restore</span>
                 </>
               ) : (
                 <>

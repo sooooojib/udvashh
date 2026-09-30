@@ -155,7 +155,7 @@ export function PdfViewerModal({ pdf, onClose }: PdfViewerModalProps) {
     };
   }, [cacheKey, isDrive, pdf.file_id, pdf.file_url, pdf.file_size, pdf.title, rawStreamUrl]);
 
-  // Keyboard shortcut: Esc to restore/close, F to toggle stretch
+  // Keyboard shortcut: Esc to restore/close
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (
@@ -171,8 +171,6 @@ export function PdfViewerModal({ pdf, onClose }: PdfViewerModalProps) {
         } else {
           onClose();
         }
-      } else if (e.key === "f" || e.key === "F") {
-        setIsStretched((prev) => !prev);
       }
     };
 
@@ -233,8 +231,8 @@ export function PdfViewerModal({ pdf, onClose }: PdfViewerModalProps) {
               onClick={() => setIsStretched((prev) => !prev)}
               title={
                 isStretched
-                  ? "Restore windowed view (F or Esc)"
-                  : "Stretch to full screen (F)"
+                  ? "Restore windowed view (Esc)"
+                  : "Stretch to full screen"
               }
               className={cn(
                 "flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer",
