@@ -607,7 +607,7 @@ export function ExamModal({
           ref={scrollContainerRef}
           onScroll={handleScroll}
           className={cn(
-            "flex-1 overflow-y-auto p-3 sm:p-6 md:p-8 space-y-3.5 sm:space-y-6 overscroll-contain",
+            "flex-1 overflow-y-auto p-3 sm:p-6 md:p-8 space-y-3.5 sm:space-y-6 overscroll-contain no-scrollbar",
             isStretched && "md:px-10 lg:px-12"
           )}
         >
