@@ -104,19 +104,9 @@ const QUALITY_LABELS: Record<string, string> = {
   medium: "360p",
   small: "240p",
   tiny: "144p",
-  auto: "Auto",
-  default: "Auto",
+  auto: "Auto (Optimized)",
+  default: "Auto (Optimized)",
 };
-
-const DEFAULT_QUALITIES = [
-  "auto",
-  "hd1080",
-  "hd720",
-  "large",
-  "medium",
-  "small",
-  "tiny",
-];
 
 // ── ClickSurface: Debounced single/double-click to prevent race condition ──
 // Without this, double-clicking fires onClick TWICE before onDoubleClick.
@@ -226,7 +216,6 @@ export function VideoPlayer({
   const [showSettingsMenu, setShowSettingsMenu] = React.useState(false);
   const [settingsView, setSettingsView] = React.useState<"main" | "speed" | "quality">("main");
   const [currentQuality, setCurrentQuality] = React.useState<string>("auto");
-  const [availableQualities, setAvailableQualities] = React.useState<string[]>(DEFAULT_QUALITIES);
   const hideControlsTimerRef = React.useRef<NodeJS.Timeout | null>(null);
   const seekBarRef = React.useRef<HTMLDivElement>(null);
   const volumeSliderRef = React.useRef<HTMLDivElement>(null);
@@ -241,35 +230,15 @@ export function VideoPlayer({
     return () => window.removeEventListener("click", handleOutsideClick);
   }, [showSettingsMenu]);
 
-  // Sync available quality levels from YouTube player.
-  // Accepts an optional event target for synchronous access (youtube-player
-  // promisifies all methods on playerRef, but event.target is synchronous).
+  // Sync detected quality level from YouTube player
   const syncQualities = React.useCallback((target?: any) => {
     const p = target || playerRef.current;
     if (!p) return;
     try {
-      const levels = p.getAvailableQualityLevels?.();
-      if (Array.isArray(levels) && levels.length > 0) {
-        const fullLevels = levels.includes("auto") ? levels : ["auto", ...levels];
-        setAvailableQualities(fullLevels);
-      }
       const q = p.getPlaybackQuality?.();
       if (q && q !== "unknown") {
         setCurrentQuality(q);
       }
-    } catch {}
-  }, []);
-
-  // Dedicated quality changer with feedback toast
-  const setPlayerQuality = React.useCallback((quality: string) => {
-    if (!playerRef.current) return;
-    try {
-      playerRef.current.setPlaybackQuality?.(quality);
-      setCurrentQuality(quality);
-      toast.success(`Quality set to ${QUALITY_LABELS[quality] || quality}`, {
-        id: "player-quality-change",
-        duration: 2000,
-      });
     } catch {}
   }, []);
 
@@ -1946,7 +1915,7 @@ export function VideoPlayer({
                               <span>Quality</span>
                             </span>
                             <span className="flex items-center gap-1 text-[11px] text-white/60">
-                              <span>{QUALITY_LABELS[currentQuality] || currentQuality}</span>
+                              <span>Auto (Optimized)</span>
                               <ChevronRight className="h-3.5 w-3.5" />
                             </span>
                           </button>
@@ -1970,41 +1939,32 @@ export function VideoPlayer({
                       )}
 
                       {settingsView === "quality" && (
-                        <div className="flex flex-col py-1 max-h-64 overflow-y-auto">
+                        <div className="flex flex-col py-1 p-2.5 space-y-2 max-w-[240px]">
                           {/* Back header */}
                           <button
                             type="button"
                             onClick={() => setSettingsView("main")}
-                            className="w-full flex items-center gap-1.5 px-3 py-1.5 text-xs font-sans font-medium text-white/75 hover:text-white hover:bg-white/10 border-b border-white/10 mb-1 transition-colors cursor-pointer text-left"
+                            className="w-full flex items-center gap-1.5 px-1 py-1 text-xs font-sans font-medium text-white/75 hover:text-white border-b border-white/10 mb-1 transition-colors cursor-pointer text-left"
                           >
                             <ChevronLeft className="h-4 w-4" />
                             <span>Quality</span>
                           </button>
 
-                          {availableQualities.map((q) => {
-                            const label = QUALITY_LABELS[q] || q;
-                            const isSelected = currentQuality === q;
-                            return (
-                              <button
-                                key={q}
-                                type="button"
-                                onClick={() => {
-                                  setPlayerQuality(q);
-                                  setShowSettingsMenu(false);
-                                  setSettingsView("main");
-                                }}
-                                className={cn(
-                                  "w-full flex items-center justify-between px-3 py-1.5 text-xs font-sans transition-colors cursor-pointer text-left",
-                                  isSelected
-                                    ? "bg-white/15 text-white font-semibold"
-                                    : "text-white/75 hover:text-white hover:bg-white/10"
-                                )}
-                              >
-                                <span>{label}</span>
-                                {isSelected && <Check className="h-3.5 w-3.5 shrink-0 text-white" />}
-                              </button>
-                            );
-                          })}
+                          <div className="flex items-center justify-between px-2.5 py-2 rounded-lg bg-white/10 text-xs font-sans text-white font-medium">
+                            <span className="flex items-center gap-2">
+                              <Check className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                              <span>Auto (Optimized)</span>
+                            </span>
+                            {currentQuality && currentQuality !== "auto" && currentQuality !== "default" && (
+                              <span className="font-mono text-[10px] text-emerald-400 bg-emerald-950/60 border border-emerald-500/30 px-1.5 py-0.5 rounded">
+                                {QUALITY_LABELS[currentQuality] || currentQuality}
+                              </span>
+                            )}
+                          </div>
+
+                          <p className="px-1 text-[11px] text-white/60 leading-relaxed">
+                            Quality adjusts automatically based on screen size and network speed. Enter Fullscreen for maximum 1080p HD clarity.
+                          </p>
                         </div>
                       )}
 
