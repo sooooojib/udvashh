@@ -1,7 +1,7 @@
 "use client";
 
 import { BookOpen, CalendarDays, PenLine } from "lucide-react";
-import { ExamItem } from "@/lib/exams";
+import type { ExamItem } from "@/lib/exams";
 
 const BARS = [
   { key: "daily",   label: "Daily Live Exam",   icon: CalendarDays, iconBg: "bg-[#3B82F6]", trackBg: "bg-[#3B82F6]/15 dark:bg-[#3B82F6]/10", fillGradient: "linear-gradient(90deg, #2563EB, #60A5FA)" },
