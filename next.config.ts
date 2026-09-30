@@ -11,6 +11,11 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "img.youtube.com",
       },
+      {
+        protocol: "https",
+        hostname: "tnvrbjskceqdrsadcnxb.supabase.co",
+        pathname: "/storage/v1/object/public/**",
+      },
     ],
   },
   experimental: {
