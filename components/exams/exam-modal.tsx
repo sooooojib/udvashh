@@ -26,6 +26,7 @@ import { LatexRenderer } from "./latex-renderer";
 import { WrittenQuestionRenderer } from "./written-question";
 import { formatSolution } from "@/lib/format-solution";
 import { ExamImageDropzone, compressImageToWebP, DropzoneTarget } from "./exam-image-dropzone";
+import { InterLineSolution } from "./inter-line-solution";
 
 import { submitExamAttempt } from "@/app/actions/exams";
 
@@ -237,6 +238,7 @@ export function ExamModal({
         }
         return qCopy;
       });
+      onQuestionsUpdated?.(updated);
       return updated;
     });
   };
@@ -664,9 +666,9 @@ export function ExamModal({
                   {opts.length > 0 && (
                     <div
                       className={cn(
-                        "gap-2 sm:gap-4 pt-1",
+                        "gap-2.5 sm:gap-3.5 pt-1",
                         opts.some(([k, val]) => val === "[images]" || val?.includes("[images]") || q.optionImages?.[k as "A" | "B" | "C" | "D"])
-                          ? "flex flex-wrap items-start"
+                          ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4"
                           : "grid grid-cols-1 sm:grid-cols-2"
                       )}
                     >
@@ -693,7 +695,7 @@ export function ExamModal({
                             className={cn(
                               "rounded-xl border transition-all duration-150",
                               isImageOption
-                                ? "w-fit max-w-full inline-flex items-center gap-2.5 sm:gap-3.5 p-2 sm:p-3 self-start"
+                                ? "w-full flex items-center justify-start gap-2.5 p-2 sm:p-2.5 self-stretch"
                                 : "w-full flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-3.5 p-2.5 sm:p-4 text-left text-xs sm:text-base",
                               isPractice && !submitted && "cursor-pointer hover:border-[#881337]/50 hover:bg-[#FFF1F2]/60 dark:hover:border-[#881337]/40 dark:hover:bg-[#881337]/15",
                               isUserSelected && !submitted && "border-[#881337] bg-[#FFF1F2] text-[#27272A] dark:border-[#BE123C] dark:bg-[#881337]/25 dark:text-[#FFE4E6] font-medium ring-1 ring-[#881337]/30",
@@ -707,7 +709,7 @@ export function ExamModal({
                               }
                             }}
                           >
-                            <div className={cn("flex items-center gap-2.5 sm:gap-3.5 min-w-0", isImageOption ? "w-fit max-w-full" : "flex-1")}>
+                            <div className={cn("flex items-center gap-2.5 sm:gap-3 min-w-0", isImageOption ? "w-full" : "flex-1")}>
                               <span
                                 className={cn(
                                   "flex h-6 w-6 sm:h-7 sm:w-7 shrink-0 items-center justify-center rounded-full text-xs sm:text-sm font-mono font-bold border",
@@ -777,33 +779,17 @@ export function ExamModal({
                           <span>Solution & Explanation:</span>
                         </div>
 
-                        {/* Solution Text */}
-                        {q.solution && (
-                          <div className="space-y-2">
-                            <LatexRenderer
-                              content={formatSolution(q.solution)}
-                              as="div"
-                              className="text-sm sm:text-base leading-relaxed text-[#27272A]/85 dark:text-[#C9D1D9] whitespace-pre-wrap"
-                            />
-                          </div>
-                        )}
-
-                        {/* Solution Diagram: Render ONLY if diagram actually exists */}
-                        {q.solutionImages && q.solutionImages.length > 0 && (
-                          <div className="pt-1">
-                            <ExamImageDropzone
-                              examId={exam.id}
-                              questionNumber={q.number}
-                              target="solution"
-                              images={q.solutionImages}
-                              isAdmin={canUpload}
-                              label="Solution Diagram"
-                              onImageAdded={(url) => handleImageAdded(q.number, "solution", url)}
-                              onImageDeleted={(url) => handleImageDeleted(q.number, "solution", url)}
-                              onImageUpdated={(oldUrl, newUrl) => handleImageUpdated(q.number, "solution", oldUrl, newUrl)}
-                            />
-                          </div>
-                        )}
+                        {/* Solution & Explanation with Inter-Line Diagram Placement */}
+                        <InterLineSolution
+                          examId={exam.id}
+                          questionNumber={q.number}
+                          solution={q.solution}
+                          solutionImages={q.solutionImages}
+                          isAdmin={canUpload}
+                          onImageAdded={(url) => handleImageAdded(q.number, "solution", url)}
+                          onImageDeleted={(url) => handleImageDeleted(q.number, "solution", url)}
+                          onImageUpdated={(oldUrl, newUrl) => handleImageUpdated(q.number, "solution", oldUrl, newUrl)}
+                        />
 
                         {/* Solution PDFs */}
                         {q.solutionPdfs && q.solutionPdfs.length > 0 && (

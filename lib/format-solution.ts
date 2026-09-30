@@ -32,8 +32,8 @@ export function formatSolution(text?: string | null): string {
     return `${p1}\n${num} `;
   });
 
-  // 8. Dari after parenthesis followed immediately by next step: "শক্তি)।এই" -> "শক্তি)।\nএই"
-  s = s.replace(/\)।\s*([A-Za-z\u0980-\u09FF])/g, "।\n$1");
+  // 8. Dari after text parenthesis (ignore LaTeX closing \)) followed immediately by next step: "শক্তি)।এই" -> "শক্তি)।\nএই"
+  s = s.replace(/(?<!\\)\)।\s*([A-Za-z\u0980-\u09FF])/g, "।\n$1");
 
   // 9. Glued dari to text (missing space between sentences): "হয়।সুইচ" -> "হয়। সুইচ"
   s = s.replace(/।([A-Za-z\u0980-\u09FF])/g, "। $1");
@@ -45,8 +45,9 @@ export function formatSolution(text?: string | null): string {
     s = s.replace(new RegExp("(?<!^|\\n)\\s*(" + escaped + ")", "g"), "\n$1");
   }
 
-  // 11. Math step arrows (⇒ or ∴) outside math delimiters: e.g. "2xy ⇒ (x"
-  s = s.replace(/([^\\])\s*(⇒|∴)\s*/g, "$1\n$2 ");
+  // 11. Math step arrows (⇒ or ∴): place newline before opening \( if present, never split inside \( ... \)
+  s = s.replace(/(?<!^|\n)\s*(\\\(\s*(?:⇒|∴))/g, "\n$1");
+  s = s.replace(/(?<!^|\n|\\|\()\s*(⇒|∴)\s*/g, "\n$1 ");
 
   // 12. Equality continuation steps across math tags: \)... \(=
   s = s.replace(/(\\\)\s*)\s*(\\\(\s*=\s*)/g, "$1\n$2");

@@ -10,9 +10,14 @@ import {
   X,
   Plus,
   RotateCcw,
+  GripVertical,
+  ChevronUp,
+  ChevronDown,
+  ArrowDownUp,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { parseImageMeta, buildImageUrlWithMeta } from "@/lib/exam-image-meta";
 
 export type DropzoneTarget =
   | "question"
@@ -99,9 +104,10 @@ export async function compressImageToWebP(file: File): Promise<Blob> {
 
 /**
  * Resizable Image Card with OS-window style corner/border drag handles,
- * live dimension tooltips, quick scale presets, and double-click reset.
+ * live dimension tooltips, quick scale presets, double-click reset,
+ * and optional inter-line positioning drag handle and step controls.
  */
-interface ResizableExamImageProps {
+export interface ResizableExamImageProps {
   src: string;
   alt: string;
   examId: string;
@@ -113,9 +119,13 @@ interface ResizableExamImageProps {
   onDelete: () => void;
   onAddAnother?: () => void;
   onImageUpdated?: (oldUrl: string, newUrl: string) => void;
+  // Inter-line placement props
+  lineIndex?: number;
+  totalLines?: number;
+  onMoveLine?: (newSlot: number) => void;
 }
 
-function ResizableExamImage({
+export function ResizableExamImage({
   src,
   alt,
   examId,
@@ -127,17 +137,14 @@ function ResizableExamImage({
   onDelete,
   onAddAnother,
   onImageUpdated,
+  lineIndex,
+  totalLines,
+  onMoveLine,
 }: ResizableExamImageProps) {
-  // Read initial width from URL hash (e.g. #w=480) or localStorage
+  // Read initial width from URL hash or localStorage
   const [width, setWidth] = React.useState<number | undefined>(() => {
-    const hashMatch = src.match(/#w=(\d+)/);
-    if (hashMatch) return parseInt(hashMatch[1], 10);
-    if (typeof window !== "undefined") {
-      const clean = src.split("#")[0];
-      const saved = localStorage.getItem(`exam_img_w_${clean}`);
-      if (saved) return parseInt(saved, 10);
-    }
-    return undefined;
+    const meta = parseImageMeta(src);
+    return meta.width;
   });
 
   const [isResizing, setIsResizing] = React.useState(false);
@@ -161,13 +168,13 @@ function ResizableExamImage({
 
   // Sync width if src changes
   React.useEffect(() => {
-    const hashMatch = src.match(/#w=(\d+)/);
-    if (hashMatch) {
-      setWidth(parseInt(hashMatch[1], 10));
+    const meta = parseImageMeta(src);
+    if (meta.width) {
+      setWidth(meta.width);
     }
   }, [src]);
 
-  // Persist resized width to server & localStorage
+  // Persist resized width to server & localStorage while preserving line position
   const persistWidth = React.useCallback(
     async (newWidth: number | undefined) => {
       const cleanUrl = src.split("#")[0];
@@ -181,7 +188,8 @@ function ResizableExamImage({
 
       if (!isAdmin) return;
 
-      const newUrl = newWidth ? `${cleanUrl}#w=${newWidth}` : cleanUrl;
+      const meta = parseImageMeta(src);
+      const newUrl = buildImageUrlWithMeta(src, { width: newWidth, line: meta.line });
       if (newUrl === src) return;
 
       try {
@@ -224,6 +232,7 @@ function ResizableExamImage({
     document.body.style.cursor = direction === "se" ? "se-resize" : "ew-resize";
 
     let currentW = startWidth;
+    let rafId: number | null = null;
 
     const onMove = (moveEvent: MouseEvent | TouchEvent) => {
       const curX =
@@ -235,11 +244,15 @@ function ResizableExamImage({
       );
 
       currentW = calculated;
-      setWidth(calculated);
-      setLiveWidth(calculated);
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        setWidth(calculated);
+        setLiveWidth(calculated);
+      });
     };
 
     const onEnd = () => {
+      if (rafId) cancelAnimationFrame(rafId);
       setIsResizing(false);
       setLiveWidth(null);
       document.body.style.userSelect = "";
@@ -267,22 +280,60 @@ function ResizableExamImage({
     toast.success("Image size reset to default", { duration: 1200 });
   };
 
-  return (
+  const currentLine = lineIndex ?? totalLines ?? 0;
+  const isAtTop = currentLine === 0;
+  const isAtBottom = totalLines !== undefined && currentLine >= totalLines;
+
+  // Sensible, balanced default sizes when no custom resize width is set
+  const isOption = typeof target === "string" && target.startsWith("option-");
+  const isQuestion = target === "question";
+
+  // Target-specific smart defaults:
+  // - Options: max ~190px - 220px (compact multiple choice options, e.g. clocks, mirror text)
+  // - Question: max ~360px - 420px (crisp, readable, fits comfortably beside/under text without being giant)
+  // - Solution: max ~340px - 400px (clean textbook sizing)
+  const defaultContainerSizeClass = React.useMemo(() => {
+    if (width) return ""; // Explicit user resize takes priority
+    if (isOption) {
+      return "w-auto max-w-[190px] sm:max-w-[220px]";
+    }
+    if (isQuestion) {
+      return "w-auto max-w-[360px] sm:max-w-[420px]";
+    }
+    return "w-auto max-w-[340px] sm:max-w-[400px]";
+  }, [width, isOption, isQuestion]);
+
+  const defaultImgMaxHeightClass = React.useMemo(() => {
+    if (isOption) {
+      return "max-h-[105px] sm:max-h-[130px]";
+    }
+    if (isQuestion) {
+      return "max-h-[220px] sm:max-h-[270px]";
+    }
+    return "max-h-[240px] sm:max-h-[300px]";
+  }, [isOption, isQuestion]);
+
+  const hasControls = isAdmin && totalLines !== undefined && onMoveLine;
+
+  const content = (
     <div
       ref={containerRef}
       style={width ? { width: `${width}px` } : undefined}
       className={cn(
         "group relative inline-block max-w-full rounded-xl border border-border/80 bg-white dark:bg-zinc-900/90 p-1.5 shadow-xs transition-all",
+        defaultContainerSizeClass,
         "hover:shadow-md hover:border-[#881337]/50",
         isResizing && "ring-2 ring-[#881337] shadow-lg border-[#881337]"
       )}
     >
+
       <img
         ref={imgRef}
         src={src}
         alt={alt}
         className={cn(
-          "w-full h-auto max-h-[85vh] rounded-lg object-contain",
+          "w-full h-auto rounded-lg object-contain",
+          width ? "max-h-[85vh]" : defaultImgMaxHeightClass,
           isAdmin ? "cursor-pointer" : "cursor-zoom-in"
         )}
         loading="lazy"
@@ -302,11 +353,46 @@ function ResizableExamImage({
         <div
           ref={menuRef}
           onClick={(e) => e.stopPropagation()}
-          className="absolute top-2 left-2 z-40 flex flex-col gap-1 rounded-2xl border border-border/80 bg-white/95 dark:bg-[#111820]/95 backdrop-blur-xl p-1.5 shadow-2xl text-xs min-w-[185px] animate-in fade-in zoom-in-95 duration-150"
+          className="absolute top-2 left-2 z-40 flex flex-col gap-1 rounded-2xl border border-border/80 bg-white/95 dark:bg-[#111820]/95 backdrop-blur-xl p-1.5 shadow-2xl text-xs min-w-[195px] animate-in fade-in zoom-in-95 duration-150"
         >
           <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground border-b border-border/40 mb-0.5">
             Diagram Options
           </div>
+
+          {/* Quick Inter-line positioning inside popover: exactly 1 line per click */}
+          {totalLines !== undefined && onMoveLine && (
+            <>
+              {!isAtTop && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onMoveLine(Math.max(0, currentLine - 1));
+                  }}
+                  className="flex items-center gap-2 rounded-xl px-2.5 py-1.5 font-medium text-foreground hover:bg-muted transition-colors text-left cursor-pointer"
+                >
+                  <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span>Move up one line</span>
+                </button>
+              )}
+
+              {!isAtBottom && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onMoveLine(Math.min(totalLines, currentLine + 1));
+                  }}
+                  className="flex items-center gap-2 rounded-xl px-2.5 py-1.5 font-medium text-foreground hover:bg-muted transition-colors text-left cursor-pointer"
+                >
+                  <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span>Move down one line</span>
+                </button>
+              )}
+
+              <div className="h-px bg-border/40 my-0.5" />
+            </>
+          )}
 
           {/* Add another photo */}
           {onAddAnother && (
@@ -416,6 +502,42 @@ function ResizableExamImage({
           <span className="text-white/60 text-[10px]">• release to save</span>
         </div>
       )}
+    </div>
+  );
+
+  if (!hasControls) {
+    return content;
+  }
+
+  return (
+    <div className="inline-flex items-center gap-2 max-w-full flex-nowrap align-middle">
+      {content}
+      <div className="flex flex-col gap-1 shrink-0 select-none">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onMoveLine(Math.max(0, currentLine - 1));
+          }}
+          disabled={isAtTop}
+          title="Move up one line"
+          className="h-7 w-7 rounded-lg flex items-center justify-center bg-zinc-900/90 dark:bg-zinc-800/90 hover:bg-[#881337] active:scale-95 text-zinc-200 hover:text-white border border-zinc-700/60 dark:border-zinc-700 shadow-xs disabled:opacity-20 disabled:pointer-events-none transition-all cursor-pointer"
+        >
+          <ChevronUp className="h-4 w-4" />
+        </button>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onMoveLine(Math.min(totalLines, currentLine + 1));
+          }}
+          disabled={isAtBottom}
+          title="Move down one line"
+          className="h-7 w-7 rounded-lg flex items-center justify-center bg-zinc-900/90 dark:bg-zinc-800/90 hover:bg-[#881337] active:scale-95 text-zinc-200 hover:text-white border border-zinc-700/60 dark:border-zinc-700 shadow-xs disabled:opacity-20 disabled:pointer-events-none transition-all cursor-pointer"
+        >
+          <ChevronDown className="h-4 w-4" />
+        </button>
+      </div>
     </div>
   );
 }

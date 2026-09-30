@@ -17,7 +17,9 @@ interface ParsedToken {
   isBlock?: boolean;
 }
 
-export function LatexRenderer({
+const katexCache = new Map<string, string>();
+
+export const LatexRenderer = React.memo(function LatexRenderer({
   content,
   className,
   as: Component = "span",
@@ -90,11 +92,16 @@ export function LatexRenderer({
       }
 
       try {
-        const html = katex.renderToString(cleanMath, {
-          displayMode: isBlock,
-          throwOnError: false,
-          strict: false,
-        });
+        const cacheKey = `${isBlock ? "B" : "I"}:${cleanMath}`;
+        let html = katexCache.get(cacheKey);
+        if (!html) {
+          html = katex.renderToString(cleanMath, {
+            displayMode: isBlock,
+            throwOnError: false,
+            strict: false,
+          });
+          katexCache.set(cacheKey, html);
+        }
         result.push({ type: "math", html, isBlock });
       } catch {
         result.push({ type: "text", content: raw });
@@ -152,4 +159,4 @@ export function LatexRenderer({
       })}
     </Component>
   );
-}
+});

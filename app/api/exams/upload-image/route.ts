@@ -287,6 +287,26 @@ export async function PATCH(request: NextRequest) {
                 updated_at = NOW()
             WHERE id = ${examId}
           `;
+
+          // In local dev, also keep data/exams.json in sync in the background without blocking the HTTP response
+          if (process.env.NODE_ENV !== "production") {
+            setImmediate(async () => {
+              try {
+                const fs = await import("fs/promises");
+                const path = await import("path");
+                const localPath = path.join(process.cwd(), "data", "exams.json");
+                const raw = await fs.readFile(localPath, "utf-8");
+                const allExams = JSON.parse(raw);
+                const eIdx = allExams.findIndex((e: any) => e.id === examId);
+                if (eIdx !== -1) {
+                  allExams[eIdx].questions = questions;
+                  await fs.writeFile(localPath, JSON.stringify(allExams, null, 2), "utf-8");
+                }
+              } catch {
+                // Non-blocking in dev
+              }
+            });
+          }
         }
       }
     } catch (dbErr) {
