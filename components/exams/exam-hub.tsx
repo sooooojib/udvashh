@@ -32,9 +32,10 @@ interface ExamHubProps {
     string,
     { score: number; total: number; selectedAnswers: Record<string, string> }
   >;
+  isAdmin?: boolean;
 }
 
-export function ExamHub({ initialExams, initialUserAttempts }: ExamHubProps) {
+export function ExamHub({ initialExams, initialUserAttempts, isAdmin = false }: ExamHubProps) {
   const [selectedType, setSelectedType] = React.useState<"all" | "daily" | "weekly" | "written">("all");
   const [selectedSubject, setSelectedSubject] = React.useState<string>("all");
   const [activeExam, setActiveExam] = React.useState<ExamItem | null>(null);
@@ -219,12 +220,8 @@ export function ExamHub({ initialExams, initialUserAttempts }: ExamHubProps) {
                 Filter Exams
               </span>
               <p className="text-xs text-muted-foreground/70 dark:text-[#5C6A72]">
-                Showing {filteredExams.length} of {typeFilteredExams.length} {selectedType === "all" ? "live exams" : getTypeLabel(selectedType).toLowerCase()}
-                {Object.keys(userAttempts).length > 0 && (
-                  <span className="text-emerald-600 dark:text-emerald-400 font-semibold ml-1.5">
-                    • {Object.keys(userAttempts).length} completed
-                  </span>
-                )}
+                Showing {filteredExams.length} of {typeFilteredExams.length}{" "}
+                {selectedType === "all" ? "live exams" : getTypeLabel(selectedType).toLowerCase()}
                 {(selectedType !== "all" || selectedSubject !== "all") && (
                   <button
                     type="button"
@@ -681,7 +678,14 @@ export function ExamHub({ initialExams, initialUserAttempts }: ExamHubProps) {
         <ExamModal
           exam={activeExam}
           initialAttempt={userAttempts[activeExam.id]}
+          isAdmin={isAdmin}
           onClose={() => setActiveExam(null)}
+          onQuestionsUpdated={(updatedQuestions) => {
+            questionsCacheRef.current[activeExam.id] = updatedQuestions;
+            setActiveExam((prev) =>
+              prev ? { ...prev, questions: updatedQuestions } : null
+            );
+          }}
           onAttemptSaved={(score, total, selectedAnswers) => {
             setUserAttempts((prev) => ({
               ...prev,

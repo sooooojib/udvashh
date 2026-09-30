@@ -4,6 +4,7 @@ import { getSession } from "@/lib/auth/session";
 import { getAllExams } from "@/lib/exams";
 import { getUserExamAttempts } from "@/app/actions/exams";
 import { ExamHub } from "@/components/exams/exam-hub";
+import { ExamProgressBars } from "@/components/exams/exam-progress-bars";
 import { GraduationCap } from "lucide-react";
 
 export const metadata: Metadata = {
@@ -27,6 +28,16 @@ export default async function ExamsPage() {
     questions: [],
   }));
 
+  const adminEmail = process.env.ADMIN_EMAIL;
+  const isOwner =
+    process.env.NODE_ENV !== "production" ||
+    (adminEmail
+      ? adminEmail
+          .split(",")
+          .map((e) => e.trim().toLowerCase())
+          .includes(session.email?.toLowerCase() || "")
+      : true);
+
   return (
     <main className="flex-1 px-3.5 sm:px-5 lg:px-6 py-6 sm:py-8 max-w-[1400px] mx-auto w-full space-y-6 sm:space-y-8 min-h-[calc(100dvh-4rem)] animate-page-enter overflow-x-hidden">
       {/* Academic Page Header: Deep Burgundy (#881337) Icon & Clean Heading */}
@@ -39,8 +50,15 @@ export default async function ExamsPage() {
         </h1>
       </div>
 
+      {/* Progress bars — Daily / Weekly / Written completion overview */}
+      <ExamProgressBars initialExams={examSummaries} userAttempts={userAttempts} />
+
       {/* Interactive Exam Hub */}
-      <ExamHub initialExams={examSummaries} initialUserAttempts={userAttempts} />
+      <ExamHub
+        initialExams={examSummaries}
+        initialUserAttempts={userAttempts}
+        isAdmin={isOwner}
+      />
     </main>
   );
 }

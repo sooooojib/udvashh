@@ -8,25 +8,25 @@
 ## 1. Exam Inventory & Dataset Audit
 
 ### Current Dataset Overview
-- **Storage Location**: `data/exams.json` (5.09 MB) & Neon PostgreSQL `exams` table.
-- **Total Exams**: **100 exams**
-- **Total Questions**: **4,343 questions**
+- **Storage Location**: `data/exams.json` & Neon PostgreSQL `exams` table.
+- **Total Exams**: **107 exams**
+- **Total Questions**: **4,660 questions**
 - **Question Types**:
-  - **MCQ Exams**: 91 exams (typically 30, 50, or 100 MCQs each, with 4 choices A–D and detailed explanations).
-  - **Written Exams**: 9 exams (typically 10 comprehensive subjective questions each, with detailed written solutions).
+  - **MCQ Exams**: 96 exams (30, 50, or 100 MCQs each, with 4 choices A–D and detailed explanations).
+  - **Written Exams**: 11 exams (comprehensive subjective questions with detailed written solutions, sub-parts, and mark breakdowns).
 
 ### Categories Breakdown
 1. **Daily Live Exams** (`category: "daily"`): **72 exams** (connected directly to Live Class lectures).
-2. **Weekly Live Exams** (`category: "weekly"`): **19 exams** (multi-subject / milestone tests).
-3. **Written / Biweekly Exams** (`category: "written"`): **9 exams** (subjective written tests with solve sheets).
+2. **Weekly Live Exams** (`category: "weekly"`): **24 exams** (multi-subject / milestone tests, up to Progressive Weekly Live Exam-24).
+3. **Written / Biweekly Exams** (`category: "written"`): **11 exams** (subjective written tests with solve sheets, up to Written Biweekly Live Exam-11).
 
 ### Scraper Metadata & Timeline
 - **Course**: `51st BCS Progressive Service - 51st BCS Preli Written Combined Program`
 - **Latest Scraped Exam**:
-  - **Title**: `Daily Live Exam General Science-07`
-  - **Date & Time**: `21 Sep, 2026 12:00 AM to 22 Sep, 2026 08:00 AM`
-  - **Duration**: `15 min`
-  - **Total Questions**: `30`
+  - **Title**: `Progressive Weekly Live Exam-24`
+  - **Date & Time**: `28 Sep, 2026 12:00 AM to 29 Sep, 2026 08:00 AM`
+  - **Duration**: `1 h`
+  - **Total Questions**: `100`
 - **Earliest Scraped Exam in Dataset**:
   - **Title**: `Daily Live Exam International Affairs-01`
   - **Date & Time**: `16 May, 2026 12:00 AM to 17 May, 2026 06:00 AM`

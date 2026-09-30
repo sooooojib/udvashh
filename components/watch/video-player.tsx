@@ -2422,6 +2422,7 @@ export function VideoPlayer({
           <ConnectedExamCard
             exam={connectedExam}
             initialAttempt={initialExamAttempt}
+            isAdmin={isAdmin}
           />
         </div>
       )}

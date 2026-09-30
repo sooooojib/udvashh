@@ -30,12 +30,14 @@ interface ConnectedExamCardProps {
     selectedAnswers: Record<string, string>;
   } | null;
   className?: string;
+  isAdmin?: boolean;
 }
 
 export function ConnectedExamCard({
   exam,
   initialAttempt,
   className,
+  isAdmin = false,
 }: ConnectedExamCardProps) {
   const [isModalOpen, setIsModalOpen] = React.useState(false);
   const [attempt, setAttempt] = React.useState(initialAttempt || null);
@@ -152,6 +154,7 @@ export function ConnectedExamCard({
         <ExamModal
           exam={exam}
           initialAttempt={attempt || undefined}
+          isAdmin={isAdmin}
           onClose={() => setIsModalOpen(false)}
           onAttemptSaved={(score, total, selectedAnswers) => {
             setAttempt({ score, total, selectedAnswers });

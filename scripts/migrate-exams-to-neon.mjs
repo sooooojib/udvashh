@@ -33,8 +33,10 @@ export function getExamSubject(title) {
   if (t.includes("international affairs")) return "International Affairs";
   if (t.includes("math")) return "Math";
   if (t.includes("mental ability")) return "Mental Ability";
-  if (t.includes("english")) return "English";
-  if (t.includes("bangla")) return "Bangla";
+  if (t.includes("english literature")) return "English Literature";
+  if (t.includes("english language") || t.includes("english")) return "English Language";
+  if (t.includes("bangla literature")) return "Bangla Literature";
+  if (t.includes("bangla language") || t.includes("bangla")) return "Bangla Language";
   if (t.includes("computer") || t.includes("ict")) return "ICT";
   if (t.includes("ethics")) return "Ethics";
   if (t.includes("geography")) return "Geography";

@@ -46,6 +46,9 @@ next-env.d.ts
 *_backup_*.json
 *.backup.json
 data/daily_live_exams.json
+data/dailyexam*.json
+data/all_past_exams_*.json
+data/remaining_*.json
 neon_migration.sql
 scripts/*
 !scripts/migrate-exams-to-neon.mjs

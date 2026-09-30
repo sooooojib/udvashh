@@ -102,6 +102,18 @@ export async function getUserExamAttempts(): Promise<Record<string, { score: num
  * Eliminates embedding 5.09 MB of question JSON in the initial /exams page load.
  */
 export async function getExamQuestions(examId: string) {
+  try {
+    const { sql } = await import("@/lib/db");
+    const rows = await sql`
+      SELECT questions FROM exams WHERE id = ${examId} LIMIT 1
+    `;
+    if (rows && rows.length > 0 && Array.isArray(rows[0].questions)) {
+      return rows[0].questions;
+    }
+  } catch (err) {
+    console.warn(`[Neon] Failed to fetch questions for ${examId}, falling back to local:`, err);
+  }
+
   const { getAllExams } = await import("@/lib/exams");
   const exams = getAllExams();
   const exam = exams.find((e) => e.id === examId);

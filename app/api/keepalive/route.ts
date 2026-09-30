@@ -1,42 +1,48 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/utils/supabase/admin";
+import { sql } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  try {
-    const supabase = createAdminClient();
-    // Query storage buckets to register active compute & storage usage in Supabase
-    const { data, error } = await supabase.storage.listBuckets();
+  const started = Date.now();
 
-    if (error) {
-      console.warn("Supabase keep-alive ping returned error:", error);
-      return NextResponse.json(
-        {
-          success: false,
-          status: "Supabase returned an error (project may be paused)",
-          error: error.message,
-        },
-        { status: 502 }
-      );
-    }
+  // Ping Supabase Storage + Neon DB in parallel
+  const [supabaseResult, neonResult] = await Promise.allSettled([
+    // 1. Supabase Storage ping
+    (async () => {
+      const supabase = createAdminClient();
+      const { data, error } = await supabase.storage.listBuckets();
+      if (error) throw new Error(error.message);
+      return { buckets: data?.length ?? 0 };
+    })(),
 
-    return NextResponse.json({
-      success: true,
-      status: "Supabase is active and healthy",
+    // 2. Neon DB ping
+    (async () => {
+      const rows = await sql`SELECT COUNT(*) AS total FROM exams`;
+      return { examCount: Number(rows[0]?.total ?? 0) };
+    })(),
+  ]);
+
+  const elapsed = Date.now() - started;
+
+  const supabase = supabaseResult.status === "fulfilled"
+    ? { ok: true, ...supabaseResult.value }
+    : { ok: false, error: (supabaseResult.reason as Error)?.message };
+
+  const neon = neonResult.status === "fulfilled"
+    ? { ok: true, ...neonResult.value }
+    : { ok: false, error: (neonResult.reason as Error)?.message };
+
+  const allHealthy = supabase.ok && neon.ok;
+
+  return NextResponse.json(
+    {
+      success: allHealthy,
       timestamp: new Date().toISOString(),
-      bucketCount: data?.length || 0,
-    });
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.error("Keep-alive exception:", err);
-    return NextResponse.json(
-      {
-        success: false,
-        status: "Cannot reach Supabase (check if project is restored in dashboard)",
-        error: msg,
-      },
-      { status: 500 }
-    );
-  }
+      elapsedMs: elapsed,
+      services: { supabase, neon },
+    },
+    { status: allHealthy ? 200 : 502 }
+  );
 }

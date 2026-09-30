@@ -358,4 +358,59 @@ html[data-player-fullscreen="true"] main {
   margin: 0 0.15em;
 }
 
+/* ── Written Exam Marks Badge Styling ── */
+.exam-marks-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.65rem;
+  font-size: 0.8125rem;
+  line-height: 1.25;
+  font-weight: 700;
+  font-family: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  letter-spacing: -0.01em;
+  border-radius: 9999px;
+  background-color: rgba(136, 19, 55, 0.08);
+  color: #881337;
+  border: 1px solid rgba(136, 19, 55, 0.22);
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
+  user-select: none;
+  white-space: nowrap;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dark .exam-marks-badge {
+  background-color: rgba(244, 63, 94, 0.14);
+  color: #FDA4AF;
+  border-color: rgba(244, 63, 94, 0.3);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.2);
+}
+
+.exam-marks-badge:hover {
+  transform: translateY(-1px);
+  background-color: rgba(136, 19, 55, 0.13);
+  border-color: rgba(136, 19, 55, 0.35);
+}
+
+.dark .exam-marks-badge:hover {
+  transform: translateY(-1px);
+  background-color: rgba(244, 63, 94, 0.22);
+  border-color: rgba(244, 63, 94, 0.45);
+}
+
+.exam-marks-badge .marks-label {
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  font-weight: 700;
+  font-family: var(--font-sans), sans-serif;
+  opacity: 0.8;
+  letter-spacing: 0.02em;
+}
+
+.exam-marks-badge .marks-value {
+  font-size: 0.8125rem;
+  font-weight: 800;
+  font-family: var(--font-mono), monospace;
+}
+
 

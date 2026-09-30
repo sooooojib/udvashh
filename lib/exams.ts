@@ -46,8 +46,10 @@ export const SUBJECTS = [
   "International Affairs",
   "Math",
   "Mental Ability",
-  "English",
-  "Bangla",
+  "English Language",
+  "English Literature",
+  "Bangla Language",
+  "Bangla Literature",
   "ICT",
   "Ethics",
   "Geography",
@@ -73,8 +75,10 @@ export function getExamSubject(title: string): SubjectType {
   if (t.includes("international affairs")) return "International Affairs";
   if (t.includes("math")) return "Math";
   if (t.includes("mental ability")) return "Mental Ability";
-  if (t.includes("english")) return "English";
-  if (t.includes("bangla")) return "Bangla";
+  if (t.includes("english literature")) return "English Literature";
+  if (t.includes("english language") || t.includes("english")) return "English Language";
+  if (t.includes("bangla literature")) return "Bangla Literature";
+  if (t.includes("bangla language") || t.includes("bangla")) return "Bangla Language";
   if (t.includes("computer") || t.includes("ict")) return "ICT";
   if (t.includes("ethics")) return "Ethics";
   if (t.includes("geography")) return "Geography";
@@ -153,16 +157,27 @@ export async function getAllExamsFromDb(): Promise<ExamItem[]> {
   return getAllExams();
 }
 
-const STATIC_EXAM_STATS = {
-  total: 100,
-  daily: 72,
-  weekly: 19,
-  written: 9,
-  totalQuestions: 4343,
-};
-
 export function getExamStats() {
-  return STATIC_EXAM_STATS;
+  const exams = getAllExams();
+  let daily = 0;
+  let weekly = 0;
+  let written = 0;
+  let totalQuestions = 0;
+
+  for (const exam of exams) {
+    if (exam.category === "daily") daily++;
+    else if (exam.category === "weekly") weekly++;
+    else if (exam.category === "written") written++;
+    totalQuestions += exam.totalQuestions || exam.questions?.length || 0;
+  }
+
+  return {
+    total: exams.length,
+    daily,
+    weekly,
+    written,
+    totalQuestions,
+  };
 }
 
 /**
