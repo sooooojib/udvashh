@@ -960,30 +960,6 @@ export function ExamModal({
               </button>
             )}
 
-            {/* Stretch Button in Footer */}
-            <button
-              type="button"
-              onClick={toggleStretch}
-              className={cn(
-                "hidden sm:inline-flex items-center gap-1.5 rounded-xl border px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold transition-colors cursor-pointer whitespace-nowrap",
-                isStretched
-                  ? "bg-[#881337]/10 text-[#881337] border-[#881337]/30 dark:bg-[#881337]/20 dark:text-[#FDA4AF] dark:border-[#881337]/40"
-                  : "border-border/80 bg-muted/60 hover:bg-[#FFF1F2] hover:text-[#881337] hover:border-[#881337]/30 text-foreground dark:border-[#1F2C34] dark:hover:bg-[#881337]/20 dark:hover:text-[#FDA4AF]"
-              )}
-              title={isStretched ? "Restore windowed view (Esc)" : "Stretch to full screen"}
-            >
-              {isStretched ? (
-                <>
-                  <Minimize2 className="h-3.5 w-3.5 text-[#881337] dark:text-[#FDA4AF]" />
-                  <span>Restore</span>
-                </>
-              ) : (
-                <>
-                  <Maximize2 className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span>Stretch</span>
-                </>
-              )}
-            </button>
 
             <button
               type="button"
