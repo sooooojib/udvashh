@@ -66,6 +66,23 @@ export function ExamModal({
   // Stretched / Full-viewport state (pure in-browser stretch, no OS fullscreen)
   const [isStretched, setIsStretched] = React.useState<boolean>(false);
 
+  // Scroll progress for dynamic reading indicator and scroll container ref
+  const [scrollProgress, setScrollProgress] = React.useState<number>(0);
+  const scrollContainerRef = React.useRef<HTMLDivElement>(null);
+
+  const handleScroll = React.useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const { scrollTop, scrollHeight, clientHeight } = el;
+    const maxScroll = scrollHeight - clientHeight;
+    if (maxScroll <= 0) {
+      setScrollProgress(100);
+    } else {
+      const pct = Math.min(100, Math.max(0, (scrollTop / maxScroll) * 100));
+      setScrollProgress(pct);
+    }
+  }, []);
+
   React.useEffect(() => {
     try {
       const saved = localStorage.getItem("udvash_exam_stretched");
@@ -186,13 +203,27 @@ export function ExamModal({
     }
   }, [exam?.id]);
 
-  // Lock body scroll when modal is active
+  // Lock body and html scroll when modal is active
   React.useEffect(() => {
     if (!exam) return;
-    const prevOverflow = document.body.style.overflow;
+    const prevBodyOverflow = document.body.style.overflow;
+    const prevHtmlOverflow = document.documentElement.style.overflow;
+    const prevGutter = document.documentElement.style.scrollbarGutter;
+
+    document.documentElement.style.overflow = "hidden";
     document.body.style.overflow = "hidden";
+    document.documentElement.style.scrollbarGutter = "auto";
+
+    // Reset scroll progress and position on new exam
+    setScrollProgress(0);
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = 0;
+    }
+
     return () => {
-      document.body.style.overflow = prevOverflow;
+      document.documentElement.style.overflow = prevHtmlOverflow;
+      document.body.style.overflow = prevBodyOverflow;
+      document.documentElement.style.scrollbarGutter = prevGutter;
     };
   }, [exam]);
 
@@ -411,7 +442,7 @@ export function ExamModal({
         className={cn(
           "relative flex flex-col w-full bg-white shadow-2xl dark:bg-[#0D1318] overflow-hidden transition-all duration-200",
           isStretched
-            ? "fixed inset-0 w-screen h-[100dvh] max-w-none max-h-none rounded-none border-0 shadow-none z-[999999]"
+            ? "w-full h-full max-w-none max-h-none rounded-none border-0 shadow-none"
             : "max-w-[1360px] h-[100dvh] sm:h-[96vh] max-h-[100dvh] sm:max-h-[96vh] rounded-none sm:rounded-3xl border-0 sm:border border-border/80 dark:border-[#1F2C34]"
         )}
       >
@@ -542,6 +573,14 @@ export function ExamModal({
           </div>
         </div>
 
+        {/* ── Scroll Progress Line (Tracks exam section scroll) ── */}
+        <div className="h-0.5 w-full bg-border/30 dark:bg-white/10 overflow-hidden shrink-0">
+          <div
+            className="h-full bg-gradient-to-r from-[#881337] via-[#BE123C] to-[#E11D48] dark:from-[#FDA4AF] dark:via-[#FB7185] dark:to-[#F43F5E] transition-[width] duration-75 ease-out"
+            style={{ width: `${scrollProgress}%` }}
+          />
+        </div>
+
         {/* ── Practice Mode Score Banner ── */}
         {mode === "practice" && submitted && score && (
           <div className="shrink-0 flex items-center justify-between px-6 py-3 bg-[#FFF1F2] border-b border-[#881337]/20 text-[#881337] dark:bg-[#881337]/20 dark:border-[#881337]/35 dark:text-[#FFE4E6]">
@@ -565,8 +604,10 @@ export function ExamModal({
 
         {/* ── Modal Scrollable Body (~30% bigger content) ── */}
         <div
+          ref={scrollContainerRef}
+          onScroll={handleScroll}
           className={cn(
-            "flex-1 overflow-y-auto p-3 sm:p-6 md:p-8 space-y-3.5 sm:space-y-6",
+            "flex-1 overflow-y-auto p-3 sm:p-6 md:p-8 space-y-3.5 sm:space-y-6 overscroll-contain",
             isStretched && "md:px-10 lg:px-12"
           )}
         >

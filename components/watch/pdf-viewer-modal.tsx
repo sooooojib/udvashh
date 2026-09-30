@@ -178,6 +178,23 @@ export function PdfViewerModal({ pdf, onClose }: PdfViewerModalProps) {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isStretched, onClose]);
 
+  // Lock body and html scroll when modal is active
+  React.useEffect(() => {
+    const prevBodyOverflow = document.body.style.overflow;
+    const prevHtmlOverflow = document.documentElement.style.overflow;
+    const prevGutter = document.documentElement.style.scrollbarGutter;
+
+    document.documentElement.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.scrollbarGutter = "auto";
+
+    return () => {
+      document.documentElement.style.overflow = prevHtmlOverflow;
+      document.body.style.overflow = prevBodyOverflow;
+      document.documentElement.style.scrollbarGutter = prevGutter;
+    };
+  }, []);
+
   return (
     <div
       className={cn(
@@ -194,7 +211,7 @@ export function PdfViewerModal({ pdf, onClose }: PdfViewerModalProps) {
         className={cn(
           "relative flex flex-col w-full bg-white dark:bg-[#0D1318] text-foreground border shadow-2xl ring-1 ring-slate-900/5 dark:ring-white/10 overflow-hidden transition-all duration-150",
           isStretched
-            ? "fixed inset-0 w-screen h-screen max-w-none max-h-none rounded-none border-none ring-0 z-50"
+            ? "w-full h-full max-w-none max-h-none rounded-none border-none ring-0"
             : "max-w-6xl h-[92dvh] sm:h-[90vh] rounded-xl sm:rounded-2xl border-slate-200/80 dark:border-white/10"
         )}
       >

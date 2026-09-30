@@ -156,9 +156,19 @@ textarea,
 }
 
 /* ── Minimalist Semi-Transparent Custom Scrollbar ── */
+/* Standard CSS Scrollbars for Firefox, Zen Browser, and Gecko */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(160, 175, 185, 0.45) transparent;
+}
+
+.dark * {
+  scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+}
+
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 7px;
+  height: 7px;
 }
 
 ::-webkit-scrollbar-track {
@@ -166,17 +176,17 @@ textarea,
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(160, 175, 185, 0.3);
+  background: rgba(160, 175, 185, 0.35);
   border-radius: 9999px;
   transition: background-color 0.2s ease;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(160, 175, 185, 0.5);
+  background: rgba(160, 175, 185, 0.6);
 }
 
 .dark ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.2);
 }
 
 .dark ::-webkit-scrollbar-thumb:hover {
