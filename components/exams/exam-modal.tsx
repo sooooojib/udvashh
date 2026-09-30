@@ -667,7 +667,7 @@ export function ExamModal({
                       </div>
 
                       {canUpload && (
-                        <div className="relative shrink-0">
+                        <div className="relative shrink-0 hidden sm:block">
                           <button
                             type="button"
                             onClick={(e) => {
