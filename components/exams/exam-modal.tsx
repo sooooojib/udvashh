@@ -12,6 +12,8 @@ import {
   FileText,
   HelpCircle,
   Lightbulb,
+  Maximize2,
+  Minimize2,
   Plus,
   RotateCcw,
   Sparkles,
@@ -60,6 +62,57 @@ export function ExamModal({
     qNum: number;
     target: DropzoneTarget;
   } | null>(null);
+
+  // Stretched / Full-viewport state (pure in-browser stretch, no OS fullscreen)
+  const [isStretched, setIsStretched] = React.useState<boolean>(false);
+
+  React.useEffect(() => {
+    try {
+      const saved = localStorage.getItem("udvash_exam_stretched");
+      if (saved === "true") {
+        setIsStretched(true);
+      }
+    } catch {}
+  }, []);
+
+  const toggleStretch = React.useCallback(() => {
+    setIsStretched((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem("udvash_exam_stretched", String(next));
+      } catch {}
+      return next;
+    });
+  }, []);
+
+  // Keyboard shortcuts: Escape to exit stretch (or close modal), F to toggle stretch
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement ||
+        (e.target as HTMLElement)?.isContentEditable
+      ) {
+        return;
+      }
+
+      if (e.key === "Escape") {
+        if (isStretched) {
+          setIsStretched(false);
+          try {
+            localStorage.setItem("udvash_exam_stretched", "false");
+          } catch {}
+        } else {
+          onClose();
+        }
+      } else if (e.key === "f" || e.key === "F") {
+        toggleStretch();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isStretched, onClose, toggleStretch]);
 
   // Close question context menu on click outside
   React.useEffect(() => {
@@ -346,12 +399,27 @@ export function ExamModal({
     <div
       role="dialog"
       aria-modal="true"
-      className="fixed inset-0 z-[999999] flex items-center justify-center p-0 sm:p-4 md:p-6 bg-white/95 backdrop-blur-3xl dark:bg-[#070B0E]/95 dark:backdrop-blur-3xl overflow-hidden transition-colors"
+      className={cn(
+        "fixed inset-0 z-[999999] flex items-center justify-center bg-white/95 backdrop-blur-3xl dark:bg-[#070B0E]/95 dark:backdrop-blur-3xl overflow-hidden transition-all duration-200",
+        isStretched ? "p-0" : "p-0 sm:p-4 md:p-6"
+      )}
+      onClick={(e) => {
+        if (!isStretched && e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
     >
-      <div className="relative flex flex-col w-full max-w-[1360px] h-[100dvh] sm:h-[96vh] max-h-[100dvh] sm:max-h-[96vh] rounded-none sm:rounded-3xl border-0 sm:border border-border/80 bg-white shadow-2xl dark:border-[#1F2C34] dark:bg-[#0D1318] overflow-hidden transition-colors">
+      <div
+        className={cn(
+          "relative flex flex-col w-full bg-white shadow-2xl dark:bg-[#0D1318] overflow-hidden transition-all duration-200",
+          isStretched
+            ? "fixed inset-0 w-screen h-[100dvh] max-w-none max-h-none rounded-none border-0 shadow-none z-[999999]"
+            : "max-w-[1360px] h-[100dvh] sm:h-[96vh] max-h-[100dvh] sm:max-h-[96vh] rounded-none sm:rounded-3xl border-0 sm:border border-border/80 dark:border-[#1F2C34]"
+        )}
+      >
         {/* ── Modal Title Bar (White in light mode, Dark blur in dark mode) ── */}
         <div className="shrink-0 border-b border-border/80 bg-white/95 dark:bg-[#111820]/95 backdrop-blur-xl px-3.5 sm:px-6 md:px-8 py-2.5 sm:py-3 shadow-xs space-y-2 sm:space-y-2.5">
-          {/* Top Row: Meta Badges on Left + Cross Button on Top Right */}
+          {/* Top Row: Meta Badges on Left + Cross & Stretch Buttons on Top Right */}
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap min-w-0">
               <span className="inline-flex items-center gap-1 rounded-full px-2 sm:px-2.5 py-0.5 text-[9px] sm:text-[11px] font-bold uppercase tracking-wider bg-[#FFF1F2] text-[#881337] border border-[#881337]/15 dark:bg-[#881337]/20 dark:text-[#FDA4AF] dark:border-[#881337]/30 whitespace-nowrap">
@@ -386,15 +454,48 @@ export function ExamModal({
               )}
             </div>
 
-            {/* Close Button Top Right */}
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex h-8 w-8 sm:h-8.5 sm:w-8.5 items-center justify-center rounded-full text-muted-foreground hover:text-[#881337] hover:bg-[#FFF1F2] dark:hover:text-[#FDA4AF] dark:hover:bg-[#881337]/20 transition-colors cursor-pointer shrink-0"
-              title="Close"
-            >
-              <X className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
-            </button>
+            {/* Top Right Controls: Stretch Screen Toggle + Close Button */}
+            <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+              <button
+                type="button"
+                onClick={toggleStretch}
+                className={cn(
+                  "flex items-center gap-1.5 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg sm:rounded-xl text-xs font-semibold transition-all cursor-pointer border",
+                  isStretched
+                    ? "bg-[#881337] text-white border-[#881337] shadow-xs dark:bg-[#881337] dark:text-white"
+                    : "text-muted-foreground hover:text-[#881337] hover:bg-[#FFF1F2] border-border/60 hover:border-[#881337]/30 dark:border-[#1F2C34] dark:hover:text-[#FDA4AF] dark:hover:bg-[#881337]/20"
+                )}
+                title={
+                  isStretched
+                    ? "Exit stretch mode (F or Esc)"
+                    : "Stretch to full screen (F)"
+                }
+                aria-label={
+                  isStretched ? "Exit stretch mode" : "Stretch to full screen"
+                }
+              >
+                {isStretched ? (
+                  <>
+                    <Minimize2 className="h-3.5 w-3.5 shrink-0" />
+                    <span className="hidden sm:inline font-semibold">Exit Stretch</span>
+                  </>
+                ) : (
+                  <>
+                    <Maximize2 className="h-3.5 w-3.5 shrink-0" />
+                    <span className="hidden sm:inline font-semibold">Stretch</span>
+                  </>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex h-8 w-8 sm:h-8.5 sm:w-8.5 items-center justify-center rounded-full text-muted-foreground hover:text-[#881337] hover:bg-[#FFF1F2] dark:hover:text-[#FDA4AF] dark:hover:bg-[#881337]/20 transition-colors cursor-pointer shrink-0"
+                title="Close"
+              >
+                <X className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
+              </button>
+            </div>
           </div>
 
           {/* Main Row: Exam Title + Mode Switcher */}
@@ -465,7 +566,12 @@ export function ExamModal({
         )}
 
         {/* ── Modal Scrollable Body (~30% bigger content) ── */}
-        <div className="flex-1 overflow-y-auto p-3 sm:p-6 md:p-8 space-y-3.5 sm:space-y-6">
+        <div
+          className={cn(
+            "flex-1 overflow-y-auto p-3 sm:p-6 md:p-8 space-y-3.5 sm:space-y-6",
+            isStretched && "md:px-10 lg:px-12"
+          )}
+        >
           {questions.length === 0 ? (
             <div className="text-center py-20 text-muted-foreground text-base">
               No questions found for this exam.
@@ -818,7 +924,12 @@ export function ExamModal({
         </div>
 
         {/* ── Modal Footer (Always Visible at Bottom) ── */}
-        <div className="shrink-0 flex items-center justify-between border-t border-border/80 bg-white/95 dark:bg-[#111820]/95 backdrop-blur-xl px-3 sm:px-6 md:px-8 py-2.5 sm:py-3.5 shadow-xs gap-2">
+        <div
+          className={cn(
+            "shrink-0 flex items-center justify-between border-t border-border/80 bg-white/95 dark:bg-[#111820]/95 backdrop-blur-xl px-3 sm:px-6 md:px-8 py-2.5 sm:py-3.5 shadow-xs gap-2",
+            isStretched && "md:px-10 lg:px-12"
+          )}
+        >
           <div className="text-xs sm:text-sm text-muted-foreground font-mono min-w-0 truncate">
             {mode === "practice" && !isWritten ? (
               <span className="whitespace-nowrap">
@@ -850,6 +961,31 @@ export function ExamModal({
                 <ArrowRight className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0 transition-transform duration-200 group-hover/submit:translate-x-1" />
               </button>
             )}
+
+            {/* Stretch Button in Footer */}
+            <button
+              type="button"
+              onClick={toggleStretch}
+              className={cn(
+                "hidden sm:inline-flex items-center gap-1.5 rounded-xl border px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold transition-colors cursor-pointer whitespace-nowrap",
+                isStretched
+                  ? "bg-[#881337]/10 text-[#881337] border-[#881337]/30 dark:bg-[#881337]/20 dark:text-[#FDA4AF] dark:border-[#881337]/40"
+                  : "border-border/80 bg-muted/60 hover:bg-[#FFF1F2] hover:text-[#881337] hover:border-[#881337]/30 text-foreground dark:border-[#1F2C34] dark:hover:bg-[#881337]/20 dark:hover:text-[#FDA4AF]"
+              )}
+              title={isStretched ? "Exit stretch mode (F or Esc)" : "Stretch to full screen (F)"}
+            >
+              {isStretched ? (
+                <>
+                  <Minimize2 className="h-3.5 w-3.5 text-[#881337] dark:text-[#FDA4AF]" />
+                  <span>Exit Stretch</span>
+                </>
+              ) : (
+                <>
+                  <Maximize2 className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span>Stretch</span>
+                </>
+              )}
+            </button>
 
             <button
               type="button"
