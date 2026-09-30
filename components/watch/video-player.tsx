@@ -303,6 +303,32 @@ export function VideoPlayer({
     };
   }, []);
 
+  // Sync document root attribute and body classes when Fullscreen is active
+  React.useEffect(() => {
+    if (isFullscreen) {
+      document.documentElement.dataset.playerFullscreen = "true";
+      document.body.classList.add("player-fullscreen-active");
+      const originalHtmlOverflow = document.documentElement.style.overflow;
+      const originalHtmlOverscroll = document.documentElement.style.overscrollBehavior;
+      const originalBodyOverflow = document.body.style.overflow;
+      const originalBodyOverscroll = document.body.style.overscrollBehavior;
+
+      document.documentElement.style.overflow = "hidden";
+      document.documentElement.style.overscrollBehavior = "none";
+      document.body.style.overflow = "hidden";
+      document.body.style.overscrollBehavior = "none";
+
+      return () => {
+        delete document.documentElement.dataset.playerFullscreen;
+        document.body.classList.remove("player-fullscreen-active");
+        document.documentElement.style.overflow = originalHtmlOverflow;
+        document.documentElement.style.overscrollBehavior = originalHtmlOverscroll;
+        document.body.style.overflow = originalBodyOverflow;
+        document.body.style.overscrollBehavior = originalBodyOverscroll;
+      };
+    }
+  }, [isFullscreen]);
+
   const { theme, setTheme, resolvedTheme } = useTheme();
   const previousThemeRef = React.useRef<string | null>(null);
 
@@ -1037,15 +1063,20 @@ export function VideoPlayer({
         return;
       }
 
-      // Escape key: Exit theater mode (when not in native fullscreen)
+      // Escape key: Exit fullscreen if in pseudo-fullscreen, or exit theater mode
       if (e.key === "Escape" || e.code === "Escape") {
-        const isFs = Boolean(
-          isFullscreen ||
+        const hasNativeFs = Boolean(
           document.fullscreenElement ||
           (document as any).webkitFullscreenElement ||
           (document as any).mozFullScreenElement
         );
-        if (isTheaterMode && !isFs) {
+        if (isFullscreen && !hasNativeFs) {
+          e.preventDefault();
+          e.stopPropagation();
+          toggleFullscreen();
+          return;
+        }
+        if (isTheaterMode && !hasNativeFs) {
           e.preventDefault();
           e.stopPropagation();
           toggleTheaterMode();
@@ -1525,7 +1556,7 @@ export function VideoPlayer({
         className={cn(
           "group relative bg-black outline-none select-none overflow-hidden",
           isFullscreen
-            ? "!fixed !inset-0 !w-screen !h-screen !max-w-none !max-h-none !top-0 !left-0 !transform-none !rounded-none !border-0 !m-0 !p-0 z-[999999] flex items-center justify-center bg-black"
+            ? "!fixed !inset-0 !w-screen !h-[100dvh] !max-w-none !max-h-none !top-0 !left-0 !transform-none !rounded-none !border-0 !m-0 !p-0 z-[999999] flex items-center justify-center bg-black"
             : isTheaterMode
             ? "rounded-2xl border border-border/60 shadow-xl dark:border-[#1F2C34] md:border-0 md:fixed md:inset-0 md:m-auto md:z-[70] md:w-[min(95vw,calc((100dvh-2.5rem)*16/9))] md:h-[min(calc(95vw*9/16),calc(100dvh-2.5rem))] md:aspect-video md:shadow-[0_0_100px_rgba(0,0,0,0.95)] md:rounded-2xl md:ring-1 md:ring-white/10 md:transition-none"
             : "rounded-2xl border border-border/60 shadow-xl dark:border-[#1F2C34] transition-all duration-300"
@@ -1629,7 +1660,7 @@ export function VideoPlayer({
           className={cn(
             "relative select-none overflow-hidden aspect-video bg-black group/video",
             isFullscreen
-              ? "w-full h-full max-w-[calc(100vh*16/9)] max-h-screen"
+              ? "w-full h-full max-w-[calc(100dvh*16/9)] max-h-[100dvh]"
               : "w-full"
           )}
           onMouseMove={resetControlsTimer}

@@ -302,12 +302,12 @@ body.theater-mode-active main > :not(.video-player-root) {
   transition: opacity 0.2s ease, visibility 0.2s ease;
 }
 
-/* ── Fullscreen Display Overrides ── */
+/* ── Fullscreen Display Overrides & Mobile/Fallback Mode ── */
 :fullscreen,
 :-webkit-full-screen {
   background-color: #000 !important;
   width: 100vw !important;
-  height: 100vh !important;
+  height: 100dvh !important;
   max-width: none !important;
   max-height: none !important;
   top: 0 !important;
@@ -318,6 +318,29 @@ body.theater-mode-active main > :not(.video-player-root) {
   border-radius: 0 !important;
   border: none !important;
   box-shadow: none !important;
+}
+
+/* Hide header and progress bar completely during player fullscreen */
+html[data-player-fullscreen="true"] header,
+body.player-fullscreen-active header,
+html[data-player-fullscreen="true"] #nprogress,
+body.player-fullscreen-active #nprogress {
+  display: none !important;
+}
+
+/* Lock document scrolling and overscroll behavior */
+html[data-player-fullscreen="true"],
+body.player-fullscreen-active {
+  overflow: hidden !important;
+  overscroll-behavior: none !important;
+  touch-action: none !important;
+}
+
+/* Neutralize any ancestor animation/stacking contexts */
+html[data-player-fullscreen="true"] main {
+  animation: none !important;
+  will-change: auto !important;
+  transform: none !important;
 }
 
 /* ── KaTeX Math Formula Styling ── */
