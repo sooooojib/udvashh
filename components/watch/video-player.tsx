@@ -192,6 +192,8 @@ export function VideoPlayer({
   const [isFullscreen, setIsFullscreen] = React.useState(false);
   const [isTheaterMode, setIsTheaterMode] = React.useState(false);
   const [isPlayerReady, setIsPlayerReady] = React.useState(false);
+  const [hasStarted, setHasStarted] = React.useState(false);
+  const pendingAutoplayRef = React.useRef(false);
   const [currentVolume, setCurrentVolume] = React.useState<number>(100);
   const [isMuted, setIsMuted] = React.useState<boolean>(false);
   const [volumeFeedback, setVolumeFeedback] = React.useState<{
@@ -249,6 +251,7 @@ export function VideoPlayer({
   // Reset player ready state when switching to a different video
   React.useEffect(() => {
     setIsPlayerReady(false);
+    setHasStarted(false);
   }, [youtubeVideoId]);
 
   // Sync document fullscreen state
@@ -682,6 +685,10 @@ export function VideoPlayer({
   const handlePlayerReady = (event: any) => {
     playerRef.current = event.target;
     setIsPlayerReady(true);
+    if (pendingAutoplayRef.current) {
+      pendingAutoplayRef.current = false;
+      togglePlayPause();
+    }
     setTimeout(() => {
       containerRef.current?.focus({ preventScroll: true });
     }, 50);
@@ -827,7 +834,13 @@ export function VideoPlayer({
   // so the toggle decision is always correct. UI updates optimistically for
   // instant snappy feel; handlePlayerStateChange will confirm/correct afterward.
   const togglePlayPause = React.useCallback(() => {
-    if (!playerRef.current) return;
+    if (!playerRef.current) {
+      if (!hasStarted) {
+        pendingAutoplayRef.current = true;
+      }
+      return;
+    }
+    setHasStarted(true);
     const currentlyPlaying = isPlayingRef.current;
     if (currentlyPlaying) {
       isPlayingRef.current = false;
@@ -838,7 +851,7 @@ export function VideoPlayer({
       setIsPlaying(true);
       try { playerRef.current.playVideo?.(); } catch {}
     }
-  }, []);
+  }, [hasStarted]);
 
   // Safe seek — uses currentTime from React state (synchronous) instead of
   // playerRef.getCurrentTime() which returns a Promise via youtube-player.
@@ -1318,6 +1331,7 @@ export function VideoPlayer({
     const state = event.data;
     if (state === 1) {
       // YouTube confirmed: PLAYING
+      setHasStarted(true);
       isPlayingRef.current = true;
       setIsPlaying(true);
       setIsBuffering(false);
@@ -1640,26 +1654,46 @@ export function VideoPlayer({
           }}
           onTouchStart={resetControlsTimer}
         >
-          {/* Instant HD Thumbnail & Ambient Poster until YouTube Player is ready */}
-          {!isPlayerReady && (
-            <div className="absolute inset-0 z-10 flex items-center justify-center overflow-hidden bg-[#0A0F12] select-none pointer-events-none transition-opacity duration-300">
-              {/* Background Poster Thumbnail */}
+          {/* Custom Start Poster Cover — Completely hides YouTube Red Button & Branding before first play */}
+          {!hasStarted && (
+            <div
+              onClick={togglePlayPause}
+              className="absolute inset-0 z-20 flex flex-col justify-between p-4 sm:p-6 overflow-hidden bg-[#0A0F12] cursor-pointer select-none transition-opacity duration-300 group/cover"
+            >
+              {/* Poster Thumbnail */}
               <img
                 src={`https://i.ytimg.com/vi/${youtubeVideoId}/hqdefault.jpg`}
                 alt={title}
-                className="absolute inset-0 h-full w-full object-cover opacity-60 scale-[1.03] blur-[1px]"
+                className="absolute inset-0 h-full w-full object-cover opacity-75 group-hover/cover:scale-[1.03] transition-transform duration-500 ease-out"
                 loading="eager"
               />
-              <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/50 backdrop-blur-[0.5px]" />
 
-              {/* Center Status Indicator */}
-              <div className="relative z-20 flex flex-col items-center gap-2.5">
-                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-black/70 text-white shadow-2xl backdrop-blur-md border border-white/20 animate-pulse">
-                  <Play className="h-6 w-6 ml-0.5 fill-white text-white" />
-                </div>
-                <div className="flex items-center gap-2 rounded-full bg-black/80 px-3.5 py-1 text-xs font-medium text-white/90 shadow-md backdrop-blur-md border border-white/10">
-                  <Loader2 className={cn("h-3.5 w-3.5 animate-spin", isIntensive ? "text-amber-500" : isSubjectHacks ? "text-blue-500" : "text-emerald-400")} />
-                  <span>Preparing player…</span>
+              {/* Top Bar on Poster (Duration in top right) */}
+              <div className="relative z-10 flex justify-end">
+                {(duration > 0 || videoDuration > 0) && (
+                  <span className="font-mono text-xs px-2.5 py-1 rounded-full bg-black/60 text-white/80 backdrop-blur-md border border-white/10 flex items-center gap-1.5">
+                    <Clock className="h-3 w-3 text-white/60" />
+                    <span>{formatDuration(duration > 0 ? duration : videoDuration)}</span>
+                  </span>
+                )}
+              </div>
+
+              {/* Center Big Play Button (Premium Glassmorphism) */}
+              <div className="relative z-10 flex flex-col items-center justify-center my-auto">
+                <div className={cn(
+                  "flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-full shadow-2xl backdrop-blur-md border transition-all duration-300 group-hover/cover:scale-110",
+                  isIntensive
+                    ? "bg-amber-500/90 hover:bg-amber-500 text-black border-amber-400/40 shadow-amber-500/30"
+                    : isSubjectHacks
+                    ? "bg-blue-600/90 hover:bg-blue-600 text-white border-blue-400/40 shadow-blue-500/30"
+                    : "bg-emerald-500/90 hover:bg-emerald-500 text-black border-emerald-400/40 shadow-emerald-500/30"
+                )}>
+                  {!isPlayerReady ? (
+                    <Loader2 className="h-8 w-8 animate-spin text-current" />
+                  ) : (
+                    <Play className="h-8 w-8 sm:h-9 sm:w-9 ml-1 fill-current" />
+                  )}
                 </div>
               </div>
             </div>
@@ -1671,6 +1705,11 @@ export function VideoPlayer({
             onReady={handlePlayerReady}
             onEnd={handleVideoEnd}
             onStateChange={handlePlayerStateChange}
+            onPlaybackQualityChange={(e: any) => {
+              if (e?.data && e.data !== "unknown") {
+                setCurrentQuality(e.data);
+              }
+            }}
             opts={playerOpts}
             className="w-full h-full [&>div]:!h-full [&>div]:!w-full [&_iframe]:!h-full [&_iframe]:!w-full pointer-events-none select-none"
           />
@@ -1878,6 +1917,7 @@ export function VideoPlayer({
                   <button
                     type="button"
                     onClick={() => {
+                      syncQualities();
                       setShowSettingsMenu((prev) => !prev);
                       setSettingsView("main");
                     }}
@@ -1914,8 +1954,13 @@ export function VideoPlayer({
                               <SlidersHorizontal className="h-4 w-4 text-white/60" />
                               <span>Quality</span>
                             </span>
-                            <span className="flex items-center gap-1 text-[11px] text-white/60">
-                              <span>Auto (Optimized)</span>
+                            <span className="flex items-center gap-1.5 text-[11px] text-white/60">
+                              <span>Auto</span>
+                              {currentQuality && currentQuality !== "auto" && currentQuality !== "default" && (
+                                <span className="font-mono text-[10px] font-bold text-emerald-400 bg-emerald-950/60 border border-emerald-500/30 px-1.5 py-0.5 rounded">
+                                  {QUALITY_LABELS[currentQuality] || currentQuality}
+                                </span>
+                              )}
                               <ChevronRight className="h-3.5 w-3.5" />
                             </span>
                           </button>
@@ -1939,32 +1984,32 @@ export function VideoPlayer({
                       )}
 
                       {settingsView === "quality" && (
-                        <div className="flex flex-col py-1 p-2.5 space-y-2 max-w-[240px]">
+                        <div className="flex flex-col py-1 px-1.5 space-y-1 min-w-[210px]">
                           {/* Back header */}
                           <button
                             type="button"
                             onClick={() => setSettingsView("main")}
-                            className="w-full flex items-center gap-1.5 px-1 py-1 text-xs font-sans font-medium text-white/75 hover:text-white border-b border-white/10 mb-1 transition-colors cursor-pointer text-left"
+                            className="w-full flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-sans font-medium text-white/75 hover:text-white hover:bg-white/10 rounded-lg transition-colors cursor-pointer text-left"
                           >
                             <ChevronLeft className="h-4 w-4" />
                             <span>Quality</span>
                           </button>
 
-                          <div className="flex items-center justify-between px-2.5 py-2 rounded-lg bg-white/10 text-xs font-sans text-white font-medium">
+                          <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-white/[0.08] border border-white/10 text-xs font-sans text-white font-medium">
                             <span className="flex items-center gap-2">
-                              <Check className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
-                              <span>Auto (Optimized)</span>
+                              <Check className="h-3.5 w-3.5 text-emerald-400 shrink-0 stroke-[2.5]" />
+                              <span>Auto</span>
                             </span>
-                            {currentQuality && currentQuality !== "auto" && currentQuality !== "default" && (
-                              <span className="font-mono text-[10px] text-emerald-400 bg-emerald-950/60 border border-emerald-500/30 px-1.5 py-0.5 rounded">
+                            {currentQuality && currentQuality !== "auto" && currentQuality !== "default" ? (
+                              <span className="font-mono text-[11px] font-bold text-emerald-400 bg-emerald-950/60 border border-emerald-500/30 px-2 py-0.5 rounded-md">
                                 {QUALITY_LABELS[currentQuality] || currentQuality}
+                              </span>
+                            ) : (
+                              <span className="font-mono text-[10px] font-medium text-white/50 bg-white/10 px-1.5 py-0.5 rounded">
+                                Optimized
                               </span>
                             )}
                           </div>
-
-                          <p className="px-1 text-[11px] text-white/60 leading-relaxed">
-                            Quality adjusts automatically based on screen size and network speed. Enter Fullscreen for maximum 1080p HD clarity.
-                          </p>
                         </div>
                       )}
 
