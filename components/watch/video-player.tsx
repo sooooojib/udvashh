@@ -219,8 +219,18 @@ export function VideoPlayer({
   const [settingsView, setSettingsView] = React.useState<"main" | "speed" | "quality">("main");
   const [currentQuality, setCurrentQuality] = React.useState<string>("auto");
   const hideControlsTimerRef = React.useRef<NodeJS.Timeout | null>(null);
+  const targetSeekTimeRef = React.useRef<number | null>(null);
+  const seekLockRef = React.useRef(false);
+  const seekLockTimestampRef = React.useRef(0);
+  const debouncedSeekTimerRef = React.useRef<NodeJS.Timeout | null>(null);
   const seekBarRef = React.useRef<HTMLDivElement>(null);
   const volumeSliderRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    return () => {
+      if (debouncedSeekTimerRef.current) clearTimeout(debouncedSeekTimerRef.current);
+    };
+  }, []);
 
   React.useEffect(() => {
     if (!showSettingsMenu) return;
@@ -471,6 +481,29 @@ export function VideoPlayer({
     if (!isPlaying || !playerRef.current) return;
     const poll = setInterval(() => {
       if (isSeeking) return;
+
+      // Prevent snapping back to old fetched buffer during active seek
+      if (seekLockRef.current && targetSeekTimeRef.current !== null) {
+        try {
+          const t = playerRef.current?.getCurrentTime?.();
+          const b = playerRef.current?.getVideoLoadedFraction?.();
+          if (typeof b === "number") setBufferedFraction(b);
+          const d = playerRef.current?.getDuration?.();
+          if (typeof d === "number" && d > 0) handleDurationDetected(d);
+
+          if (
+            typeof t === "number" &&
+            (Math.abs(t - targetSeekTimeRef.current) < 1.5 ||
+              Date.now() - seekLockTimestampRef.current > 3500)
+          ) {
+            seekLockRef.current = false;
+            targetSeekTimeRef.current = null;
+            setCurrentTime(t);
+          }
+        } catch {}
+        return;
+      }
+
       try {
         const t = playerRef.current?.getCurrentTime?.();
         if (typeof t === "number") setCurrentTime(t);
@@ -489,10 +522,12 @@ export function VideoPlayer({
     if (hideControlsTimerRef.current) clearTimeout(hideControlsTimerRef.current);
     if (isPlaying) {
       hideControlsTimerRef.current = setTimeout(() => {
-        if (!isSeeking && !showVolumeSlider && !showSettingsMenu) setShowControls(false);
+        if (!isSeeking && !showVolumeSlider && !showSettingsMenu && !seekFeedback) {
+          setShowControls(false);
+        }
       }, 2500);
     }
-  }, [isPlaying, isSeeking, showVolumeSlider, showSettingsMenu]);
+  }, [isPlaying, isSeeking, showVolumeSlider, showSettingsMenu, seekFeedback]);
 
   // Controls stay visible 100% of the time when paused
   React.useEffect(() => {
@@ -516,12 +551,18 @@ export function VideoPlayer({
     e.stopPropagation();
     e.preventDefault();
     setIsSeeking(true);
+    setShowControls(true);
+    if (hideControlsTimerRef.current) clearTimeout(hideControlsTimerRef.current);
     const frac = getSeekFraction(e);
     setSeekPreview(frac);
     const seekTime = frac * videoDuration;
     setCurrentTime(seekTime);
+    currentTimeRef.current = seekTime;
+    targetSeekTimeRef.current = seekTime;
+    seekLockRef.current = true;
+    seekLockTimestampRef.current = Date.now();
     try {
-      playerRef.current?.seekTo?.(seekTime, true);
+      playerRef.current?.seekTo?.(seekTime, false);
     } catch {}
   }, [getSeekFraction, videoDuration]);
 
@@ -532,18 +573,27 @@ export function VideoPlayer({
       setSeekPreview(frac);
       const seekTime = frac * videoDuration;
       setCurrentTime(seekTime);
+      currentTimeRef.current = seekTime;
+      targetSeekTimeRef.current = seekTime;
+      seekLockTimestampRef.current = Date.now();
       try {
-        playerRef.current?.seekTo?.(seekTime, true);
+        playerRef.current?.seekTo?.(seekTime, false);
       } catch {}
     };
     const handleUp = (e: MouseEvent | TouchEvent) => {
       const frac = getSeekFraction(e);
       const seekTime = frac * videoDuration;
+      targetSeekTimeRef.current = seekTime;
+      seekLockRef.current = true;
+      seekLockTimestampRef.current = Date.now();
       try {
+        // allowSeekAhead = true to request new video stream outside buffer
         playerRef.current?.seekTo?.(seekTime, true);
       } catch {}
       setCurrentTime(seekTime);
+      currentTimeRef.current = seekTime;
       setIsSeeking(false);
+      resetControlsTimer();
     };
     window.addEventListener("mousemove", handleMove);
     window.addEventListener("mouseup", handleUp);
@@ -555,7 +605,7 @@ export function VideoPlayer({
       window.removeEventListener("touchmove", handleMove);
       window.removeEventListener("touchend", handleUp);
     };
-  }, [isSeeking, getSeekFraction, videoDuration]);
+  }, [isSeeking, getSeekFraction, videoDuration, resetControlsTimer]);
 
   // ── Volume Slider Interaction ──
   const getVolumeFraction = React.useCallback((e: React.MouseEvent | MouseEvent | React.TouchEvent | TouchEvent) => {
@@ -858,20 +908,31 @@ export function VideoPlayer({
   const currentTimeRef = React.useRef(0);
   React.useEffect(() => { currentTimeRef.current = currentTime; }, [currentTime]);
 
-  const seekPlayer = React.useCallback((deltaSeconds: number) => {
-    if (!playerRef.current) return;
-    const now = currentTimeRef.current;
-    const nextTime = Math.max(0, Math.min(videoDuration || Infinity, now + deltaSeconds));
-    try { playerRef.current.seekTo?.(nextTime, true); } catch {}
-    setCurrentTime(nextTime);
-  }, [videoDuration]);
-
-  // Native YouTube-style seek with accumulated seconds and on-screen ripple animation
+  // Native YouTube-style seek with accumulated seconds, instant timeline feedback,
+  // and debounced request so users can seek forward freely without buffer lock.
   const handleSeek = React.useCallback(
     (deltaSeconds: number) => {
-      seekPlayer(deltaSeconds);
-      const direction = deltaSeconds > 0 ? "forward" : "backward";
+      // 1. Immediately wake controls & timeline and keep them visible
+      setShowControls(true);
+      if (hideControlsTimerRef.current) clearTimeout(hideControlsTimerRef.current);
 
+      // 2. Compute accumulated target seek time
+      const maxDuration = videoDuration > 0 ? videoDuration : Infinity;
+      const baseTime =
+        targetSeekTimeRef.current !== null
+          ? targetSeekTimeRef.current
+          : currentTimeRef.current;
+      const nextTime = Math.max(0, Math.min(maxDuration, baseTime + deltaSeconds));
+
+      // 3. Lock polling so old buffer time doesn't snap user back
+      targetSeekTimeRef.current = nextTime;
+      seekLockRef.current = true;
+      seekLockTimestampRef.current = Date.now();
+      setCurrentTime(nextTime);
+      currentTimeRef.current = nextTime;
+
+      // 4. Update seek feedback badge
+      const direction = deltaSeconds > 0 ? "forward" : "backward";
       setSeekFeedback((prev) => {
         const isSameDirection = prev && prev.direction === direction;
         const newSeconds = isSameDirection
@@ -889,9 +950,22 @@ export function VideoPlayer({
       }
       seekTimerRef.current = setTimeout(() => {
         setSeekFeedback(null);
-      }, 700);
+        resetControlsTimer();
+      }, 800);
+
+      // 5. Debounce actual seekTo(time, true) to fetch new unbuffered stream cleanly
+      if (debouncedSeekTimerRef.current) {
+        clearTimeout(debouncedSeekTimerRef.current);
+      }
+      debouncedSeekTimerRef.current = setTimeout(() => {
+        if (targetSeekTimeRef.current !== null && playerRef.current) {
+          try {
+            playerRef.current.seekTo(targetSeekTimeRef.current, true);
+          } catch {}
+        }
+      }, 180);
     },
-    [seekPlayer]
+    [videoDuration, resetControlsTimer]
   );
 
   // Dedicated volume modifiers
@@ -1752,12 +1826,12 @@ export function VideoPlayer({
             onTouchStart={(e) => e.stopPropagation()}
             className={cn(
               "absolute inset-x-0 bottom-0 z-30 flex flex-col justify-end pt-10 pb-1.5 px-3 sm:pb-2 sm:px-4 bg-gradient-to-t from-black/85 via-black/40 to-transparent transition-opacity duration-200 pointer-events-auto select-none",
-              showControls || !isPlaying || isSeeking || showSettingsMenu
+              showControls || !isPlaying || isSeeking || showSettingsMenu || seekFeedback !== null
                 ? "opacity-100 pointer-events-auto"
                 : "opacity-0 pointer-events-none"
             )}
           >
-            {/* 1. YouTube-style Timeline / Seekbar */}
+            {/* 1. Modernized Timeline / Seekbar with High-Contrast Multi-Color Design */}
             <div
               ref={seekBarRef}
               onMouseDown={handleSeekStart}
@@ -1767,47 +1841,63 @@ export function VideoPlayer({
                 setSeekHoverFraction(frac);
               }}
               onMouseLeave={() => setSeekHoverFraction(null)}
-              className="group/seek relative w-full h-4 sm:h-5 flex items-center cursor-pointer select-none py-1"
+              className="group/seek relative w-full h-5 sm:h-6 flex items-center cursor-pointer select-none py-1.5"
             >
-              {/* Hover Tooltip Timestamp */}
+              {/* Modern Hover Tooltip Timestamp */}
               {seekHoverFraction !== null && videoDuration > 0 && (
                 <div
-                  className="absolute -top-7 -translate-x-1/2 px-2 py-0.5 rounded bg-[#1c1c1c]/95 text-white font-sans text-xs font-normal shadow-lg pointer-events-none select-none border border-white/10"
-                  style={{ left: `${Math.max(0.04, Math.min(0.96, seekHoverFraction)) * 100}%` }}
+                  className="absolute -top-8 -translate-x-1/2 px-2.5 py-0.5 rounded-full bg-[#0A0D12]/95 text-white font-mono text-xs font-semibold shadow-[0_4px_12px_rgba(0,0,0,0.9)] pointer-events-none select-none border border-[#F59E0B]/60 backdrop-blur-md flex items-center gap-1.5"
+                  style={{ left: `${Math.max(0.05, Math.min(0.95, seekHoverFraction)) * 100}%` }}
                 >
-                  {formatDuration(seekHoverFraction * videoDuration)}
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#F59E0B] animate-pulse" />
+                  <span>{formatDuration(seekHoverFraction * videoDuration)}</span>
                 </div>
               )}
 
-              {/* Visual Track Bar */}
-              <div className="relative w-full h-[3px] group-hover/seek:h-[5px] transition-[height] duration-100 bg-white/20 overflow-hidden">
-                {/* Buffer Bar */}
+              {/* Visual Track Bar (High-Contrast Channel for 100% visibility on white, dark, or colored backgrounds) */}
+              <div
+                className={cn(
+                  "relative w-full rounded-full transition-[height] duration-150 bg-black/60 border border-white/20 shadow-[0_1px_3px_rgba(0,0,0,0.8)] overflow-hidden",
+                  seekFeedback !== null ? "h-[7px]" : "h-[5px] group-hover/seek:h-[7px]"
+                )}
+              >
+                {/* Buffer Bar (Crisp Frosted Gray-White) */}
                 <div
-                  className="absolute left-0 top-0 bottom-0 bg-white/40 transition-[width] duration-150"
+                  className="absolute left-0 top-0 bottom-0 bg-white/40 rounded-full transition-[width] duration-150"
                   style={{ width: `${Math.min(100, Math.max(0, bufferedFraction * 100))}%` }}
                 />
                 {/* Hover Ghost Bar */}
                 {seekHoverFraction !== null && (
                   <div
-                    className="absolute left-0 top-0 bottom-0 bg-white/25 pointer-events-none"
+                    className="absolute left-0 top-0 bottom-0 bg-white/30 rounded-full pointer-events-none"
                     style={{ width: `${Math.min(100, Math.max(0, seekHoverFraction * 100))}%` }}
                   />
                 )}
-                {/* Played Bar (YouTube Red) */}
+                {/* Played Bar (Color 1: Electric Cyan-Teal with High-Visibility Glow) */}
                 <div
-                  className="absolute left-0 top-0 bottom-0 bg-[#FF0000]"
+                  className="absolute left-0 top-0 bottom-0 rounded-full bg-gradient-to-r from-[#0284C7] via-[#06B6D4] to-[#22D3EE] shadow-[0_0_12px_rgba(34,211,238,0.9)]"
                   style={{ width: `${currentProgressPercent}%` }}
                 />
               </div>
 
-              {/* Scrubber Thumb (YouTube Red Circle) */}
+              {/* Custom BCS Playhead (Color 2: High-Vis Solar Gold Badge — Distinct from Cyan Timeline) */}
               <div
                 className={cn(
-                  "absolute top-1/2 -translate-y-1/2 -translate-x-1/2 h-3.5 w-3.5 rounded-full bg-[#FF0000] shadow-md pointer-events-none transition-transform duration-100",
-                  isSeeking ? "scale-125" : "scale-0 group-hover/seek:scale-100"
+                  "absolute top-1/2 -translate-y-1/2 -translate-x-1/2 pointer-events-none transition-all duration-150 select-none z-10 flex items-center justify-center",
+                  isSeeking || seekFeedback !== null
+                    ? "scale-115 sm:scale-120"
+                    : "scale-95 group-hover/seek:scale-110"
                 )}
                 style={{ left: `${currentProgressPercent}%` }}
-              />
+              >
+                <div className="relative flex items-center justify-center px-2 py-0.5 rounded-full bg-[#0A0D12] border-2 border-[#F59E0B] text-white shadow-[0_2px_10px_rgba(0,0,0,0.95),0_0_14px_rgba(245,158,11,0.8)]">
+                  <span className="font-mono text-[8.5px] sm:text-[9.5px] font-black tracking-widest text-[#FEF08A] leading-none uppercase">
+                    BCS
+                  </span>
+                  {/* High-Vis Amber Alignment Pip pointing down to the Cyan timeline */}
+                  <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-[#F59E0B] shadow-[0_0_6px_#F59E0B] border border-black/80" />
+                </div>
+              </div>
             </div>
 
             {/* 2. Controls Buttons Row */}
