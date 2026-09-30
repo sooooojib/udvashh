@@ -290,10 +290,6 @@ export function VideoPlayer({
     if (isFullscreen) {
       document.documentElement.dataset.playerFullscreen = "true";
       document.body.classList.add("player-fullscreen-active");
-      const originalHtmlOverflow = document.documentElement.style.overflow;
-      const originalHtmlOverscroll = document.documentElement.style.overscrollBehavior;
-      const originalBodyOverflow = document.body.style.overflow;
-      const originalBodyOverscroll = document.body.style.overscrollBehavior;
 
       document.documentElement.style.overflow = "hidden";
       document.documentElement.style.overscrollBehavior = "none";
@@ -303,10 +299,17 @@ export function VideoPlayer({
       return () => {
         delete document.documentElement.dataset.playerFullscreen;
         document.body.classList.remove("player-fullscreen-active");
-        document.documentElement.style.overflow = originalHtmlOverflow;
-        document.documentElement.style.overscrollBehavior = originalHtmlOverscroll;
-        document.body.style.overflow = originalBodyOverflow;
-        document.body.style.overscrollBehavior = originalBodyOverscroll;
+
+        const hasOpenModal = Boolean(
+          document.body.dataset.modalOpen === "true" ||
+          document.querySelector('[data-modal-open="true"], [role="dialog"], .pdf-viewer-modal')
+        );
+        if (!hasOpenModal) {
+          document.documentElement.style.overflow = "";
+          document.documentElement.style.overscrollBehavior = "";
+          document.body.style.overflow = "";
+          document.body.style.overscrollBehavior = "";
+        }
       };
     }
   }, [isFullscreen]);
@@ -388,11 +391,17 @@ export function VideoPlayer({
 
       return () => {
         document.body.classList.remove("theater-mode-active");
-        document.documentElement.style.overflow = originalHtmlOverflow;
-        document.documentElement.style.overscrollBehavior = originalHtmlOverscroll;
-        document.body.style.overflow = originalBodyOverflow;
-        document.body.style.overscrollBehavior = originalBodyOverscroll;
-        document.body.style.touchAction = originalTouchAction;
+        const hasOpenModal = Boolean(
+          document.body.dataset.modalOpen === "true" ||
+          document.querySelector('[data-modal-open="true"], [role="dialog"], .pdf-viewer-modal')
+        );
+        if (!hasOpenModal) {
+          document.documentElement.style.overflow = "";
+          document.documentElement.style.overscrollBehavior = "";
+          document.body.style.overflow = "";
+          document.body.style.overscrollBehavior = "";
+          document.body.style.touchAction = "";
+        }
         window.removeEventListener("wheel", handleWheel);
         window.removeEventListener("touchmove", handleTouchMove);
         window.removeEventListener("keydown", handleKeyDown);
@@ -1070,6 +1079,16 @@ export function VideoPlayer({
         return;
       }
 
+      // Ignore all video player shortcuts if any modal/overlay (PDF viewer, Exam modal, etc.) is active
+      const isModalActive = Boolean(
+        document.body.dataset.modalOpen === "true" ||
+        document.querySelector('[data-modal-open="true"], [role="dialog"], .pdf-viewer-modal') ||
+        target?.closest('[role="dialog"], [data-modal-open="true"], .pdf-viewer-modal')
+      );
+      if (isModalActive) {
+        return;
+      }
+
       const {
         start2xSpeed,
         handleSeek,
@@ -1234,6 +1253,16 @@ export function VideoPlayer({
         tagName === "textarea" ||
         target?.isContentEditable
       ) {
+        return;
+      }
+
+      // Ignore all video player shortcuts if any modal/overlay (PDF viewer, Exam modal, etc.) is active
+      const isModalActive = Boolean(
+        document.body.dataset.modalOpen === "true" ||
+        document.querySelector('[data-modal-open="true"], [role="dialog"], .pdf-viewer-modal') ||
+        target?.closest('[role="dialog"], [data-modal-open="true"], .pdf-viewer-modal')
+      );
+      if (isModalActive) {
         return;
       }
 

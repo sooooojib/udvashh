@@ -155,7 +155,7 @@ export function PdfViewerModal({ pdf, onClose }: PdfViewerModalProps) {
     };
   }, [cacheKey, isDrive, pdf.file_id, pdf.file_url, pdf.file_size, pdf.title, rawStreamUrl]);
 
-  // Keyboard shortcut: Esc to restore/close
+  // Keyboard shortcuts: Esc to restore/close, F to toggle stretch/fullscreen
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (
@@ -165,12 +165,45 @@ export function PdfViewerModal({ pdf, onClose }: PdfViewerModalProps) {
         return;
       }
 
+      if (e.key === "f" || e.key === "F") {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsStretched((prev) => !prev);
+        return;
+      }
+
       if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
         if (isStretched) {
           setIsStretched(false);
         } else {
           onClose();
         }
+        return;
+      }
+
+      // Stop propagation of player media shortcuts so background video is unaffected
+      if (
+        [
+          " ",
+          "k",
+          "K",
+          "j",
+          "J",
+          "l",
+          "L",
+          "m",
+          "M",
+          "t",
+          "T",
+          "ArrowLeft",
+          "ArrowRight",
+          "ArrowUp",
+          "ArrowDown",
+        ].includes(e.key)
+      ) {
+        e.stopPropagation();
       }
     };
 
@@ -180,25 +213,31 @@ export function PdfViewerModal({ pdf, onClose }: PdfViewerModalProps) {
 
   // Lock body and html scroll when modal is active
   React.useEffect(() => {
-    const prevBodyOverflow = document.body.style.overflow;
-    const prevHtmlOverflow = document.documentElement.style.overflow;
-    const prevGutter = document.documentElement.style.scrollbarGutter;
-
+    document.body.dataset.modalOpen = "true";
     document.documentElement.style.overflow = "hidden";
     document.body.style.overflow = "hidden";
     document.documentElement.style.scrollbarGutter = "auto";
 
     return () => {
-      document.documentElement.style.overflow = prevHtmlOverflow;
-      document.body.style.overflow = prevBodyOverflow;
-      document.documentElement.style.scrollbarGutter = prevGutter;
+      delete document.body.dataset.modalOpen;
+      const otherModals = document.querySelectorAll(
+        '[data-modal-open="true"], [role="dialog"]:not(.pdf-viewer-modal)'
+      );
+      if (otherModals.length === 0) {
+        document.documentElement.style.overflow = "";
+        document.body.style.overflow = "";
+        document.documentElement.style.scrollbarGutter = "";
+      }
     };
   }, []);
 
   return (
     <div
+      role="dialog"
+      aria-modal="true"
+      data-modal-open="true"
       className={cn(
-        "fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 dark:bg-black/85 backdrop-blur-sm animate-in fade-in duration-150",
+        "pdf-viewer-modal fixed inset-0 z-[99999] flex items-center justify-center bg-slate-900/40 dark:bg-black/85 backdrop-blur-sm animate-in fade-in duration-150",
         isStretched ? "p-0" : "p-2 sm:p-4 md:p-6"
       )}
       onClick={(e) => {

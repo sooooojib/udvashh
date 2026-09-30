@@ -113,7 +113,22 @@ export function ExamModal({
         return;
       }
 
+      if (e.key === "f" || e.key === "F") {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsStretched((prev) => {
+          const next = !prev;
+          try {
+            localStorage.setItem("udvash_exam_stretched", String(next));
+          } catch {}
+          return next;
+        });
+        return;
+      }
+
       if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
         if (isStretched) {
           setIsStretched(false);
           try {
@@ -122,6 +137,30 @@ export function ExamModal({
         } else {
           onClose();
         }
+        return;
+      }
+
+      // Stop propagation of player media shortcuts so background video is unaffected
+      if (
+        [
+          " ",
+          "k",
+          "K",
+          "j",
+          "J",
+          "l",
+          "L",
+          "m",
+          "M",
+          "t",
+          "T",
+          "ArrowLeft",
+          "ArrowRight",
+          "ArrowUp",
+          "ArrowDown",
+        ].includes(e.key)
+      ) {
+        e.stopPropagation();
       }
     };
 
@@ -206,10 +245,7 @@ export function ExamModal({
   // Lock body and html scroll when modal is active
   React.useEffect(() => {
     if (!exam) return;
-    const prevBodyOverflow = document.body.style.overflow;
-    const prevHtmlOverflow = document.documentElement.style.overflow;
-    const prevGutter = document.documentElement.style.scrollbarGutter;
-
+    document.body.dataset.modalOpen = "true";
     document.documentElement.style.overflow = "hidden";
     document.body.style.overflow = "hidden";
     document.documentElement.style.scrollbarGutter = "auto";
@@ -221,9 +257,15 @@ export function ExamModal({
     }
 
     return () => {
-      document.documentElement.style.overflow = prevHtmlOverflow;
-      document.body.style.overflow = prevBodyOverflow;
-      document.documentElement.style.scrollbarGutter = prevGutter;
+      delete document.body.dataset.modalOpen;
+      const otherModals = document.querySelectorAll(
+        '[data-modal-open="true"], [role="dialog"]:not(.exam-modal-root)'
+      );
+      if (otherModals.length === 0) {
+        document.documentElement.style.overflow = "";
+        document.body.style.overflow = "";
+        document.documentElement.style.scrollbarGutter = "";
+      }
     };
   }, [exam]);
 
@@ -428,8 +470,9 @@ export function ExamModal({
     <div
       role="dialog"
       aria-modal="true"
+      data-modal-open="true"
       className={cn(
-        "fixed inset-0 z-[999999] flex items-center justify-center bg-white/95 backdrop-blur-3xl dark:bg-[#070B0E]/95 dark:backdrop-blur-3xl overflow-hidden transition-all duration-200",
+        "exam-modal-root fixed inset-0 z-[999999] flex items-center justify-center bg-white/95 backdrop-blur-3xl dark:bg-[#070B0E]/95 dark:backdrop-blur-3xl overflow-hidden transition-all duration-200",
         isStretched ? "p-0" : "p-0 sm:p-4 md:p-6"
       )}
       onClick={(e) => {

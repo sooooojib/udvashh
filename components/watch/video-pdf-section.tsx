@@ -91,32 +91,36 @@ export function VideoPdfSection({
     setPdfs(initialPdfs);
   }, [initialPdfs]);
 
-  // Lock background scroll when modal is open
+  // Lock background scroll when Add Modal is open (PdfViewerModal handles its own scroll lock)
   React.useEffect(() => {
-    if (previewPdf || isAddModalOpen) {
-      const originalHtmlOverflow = document.documentElement.style.overflow;
-      const originalBodyOverflow = document.body.style.overflow;
+    if (isAddModalOpen) {
+      document.body.dataset.modalOpen = "true";
       document.documentElement.style.overflow = "hidden";
       document.body.style.overflow = "hidden";
 
       return () => {
-        document.documentElement.style.overflow = originalHtmlOverflow;
-        document.body.style.overflow = originalBodyOverflow;
+        delete document.body.dataset.modalOpen;
+        const otherModals = document.querySelectorAll(
+          '[data-modal-open="true"], [role="dialog"]'
+        );
+        if (otherModals.length === 0) {
+          document.documentElement.style.overflow = "";
+          document.body.style.overflow = "";
+        }
       };
     }
-  }, [previewPdf, isAddModalOpen]);
+  }, [isAddModalOpen]);
 
-  // Handle ESC key
+  // Handle ESC key for Add Modal
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        if (previewPdf) setPreviewPdf(null);
-        if (isAddModalOpen) closeAndResetModal();
+      if (e.key === "Escape" && isAddModalOpen) {
+        closeAndResetModal();
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [previewPdf, isAddModalOpen]);
+  }, [isAddModalOpen]);
 
   const accentColor =
     moduleType === "intensive"
