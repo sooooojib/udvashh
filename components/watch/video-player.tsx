@@ -214,6 +214,7 @@ export function VideoPlayer({
   const [seekPreview, setSeekPreview] = React.useState(0);
   const [showControls, setShowControls] = React.useState(true);
   const [showVolumeSlider, setShowVolumeSlider] = React.useState(false);
+  const [isVolumeDragging, setIsVolumeDragging] = React.useState(false);
   const [seekHoverFraction, setSeekHoverFraction] = React.useState<number | null>(null);
   const [showSettingsMenu, setShowSettingsMenu] = React.useState(false);
   const [settingsView, setSettingsView] = React.useState<"main" | "speed" | "quality">("main");
@@ -525,28 +526,30 @@ export function VideoPlayer({
     return () => clearInterval(poll);
   }, [isPlaying, isSeeking]);
 
-  // ── Auto-hide Controls: Show on mouse activity, hide after 2.5s of idle ONLY when playing ──
+  // ── Auto-hide Controls: Show on activity, retract/vanish after 2s of idle (both when playing & paused in all modes) ──
   const resetControlsTimer = React.useCallback(() => {
-    setShowControls((prev) => { if (!prev) return true; return prev; });
+    setShowControls(true);
     if (hideControlsTimerRef.current) clearTimeout(hideControlsTimerRef.current);
-    if (isPlaying) {
-      hideControlsTimerRef.current = setTimeout(() => {
-        if (!isSeeking && !showVolumeSlider && !showSettingsMenu && !seekFeedback) {
-          setShowControls(false);
-        }
-      }, 2500);
-    }
-  }, [isPlaying, isSeeking, showVolumeSlider, showSettingsMenu, seekFeedback]);
+    hideControlsTimerRef.current = setTimeout(() => {
+      if (!isSeeking && !isVolumeDragging && !showVolumeSlider && !showSettingsMenu && !seekFeedback) {
+        setShowControls(false);
+      }
+    }, 2000);
+  }, [isSeeking, isVolumeDragging, showVolumeSlider, showSettingsMenu, seekFeedback]);
 
-  // Controls stay visible 100% of the time when paused
+  // When playback state changes (play/pause), video starts, or settings closes, trigger 2s auto-hide countdown
   React.useEffect(() => {
-    if (!isPlaying) {
-      setShowControls(true);
-      if (hideControlsTimerRef.current) clearTimeout(hideControlsTimerRef.current);
-    } else {
+    if (hasStarted) {
       resetControlsTimer();
     }
-  }, [isPlaying, resetControlsTimer]);
+  }, [isPlaying, hasStarted, showSettingsMenu, resetControlsTimer]);
+
+  // Cleanup hideControlsTimer on unmount
+  React.useEffect(() => {
+    return () => {
+      if (hideControlsTimerRef.current) clearTimeout(hideControlsTimerRef.current);
+    };
+  }, []);
 
   // ── Seek Bar Interaction Handlers ──
   const getSeekFraction = React.useCallback((e: React.MouseEvent | MouseEvent | React.TouchEvent | TouchEvent) => {
@@ -624,8 +627,6 @@ export function VideoPlayer({
     return Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
   }, []);
 
-  const [isVolumeDragging, setIsVolumeDragging] = React.useState(false);
-
   const handleVolumeStart = React.useCallback((e: React.MouseEvent | React.TouchEvent) => {
     e.stopPropagation();
     e.preventDefault();
@@ -666,6 +667,7 @@ export function VideoPlayer({
   }, [isVolumeDragging, getVolumeFraction]);
 
   const toggleTheaterMode = React.useCallback(() => {
+    resetControlsTimer();
     // Theater mode is strictly for big screens (>= 768px)
     if (typeof window !== "undefined" && window.innerWidth < 768) {
       return;
@@ -689,9 +691,10 @@ export function VideoPlayer({
         return false;
       }
     });
-  }, []);
+  }, [resetControlsTimer]);
 
   const toggleFullscreen = React.useCallback(async () => {
+    resetControlsTimer();
     const fsEl =
       document.fullscreenElement ||
       (document as any).webkitFullscreenElement ||
@@ -724,7 +727,7 @@ export function VideoPlayer({
       } catch {}
       setIsFullscreen(false);
     }
-  }, [isFullscreen]);
+  }, [isFullscreen, resetControlsTimer]);
 
   const hasSavedDurationRef = React.useRef(duration > 0);
   const handleDurationDetected = React.useCallback(
@@ -893,6 +896,7 @@ export function VideoPlayer({
   // so the toggle decision is always correct. UI updates optimistically for
   // instant snappy feel; handlePlayerStateChange will confirm/correct afterward.
   const togglePlayPause = React.useCallback(() => {
+    resetControlsTimer();
     if (!playerRef.current) {
       if (!hasStarted) {
         pendingAutoplayRef.current = true;
@@ -910,7 +914,7 @@ export function VideoPlayer({
       setIsPlaying(true);
       try { playerRef.current.playVideo?.(); } catch {}
     }
-  }, [hasStarted]);
+  }, [hasStarted, resetControlsTimer]);
 
   // Safe seek — uses currentTime from React state (synchronous) instead of
   // playerRef.getCurrentTime() which returns a Promise via youtube-player.
@@ -979,6 +983,7 @@ export function VideoPlayer({
 
   // Dedicated volume modifiers
   const changeVolume = React.useCallback((delta: number) => {
+    resetControlsTimer();
     if (!playerRef.current) return;
     try {
       let currentVol = playerRef.current.getVolume?.();
@@ -1009,11 +1014,12 @@ export function VideoPlayer({
         setVolumeFeedback(null);
       }, 1200);
     } catch {}
-  }, [currentVolume]);
+  }, [currentVolume, resetControlsTimer]);
 
   // toggleMute — uses isMuted state instead of playerRef.isMuted() (which
   // returns a Promise via youtube-player, always truthy).
   const toggleMute = React.useCallback(() => {
+    resetControlsTimer();
     if (!playerRef.current) return;
     try {
       if (isMuted) {
@@ -1032,7 +1038,7 @@ export function VideoPlayer({
       if (volumeTimerRef.current) clearTimeout(volumeTimerRef.current);
       volumeTimerRef.current = setTimeout(() => setVolumeFeedback(null), 1200);
     } catch {}
-  }, [isMuted]);
+  }, [isMuted, resetControlsTimer]);
 
 
 
@@ -1450,6 +1456,7 @@ export function VideoPlayer({
       setIsPlaying(false);
       setIsBuffering(false);
       syncProgress();
+      resetControlsTimer();
       setTimeout(() => { containerRef.current?.focus(); }, 50);
     } else if (state === 3) {
       // BUFFERING
@@ -1638,7 +1645,17 @@ export function VideoPlayer({
         role="region"
         aria-label={`Video player: ${title}`}
         onClick={() => containerRef.current?.focus()}
-        onMouseEnter={() => containerRef.current?.focus()}
+        onMouseEnter={() => {
+          containerRef.current?.focus();
+          if (hasStarted) resetControlsTimer();
+        }}
+        onMouseMove={resetControlsTimer}
+        onTouchStart={resetControlsTimer}
+        onMouseLeave={() => {
+          if (hasStarted && !isSeeking && !isVolumeDragging && !showVolumeSlider && !showSettingsMenu) {
+            setShowControls(false);
+          }
+        }}
         className={cn(
           "group relative bg-black outline-none select-none overflow-hidden",
           isFullscreen
@@ -1751,7 +1768,7 @@ export function VideoPlayer({
           )}
           onMouseMove={resetControlsTimer}
           onMouseLeave={() => {
-            if (isPlaying && !isSeeking && !showVolumeSlider && !showSettingsMenu) {
+            if (hasStarted && !isSeeking && !isVolumeDragging && !showVolumeSlider && !showSettingsMenu) {
               setShowControls(false);
             }
           }}
@@ -1833,7 +1850,7 @@ export function VideoPlayer({
             }}
             className={cn(
               "absolute inset-0 z-20 select-none",
-              !showControls && isPlaying ? "cursor-none" : "cursor-pointer"
+              !showControls && hasStarted ? "cursor-none" : "cursor-pointer"
             )}
           />
 
@@ -1853,11 +1870,12 @@ export function VideoPlayer({
             onClick={(e) => e.stopPropagation()}
             onMouseDown={(e) => e.stopPropagation()}
             onTouchStart={(e) => e.stopPropagation()}
+            onMouseMove={resetControlsTimer}
             className={cn(
-              "absolute inset-x-0 bottom-0 z-30 flex flex-col justify-end pt-10 pb-1.5 px-3 sm:pb-2 sm:px-4 bg-gradient-to-t from-black/85 via-black/40 to-transparent transition-opacity duration-200 pointer-events-auto select-none",
-              showControls || !isPlaying || isSeeking || showSettingsMenu || seekFeedback !== null
-                ? "opacity-100 pointer-events-auto"
-                : "opacity-0 pointer-events-none"
+              "absolute inset-x-0 bottom-0 z-30 flex flex-col justify-end pt-10 pb-1.5 px-3 sm:pb-2 sm:px-4 bg-gradient-to-t from-black/85 via-black/40 to-transparent transition-all duration-300 ease-out select-none",
+              (showControls || isSeeking || showSettingsMenu || seekFeedback !== null) && hasStarted
+                ? "opacity-100 translate-y-0 pointer-events-auto"
+                : "opacity-0 translate-y-6 pointer-events-none"
             )}
           >
             {/* 1. Modernized Timeline / Seekbar with High-Contrast Multi-Color Design */}
@@ -1979,7 +1997,10 @@ export function VideoPlayer({
                   className="group/vol relative flex items-center"
                   onMouseEnter={() => setShowVolumeSlider(true)}
                   onMouseLeave={() => {
-                    if (!isVolumeDragging) setShowVolumeSlider(false);
+                    if (!isVolumeDragging) {
+                      setShowVolumeSlider(false);
+                      resetControlsTimer();
+                    }
                   }}
                 >
                   <button
