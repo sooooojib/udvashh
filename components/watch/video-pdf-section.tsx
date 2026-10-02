@@ -19,6 +19,8 @@ import {
   ChevronDown,
   ChevronUp,
   RotateCw,
+  Zap,
+  Code2,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -43,6 +45,7 @@ interface ActiveUploadTask {
   progress: number;
   statusText: string;
   mode: "drive" | "supabase";
+  driveMethod?: "direct" | "script";
   status: "queued" | "uploading" | "completed" | "error";
   errorMessage?: string;
 }
@@ -67,6 +70,8 @@ export function VideoPdfSection({
 
   // 3 Upload Modes: "drive" (Google Drive direct), "supabase" (Supabase Storage), "link" (Google Drive URL)
   const [uploadMode, setUploadMode] = React.useState<"drive" | "supabase" | "link">("drive");
+  // Drive Sub-Method: "direct" (Resumable Chunked API) vs "script" (Apps Script Bridge)
+  const [driveMethod, setDriveMethod] = React.useState<"direct" | "script">("direct");
 
   // Multi-File Upload State
   const [selectedFiles, setSelectedFiles] = React.useState<File[]>([]);
@@ -289,7 +294,241 @@ export function VideoPdfSection({
         toast.success(`Uploaded: ${task.title}`);
         return { success: true };
       } else {
-        // --- 2. Google Drive Direct Upload (via Apps Script) ---
+        // --- 2. Google Drive Upload ---
+        const isScriptSelected = task.driveMethod === "script";
+
+        if (isScriptSelected) {
+          // --- User selected Apps Script Bridge ---
+          if (file.size > 36 * 1024 * 1024) {
+            throw new Error(
+              `File (${formatFileSize(file.size)}) exceeds Google Apps Script 50MB payload limit (after Base64). Please toggle to "Direct" mode or use the Link tab.`
+            );
+          }
+
+          if (!resolvedScriptUrl) {
+            const configRes = await fetch("/api/upload/drive/config");
+            if (!configRes.ok) {
+              const errData = await configRes.json().catch(() => ({}));
+              throw new Error(errData.message || "Failed to connect to Google Drive bridge.");
+            }
+            const cfg = await configRes.json();
+            resolvedScriptUrl = cfg.scriptUrl;
+          }
+
+          updateTask(task.id, { progress: 30, statusText: "Processing file data..." });
+
+          const base64 = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+              const result = reader.result as string;
+              const commaIdx = result.indexOf(",");
+              resolve(commaIdx !== -1 ? result.slice(commaIdx + 1) : result);
+            };
+            reader.onerror = () => reject(new Error("Failed to read PDF file"));
+            reader.readAsDataURL(file);
+          });
+
+          updateTask(task.id, { progress: 60, statusText: "Uploading via Apps Script..." });
+
+          let scriptData: { fileId?: string; webViewLink?: string } | null = null;
+          const maxAttempts = 2;
+
+          for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+            try {
+              if (attempt > 1) {
+                updateTask(task.id, {
+                  statusText: `Retrying Script upload (${attempt}/${maxAttempts})...`,
+                  progress: 55,
+                });
+                await new Promise((r) => setTimeout(r, 2500));
+              }
+
+              const scriptRes = await fetch(resolvedScriptUrl, {
+                method: "POST",
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
+                body: JSON.stringify({
+                  fileName: file.name,
+                  base64,
+                }),
+              });
+
+              if (!scriptRes.ok) {
+                throw new Error(`Apps Script bridge returned status ${scriptRes.status}`);
+              }
+
+              const data = await scriptRes.json();
+              if (!data.success || !data.fileId) {
+                throw new Error(data.error || "Upload was not completed by Apps Script.");
+              }
+
+              scriptData = data;
+              break;
+            } catch (err: unknown) {
+              if (attempt >= maxAttempts) throw err;
+              console.warn(`Drive script attempt ${attempt} failed, retrying...`, err);
+            }
+          }
+
+          if (!scriptData || !scriptData.fileId) {
+            throw new Error("Could not retrieve Drive file ID from Apps Script.");
+          }
+
+          updateTask(task.id, { progress: 90, statusText: "Saving to database..." });
+
+          const completeRes = await fetch("/api/upload/drive/complete", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              videoId,
+              title: task.title,
+              fileId: scriptData.fileId,
+              webViewLink: scriptData.webViewLink,
+              fileSize: file.size,
+            }),
+          });
+
+          const completeData = await completeRes.json();
+          if (!completeRes.ok || !completeData.success) {
+            throw new Error(completeData.message || "Failed to record Drive PDF.");
+          }
+
+          setPdfs((prev) => [...prev, completeData.pdf]);
+          updateTask(task.id, {
+            status: "completed",
+            progress: 100,
+            statusText: "Uploaded via Apps Script",
+          });
+          toast.success(`Uploaded: ${task.title}`);
+          return { success: true, scriptUrl: resolvedScriptUrl };
+        }
+
+        // --- User selected Direct Resumable Chunked Upload (handles ANY size: 50MB, 200MB, 1GB+) ---
+        let useResumableChunked = false;
+        let resumableSessionUrl = "";
+        let initErrorMessage = "";
+
+        updateTask(task.id, {
+          status: "uploading",
+          progress: 5,
+          statusText: "Connecting to Google Drive...",
+        });
+
+        try {
+          const startRes = await fetch("/api/upload/drive/start", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              fileName: file.name,
+              fileSize: file.size,
+            }),
+          });
+
+          const startData = await startRes.json().catch(() => ({}));
+          if (startRes.ok && startData.success && startData.sessionUrl) {
+            resumableSessionUrl = startData.sessionUrl;
+            useResumableChunked = true;
+          } else {
+            initErrorMessage = startData.message || "Failed to start Drive session.";
+            console.warn("Drive resumable session init notice:", initErrorMessage);
+          }
+        } catch (initErr) {
+          initErrorMessage = initErr instanceof Error ? initErr.message : "Connection failed";
+          console.warn("Drive resumable init error:", initErr);
+        }
+
+        if (useResumableChunked && resumableSessionUrl) {
+          // --- Official Google Drive Resumable Chunk Upload (2MB chunks) ---
+          const CHUNK_SIZE = 2 * 1024 * 1024; // 2MB chunk (safe for Vercel, optimal for Drive)
+          const totalSize = file.size;
+          let start = 0;
+          let chunkIndex = 1;
+          const totalChunks = Math.ceil(totalSize / CHUNK_SIZE);
+          let createdPdf: VideoPdfItem | null = null;
+
+          while (start < totalSize) {
+            const end = Math.min(start + CHUNK_SIZE, totalSize) - 1;
+            const chunkBlob = file.slice(start, end + 1);
+            const currentPercent = Math.max(5, Math.min(95, Math.round((start / totalSize) * 100)));
+
+            updateTask(task.id, {
+              progress: currentPercent,
+              statusText: `Uploading (${chunkIndex}/${totalChunks}) • ${currentPercent}%`,
+            });
+
+            let chunkOk = false;
+            let lastChunkErr: unknown = null;
+
+            // Retry up to 3 times per chunk
+            for (let chunkAttempt = 1; chunkAttempt <= 3; chunkAttempt++) {
+              try {
+                if (chunkAttempt > 1) {
+                  updateTask(task.id, {
+                    statusText: `Retrying chunk ${chunkIndex}/${totalChunks} (${chunkAttempt}/3)...`,
+                  });
+                  await new Promise((r) => setTimeout(r, 2000));
+                }
+
+                const chunkRes = await fetch(
+                  `/api/upload/drive/chunk?rangeStart=${start}&rangeEnd=${end}&totalSize=${totalSize}&videoId=${encodeURIComponent(videoId)}&title=${encodeURIComponent(task.title)}`,
+                  {
+                    method: "POST",
+                    headers: {
+                      "x-session-url": resumableSessionUrl,
+                      "Content-Type": "application/octet-stream",
+                    },
+                    body: chunkBlob,
+                  }
+                );
+
+                if (!chunkRes.ok) {
+                  const errJson = await chunkRes.json().catch(() => ({}));
+                  throw new Error(errJson.message || `Chunk ${chunkIndex} upload failed.`);
+                }
+
+                const chunkData = await chunkRes.json();
+                if (chunkData.done && chunkData.pdf) {
+                  createdPdf = chunkData.pdf;
+                }
+
+                chunkOk = true;
+                break;
+              } catch (err) {
+                lastChunkErr = err;
+                console.warn(`Chunk ${chunkIndex} attempt ${chunkAttempt} failed:`, err);
+              }
+            }
+
+            if (!chunkOk) {
+              throw lastChunkErr || new Error(`Failed to upload chunk ${chunkIndex}.`);
+            }
+
+            start = end + 1;
+            chunkIndex++;
+          }
+
+          if (createdPdf) {
+            setPdfs((prev) => [...prev, createdPdf!]);
+            updateTask(task.id, {
+              status: "completed",
+              progress: 100,
+              statusText: "Uploaded to Drive",
+            });
+            toast.success(`Uploaded: ${task.title}`);
+            return { success: true };
+          } else {
+            throw new Error("Drive upload finished but could not confirm database record.");
+          }
+        }
+
+        // --- Fallback if Direct API failed: try Apps Script if <= 35 MB ---
+        if (file.size > 36 * 1024 * 1024) {
+          throw new Error(
+            initErrorMessage.includes("reconnect") || initErrorMessage.includes("expired")
+              ? initErrorMessage
+              : `File (${formatFileSize(file.size)}) requires Google Drive OAuth authorization. Visit /api/oauth/drive to reconnect, or use the Supabase tab.`
+          );
+        }
+
         if (!resolvedScriptUrl) {
           const configRes = await fetch("/api/upload/drive/config");
           if (!configRes.ok) {
@@ -313,7 +552,7 @@ export function VideoPdfSection({
           reader.readAsDataURL(file);
         });
 
-        updateTask(task.id, { progress: 60, statusText: "Uploading to Drive..." });
+        updateTask(task.id, { progress: 60, statusText: "Uploading to Drive bridge..." });
 
         let scriptData: { fileId?: string; webViewLink?: string } | null = null;
         const maxAttempts = 2;
@@ -428,6 +667,18 @@ export function VideoPdfSection({
     const modeToUpload: "drive" | "supabase" =
       uploadMode === "supabase" ? "supabase" : "drive";
 
+    // If user explicitly chose Script mode and a file exceeds Apps Script limit, warn them to switch to Direct
+    if (modeToUpload === "drive" && driveMethod === "script") {
+      const oversized = filesToUpload.filter((f) => f.size > 36 * 1024 * 1024);
+      if (oversized.length > 0) {
+        toast.error(
+          `"${oversized[0].name}" (${formatFileSize(oversized[0].size)}) exceeds Apps Script's 50MB payload limit. Please toggle to "Direct" mode above.`,
+          { duration: 7000 }
+        );
+        return;
+      }
+    }
+
     // Close modal immediately so user continues without waiting
     closeAndResetModal();
 
@@ -448,6 +699,7 @@ export function VideoPdfSection({
         progress: 0,
         statusText: "Queued",
         mode: modeToUpload,
+        driveMethod: modeToUpload === "drive" ? driveMethod : undefined,
         status: "queued" as const,
       };
     });
@@ -541,6 +793,7 @@ export function VideoPdfSection({
     setLinkTitle("");
     setLinkUrl("");
     setUploadMode("drive");
+    setDriveMethod("direct");
   };
 
   // Queue state summaries
@@ -811,6 +1064,51 @@ export function VideoPdfSection({
                 </button>
               </div>
 
+              {/* Drive Method Toggle (Direct Resumable API vs Apps Script Bridge) */}
+              {uploadMode === "drive" && (
+                <div className="flex items-center justify-between px-3 py-2 mb-3.5 rounded-xl bg-muted/30 dark:bg-[#121921] border border-border/40 dark:border-white/5">
+                  <div className="flex flex-col">
+                    <span className="text-[11px] font-semibold text-foreground dark:text-[#E8EDF0]">
+                      Drive Engine
+                    </span>
+                    <span className="text-[10px] text-muted-foreground dark:text-[#8A9BA8]">
+                      {driveMethod === "direct"
+                        ? "Chunked API (Unlimited size, handles 50MB+)"
+                        : "Apps Script Bridge (Best for files <35 MB)"}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-1 p-0.5 rounded-lg bg-background dark:bg-[#0E151D] border border-border/40 dark:border-white/10 shadow-xs">
+                    <button
+                      type="button"
+                      onClick={() => setDriveMethod("direct")}
+                      className={cn(
+                        "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium transition-all cursor-pointer",
+                        driveMethod === "direct"
+                          ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-semibold shadow-xs"
+                          : "text-muted-foreground hover:text-foreground dark:text-[#8A9BA8] dark:hover:text-white"
+                      )}
+                    >
+                      <Zap className="h-3 w-3 stroke-[2.2]" />
+                      Direct
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDriveMethod("script")}
+                      className={cn(
+                        "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium transition-all cursor-pointer",
+                        driveMethod === "script"
+                          ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-semibold shadow-xs"
+                          : "text-muted-foreground hover:text-foreground dark:text-[#8A9BA8] dark:hover:text-white"
+                      )}
+                    >
+                      <Code2 className="h-3 w-3 stroke-[2.2]" />
+                      Script
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Mode 1 & 2: Direct Upload (Drive or Supabase) */}
               {uploadMode !== "link" ? (
                 <form onSubmit={handleFileUpload} className="space-y-4">
@@ -860,8 +1158,10 @@ export function VideoPdfSection({
                         </p>
                         <p className="text-[11px] text-muted-foreground dark:text-[#657682] mt-0.5">
                           {uploadMode === "drive"
-                            ? "Direct to Google Drive (unlimited size)"
-                            : "Direct to Supabase Storage (up to 50 MB)"}
+                            ? driveMethod === "direct"
+                              ? "Direct to Google Drive (unlimited size, chunked upload)"
+                              : "Direct to Apps Script bridge (files up to 35 MB)"
+                            : "Direct to Supabase Storage (high-speed)"}
                         </p>
                       </div>
                     </div>
@@ -924,6 +1224,23 @@ export function VideoPdfSection({
                                   </button>
                                 </div>
                               </div>
+
+                              {uploadMode === "drive" && driveMethod === "script" && f.size > 36 * 1024 * 1024 && (
+                                <div className="flex items-center gap-1.5 text-[10px] text-amber-600 dark:text-amber-400 font-medium">
+                                  <AlertCircle className="h-3 w-3 shrink-0 text-amber-500" />
+                                  <span>
+                                    Exceeds Apps Script 35 MB limit. Please toggle to{" "}
+                                    <button
+                                      type="button"
+                                      onClick={() => setDriveMethod("direct")}
+                                      className="underline font-semibold hover:text-amber-700 dark:hover:text-amber-300 inline-flex items-center gap-0.5"
+                                    >
+                                      <Zap className="h-2.5 w-2.5 inline" /> Direct
+                                    </button>{" "}
+                                    above.
+                                  </span>
+                                </div>
+                              )}
 
                               <div className="flex items-center gap-1.5">
                                 <span className="text-[10px] font-medium text-muted-foreground dark:text-[#8A9BA8] shrink-0">
@@ -1015,12 +1332,12 @@ export function VideoPdfSection({
                     {linkUrl && (
                       <p className="text-[10px] mt-1">
                         {detectedDriveId ? (
-                          <span className="text-emerald-500 font-medium">
-                            ✓ Valid Google Drive link detected
+                          <span className="text-emerald-500 font-medium inline-flex items-center gap-1">
+                            <CheckCircle2 className="h-3 w-3" /> Valid Google Drive link detected
                           </span>
                         ) : (
-                          <span className="text-amber-500">
-                            Please paste a valid Google Drive share link
+                          <span className="text-amber-500 inline-flex items-center gap-1">
+                            <AlertCircle className="h-3 w-3" /> Please paste a valid Google Drive share link
                           </span>
                         )}
                       </p>
@@ -1176,7 +1493,11 @@ export function VideoPdfSection({
                               : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
                           )}
                         >
-                          {task.mode === "supabase" ? "Supabase" : "Drive"}
+                          {task.mode === "supabase"
+                            ? "Supabase"
+                            : task.driveMethod === "script"
+                            ? "Drive • Script"
+                            : "Drive • Direct"}
                         </span>
                       </div>
                       <p className="text-[10px] text-muted-foreground/80 dark:text-[#657682] mt-0.5">

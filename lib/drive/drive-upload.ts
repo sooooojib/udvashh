@@ -113,6 +113,11 @@ export async function getDriveAccessToken(): Promise<string> {
       clientIdPrefix: clientId.slice(0, 15),
       clientIdLength: clientId.length,
     });
+    if (data.error === "invalid_grant") {
+      throw new Error(
+        "Google Drive authorization expired. Please visit /api/oauth/drive to reconnect Google Drive."
+      );
+    }
     throw new Error(`Failed to refresh token: ${data.error_description || data.error}`);
   }
 
