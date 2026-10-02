@@ -32,13 +32,21 @@ function verifyAdmin(sessionEmail?: string): boolean {
   return allowedEmails.includes(sessionEmail?.toLowerCase() || "");
 }
 
-function revalidatePdfRoutes() {
+function revalidatePdfRoutes(videoId?: string) {
   revalidatePath("/", "layout");
   revalidatePath("/live-classes", "page");
   revalidatePath("/intensive-classes", "page");
   revalidatePath("/subject-hacks", "page");
   revalidatePath("/dashboard", "page");
   revalidatePath("/watch/[videoId]", "page");
+  if (videoId) {
+    revalidatePath(`/watch/${videoId}`, "page");
+    try {
+      revalidateTag(`video-pdfs-${videoId}`, "default");
+    } catch {
+      // ignore
+    }
+  }
   revalidateTag("videos-catalog", "default");
   revalidateTag("video-pdfs", "default");
 }
@@ -123,7 +131,7 @@ export async function uploadDirectPdf(
 
     const newPdf = inserted[0] as unknown as VideoPdfItem;
 
-    revalidatePdfRoutes();
+    revalidatePdfRoutes(videoId);
 
     return {
       success: true,
@@ -191,7 +199,7 @@ export async function addDrivePdf({
 
     const newPdf = inserted[0] as unknown as VideoPdfItem;
 
-    revalidatePdfRoutes();
+    revalidatePdfRoutes(videoId);
 
     return {
       success: true,
@@ -235,7 +243,8 @@ export async function deleteVideoPdf({
     `;
 
     if (rows.length === 0) {
-      return { success: false, message: "PDF not found." };
+      revalidatePdfRoutes(videoId);
+      return { success: true, message: "PDF removed." };
     }
 
     const pdf = rows[0] as unknown as VideoPdfItem;
@@ -263,7 +272,7 @@ export async function deleteVideoPdf({
     // 4. Delete row from Neon DB
     await sql`DELETE FROM video_pdfs WHERE id = ${pdfId}`;
 
-    revalidatePdfRoutes();
+    revalidatePdfRoutes(videoId);
 
     return { success: true, message: "PDF removed successfully." };
   } catch (error: unknown) {
@@ -322,7 +331,7 @@ export async function uploadPdfToDriveAction(
 
     const newPdf = inserted[0] as unknown as VideoPdfItem;
 
-    revalidatePdfRoutes();
+    revalidatePdfRoutes(videoId);
 
     return {
       success: true,

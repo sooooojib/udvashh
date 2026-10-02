@@ -250,6 +250,8 @@ export async function setDriveFilePublic(fileId: string): Promise<void> {
  */
 export async function deleteFileFromGoogleDrive(fileId: string): Promise<void> {
   const scriptUrl = cleanEnv(process.env.GOOGLE_APPS_SCRIPT_URL);
+  let deletedViaScript = false;
+
   if (scriptUrl) {
     try {
       const res = await fetch(scriptUrl, {
@@ -262,34 +264,41 @@ export async function deleteFileFromGoogleDrive(fileId: string): Promise<void> {
         redirect: "follow",
       });
       const data = await res.json().catch(() => ({}));
-      if (data && data.success === false) {
-        console.warn("Apps Script delete returned error:", data.error);
+      if (data && data.success === true) {
+        deletedViaScript = true;
+      } else {
+        console.warn("Apps Script delete returned unconfirmed status:", data);
       }
-      return;
     } catch (scriptErr) {
       console.warn("Could not delete file via Apps Script:", scriptErr);
-      return;
     }
   }
 
-  const accessToken = await getDriveAccessToken();
+  if (deletedViaScript) return;
 
-  const res = await fetch(
-    `https://www.googleapis.com/drive/v3/files/${fileId}`,
-    {
-      method: "DELETE",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    }
-  );
+  // Fallback to official Google Drive API v3
+  try {
+    const accessToken = await getDriveAccessToken();
 
-  // 204 No Content = success, 404 = already gone (both are fine)
-  if (!res.ok && res.status !== 404) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(
-      `Drive delete failed: ${(data as Record<string, { message?: string }>).error?.message || `HTTP ${res.status}`}`
+    const res = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${fileId}`,
+      {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
     );
+
+    // 204 No Content = success, 404 = already gone (both are fine)
+    if (!res.ok && res.status !== 404) {
+      const data = await res.json().catch(() => ({}));
+      console.warn(
+        `Drive delete failed: ${(data as Record<string, { message?: string }>).error?.message || `HTTP ${res.status}`}`
+      );
+    }
+  } catch (driveApiErr) {
+    console.warn("Could not delete file via Drive API:", driveApiErr);
   }
 }
 

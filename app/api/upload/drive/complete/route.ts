@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
 import { sql } from "@/lib/db";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 
 function isAdmin(sessionEmail?: string): boolean {
   const adminEmail = process.env.ADMIN_EMAIL;
@@ -53,7 +53,13 @@ export async function POST(request: NextRequest) {
     revalidatePath("/intensive-classes", "page");
     revalidatePath("/subject-hacks", "page");
     revalidatePath(`/watch/[videoId]`, "page");
+    revalidatePath(`/watch/${videoId}`, "page");
     revalidatePath(`/dashboard`, "page");
+    try {
+      revalidateTag(`video-pdfs-${videoId}`, "default");
+    } catch {}
+    revalidateTag("videos-catalog", "default");
+    revalidateTag("video-pdfs", "default");
 
     return NextResponse.json({
       success: true,

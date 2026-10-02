@@ -772,7 +772,11 @@ export function VideoPdfSection({
 
     try {
       const res = await deleteVideoPdf({ pdfId, videoId });
-      if (res.success) {
+      if (
+        res.success ||
+        res.message?.toLowerCase().includes("not found") ||
+        res.message?.toLowerCase().includes("already removed")
+      ) {
         toast.success("Note removed.");
         setPdfs((prev) => prev.filter((p) => p.id !== pdfId));
         if (previewPdf?.id === pdfId) setPreviewPdf(null);
