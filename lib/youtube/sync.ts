@@ -142,27 +142,43 @@ export async function syncPlaylist(playlistId: string): Promise<SyncResult> {
         cache: "no-store",
       });
 
-      if (videoRes.ok) {
-        const videoData = await videoRes.json();
-        if (Array.isArray(videoData.items)) {
-          videoData.items.forEach((vItem: YouTubeVideoItem) => {
-            // Skip if explicitly marked private or rejected/deleted
-            if (vItem.status?.privacyStatus === "private") return;
-            if (
-              vItem.status?.uploadStatus === "rejected" ||
-              vItem.status?.uploadStatus === "deleted"
-            ) {
-              return;
-            }
-
-            activeVideoIds.add(vItem.id);
-            const rawDuration = vItem.contentDetails?.duration;
-            durationMap.set(vItem.id, parseISO8601Duration(rawDuration));
-            if (vItem.status?.privacyStatus) {
-              privacyMap.set(vItem.id, vItem.status.privacyStatus);
-            }
-          });
+      if (!videoRes.ok) {
+        const errorData = await videoRes.json().catch(() => ({}));
+        const errorMessage =
+          errorData?.error?.message || videoRes.statusText || "YouTube API error";
+        if (videoRes.status === 403) {
+          const cleanMsg = (errorMessage || "").replace(/<[^>]*>/g, "").trim();
+          if (cleanMsg.toLowerCase().includes("quota")) {
+            throw new Error(
+              "YouTube API daily quota (10,000 units/day) exceeded. Google resets this at midnight Pacific Time (PT). You can provide a fresh YT_API_KEY in .env.local to continue."
+            );
+          }
+          throw new Error(`YouTube API access forbidden (403): ${cleanMsg}`);
         }
+        throw new Error(
+          `YouTube videos.list API error (${videoRes.status}): ${errorMessage}`
+        );
+      }
+
+      const videoData = await videoRes.json();
+      if (Array.isArray(videoData.items)) {
+        videoData.items.forEach((vItem: YouTubeVideoItem) => {
+          // Skip if explicitly marked private or rejected/deleted
+          if (vItem.status?.privacyStatus === "private") return;
+          if (
+            vItem.status?.uploadStatus === "rejected" ||
+            vItem.status?.uploadStatus === "deleted"
+          ) {
+            return;
+          }
+
+          activeVideoIds.add(vItem.id);
+          const rawDuration = vItem.contentDetails?.duration;
+          durationMap.set(vItem.id, parseISO8601Duration(rawDuration));
+          if (vItem.status?.privacyStatus) {
+            privacyMap.set(vItem.id, vItem.status.privacyStatus);
+          }
+        });
       }
     })
   );
@@ -174,8 +190,8 @@ export async function syncPlaylist(playlistId: string): Promise<SyncResult> {
     return videoId && activeVideoIds.has(videoId);
   });
 
-  // If no valid videos exist in the playlist, prune all videos for this playlist
-  if (validItems.length === 0) {
+  // If YouTube explicitly returned 0 candidate videos, prune all videos for this playlist
+  if (candidateItems.length === 0) {
     await sql`
       DELETE FROM videos
       WHERE playlist_id = ${playlistId}
@@ -183,8 +199,15 @@ export async function syncPlaylist(playlistId: string): Promise<SyncResult> {
     return {
       synced: 0,
       playlistId,
-      message: "No valid videos found. Any removed videos were cleared from the database.",
+      message: "Playlist is empty on YouTube. Removed any old videos from database.",
     };
+  }
+
+  // Safety guard: if candidate items exist but valid items is 0, do NOT delete database records
+  if (validItems.length === 0) {
+    throw new Error(
+      `Could not verify active videos for playlist ${playlistId}. Aborting sync to prevent data loss.`
+    );
   }
 
   // 3. Sort items naturally by class number (e.g. 01, 02, 03) and prepare records for upsert
