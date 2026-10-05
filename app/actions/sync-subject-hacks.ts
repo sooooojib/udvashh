@@ -56,8 +56,6 @@ export async function syncSubjectHacksNow(
 
       const { totalSynced, succeeded, failed, errors } = await syncMultiplePlaylists(SUBJECT_HACKS_PLAYLISTS, 2);
 
-      revalidatePath("/dashboard");
-      revalidatePath("/subject-hacks");
       revalidateTag("videos-catalog", "default");
 
       if (failed > 0 && succeeded === 0) {
@@ -83,8 +81,6 @@ export async function syncSubjectHacksNow(
 
     const result = await syncPlaylist(targetPlaylist);
 
-    revalidatePath("/dashboard");
-    revalidatePath("/subject-hacks");
     revalidateTag("videos-catalog", "default");
 
     return {

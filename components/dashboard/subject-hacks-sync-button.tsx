@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import { syncSubjectHacksNow } from "@/app/actions/sync-subject-hacks";
 import { syncPrivacyStatusesAction } from "@/app/actions/sync-privacy";
 import { Button } from "@/components/ui/button";
@@ -8,6 +9,7 @@ import { toast } from "sonner";
 import { AlertCircle, CheckCircle2, Loader2, RefreshCw, ShieldCheck } from "lucide-react";
 
 export function SubjectHacksSyncButton() {
+  const router = useRouter();
   const [isPending, setIsPending] = React.useState(false);
   const [isSyncingPrivacy, setIsSyncingPrivacy] = React.useState(false);
   const [result, setResult] = React.useState<{
@@ -23,6 +25,7 @@ export function SubjectHacksSyncButton() {
       setResult({ success: res.success, message: res.message });
       if (res.success) {
         toast.success("Privacy Status Synced", { description: res.message });
+        router.refresh();
       } else {
         toast.error("Privacy Sync Failed", { description: res.message });
       }
@@ -44,6 +47,7 @@ export function SubjectHacksSyncButton() {
       setResult(res);
       if (res.success) {
         toast.success("Subject Hacks Synced", { description: res.message });
+        router.refresh();
       } else {
         toast.error("Sync Failed", { description: res.message });
       }

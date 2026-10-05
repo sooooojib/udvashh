@@ -57,8 +57,6 @@ export async function syncIntensiveNow(
 
       const { totalSynced, succeeded, failed, errors } = await syncMultiplePlaylists(INTENSIVE_PLAYLISTS, 3);
 
-      revalidatePath("/dashboard");
-      revalidatePath("/intensive-classes");
       revalidateTag("videos-catalog", "default");
 
       if (failed > 0 && succeeded === 0) {
@@ -84,8 +82,6 @@ export async function syncIntensiveNow(
 
     const result = await syncPlaylist(targetPlaylist);
 
-    revalidatePath("/dashboard");
-    revalidatePath("/intensive-classes");
     revalidateTag("videos-catalog", "default");
 
     return {

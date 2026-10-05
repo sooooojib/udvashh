@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import {
   syncIntensiveNow,
   type IntensiveSyncResult,
@@ -26,6 +27,7 @@ interface IntensiveSyncButtonProps {
 }
 
 export function IntensiveSyncButton({ playlists }: IntensiveSyncButtonProps) {
+  const router = useRouter();
   const [isPending, setIsPending] = React.useState(false);
   const [isSyncingPrivacy, setIsSyncingPrivacy] = React.useState(false);
   const [selectedPlaylist, setSelectedPlaylist] = React.useState<string>("all");
@@ -44,6 +46,7 @@ export function IntensiveSyncButton({ playlists }: IntensiveSyncButtonProps) {
         toast.success("Privacy Status Synced", {
           description: res.message,
         });
+        router.refresh();
       } else {
         toast.error("Privacy Sync Failed", {
           description: res.message,
@@ -69,6 +72,7 @@ export function IntensiveSyncButton({ playlists }: IntensiveSyncButtonProps) {
         toast.success("Intensive Playlist Synced", {
           description: res.message,
         });
+        router.refresh();
       } else {
         toast.error("Sync Failed", {
           description: res.message,

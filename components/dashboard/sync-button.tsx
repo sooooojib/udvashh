@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import { syncNow, type SyncActionResult } from "@/app/actions/sync";
 import { syncPrivacyStatusesAction } from "@/app/actions/sync-privacy";
 import { Button } from "@/components/ui/button";
@@ -30,6 +31,7 @@ export function OwnerSyncButton({
   moduleName,
   theme,
 }: OwnerSyncButtonProps) {
+  const router = useRouter();
   const isEmerald = theme === "emerald" || moduleName === "Live Classes";
   const [isPending, setIsPending] = React.useState(false);
   const [isSyncingPrivacy, setIsSyncingPrivacy] = React.useState(false);
@@ -49,6 +51,7 @@ export function OwnerSyncButton({
         toast.success("Privacy Status Synced", {
           description: res.message,
         });
+        router.refresh();
       } else {
         toast.error("Privacy Sync Failed", {
           description: res.message,
@@ -85,6 +88,7 @@ export function OwnerSyncButton({
             description: res.message,
           });
         }
+        router.refresh();
       } else {
         toast.error("Sync Failed", {
           description: res.message,

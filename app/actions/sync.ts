@@ -69,10 +69,6 @@ export async function syncNow(
 
       const { totalSynced, succeeded, failed, errors } = await syncMultiplePlaylists(targetList, 4);
 
-      revalidatePath("/dashboard");
-      revalidatePath("/live-classes");
-      revalidatePath("/intensive-classes");
-      revalidatePath("/subject-hacks");
       revalidateTag("videos-catalog", "default");
 
       if (failed > 0 && succeeded === 0) {
@@ -98,10 +94,6 @@ export async function syncNow(
 
     const result = await syncPlaylist(targetPlaylist);
 
-    revalidatePath("/dashboard");
-    revalidatePath("/live-classes");
-    revalidatePath("/intensive-classes");
-    revalidatePath("/subject-hacks");
     revalidateTag("videos-catalog", "default");
 
     return {
