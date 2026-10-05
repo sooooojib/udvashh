@@ -53,11 +53,23 @@ export async function syncPlaylist(playlistId: string): Promise<SyncResult> {
     throw new Error("Missing playlist ID.");
   }
 
-  // 1. Paginate through all playlistItems from YouTube Data API v3
+  // 1. Paginate through all playlistItems from YouTube Data API v3 (strictly guarded)
   const rawItems: YouTubePlaylistItem[] = [];
   let nextPageToken: string | undefined = undefined;
+  const seenPageTokens = new Set<string>();
+  const MAX_PAGES = 10; // Max 500 videos per playlist; protects against YouTube circular pagination
+  let pageCount = 0;
 
   do {
+    pageCount++;
+    if (nextPageToken) {
+      if (seenPageTokens.has(nextPageToken)) {
+        console.warn(`[Sync] Detected circular nextPageToken "${nextPageToken}" for playlist ${playlistId}. Terminating pagination.`);
+        break;
+      }
+      seenPageTokens.add(nextPageToken);
+    }
+
     const url = new URL("https://www.googleapis.com/youtube/v3/playlistItems");
     url.searchParams.set("part", "snippet,contentDetails");
     url.searchParams.set("maxResults", "50");
@@ -97,8 +109,12 @@ export async function syncPlaylist(playlistId: string): Promise<SyncResult> {
       rawItems.push(...data.items);
     }
 
+    if (!data.nextPageToken || data.nextPageToken === nextPageToken) {
+      break;
+    }
+
     nextPageToken = data.nextPageToken;
-  } while (nextPageToken);
+  } while (nextPageToken && pageCount < MAX_PAGES);
 
   // Filter out deleted/private placeholders from playlist items
   const candidateItems = rawItems.filter((item) => {
