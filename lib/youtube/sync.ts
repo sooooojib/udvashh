@@ -105,10 +105,22 @@ export async function syncPlaylist(playlistId: string): Promise<SyncResult> {
     }
 
     const data = await response.json();
-    if (Array.isArray(data.items)) {
-      rawItems.push(...data.items);
+    const fetchedItems = Array.isArray(data.items) ? data.items : [];
+    rawItems.push(...fetchedItems);
+
+    // Guard 1: If YouTube returned fewer items than maxResults (50), we have reached
+    // the end of the playlist. This completely ignores YouTube's phantom nextPageToken
+    // bug caused by private/deleted video placeholders.
+    if (fetchedItems.length < 50) {
+      break;
     }
 
+    // Guard 2: If we've collected at least totalResults items, stop immediately.
+    if (data.pageInfo?.totalResults && rawItems.length >= data.pageInfo.totalResults) {
+      break;
+    }
+
+    // Guard 3: Stop if token is missing or identical to previous token
     if (!data.nextPageToken || data.nextPageToken === nextPageToken) {
       break;
     }
