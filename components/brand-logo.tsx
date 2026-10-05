@@ -159,7 +159,7 @@ export function BrandLogo({ className, href = "/dashboard" }: BrandLogoProps) {
       {/* Brand Name Typography ("অবনতি") */}
       <span
         className={cn(
-          "font-bengali text-2xl font-bold tracking-tight inline-block pt-1 pb-1 leading-normal transition-all duration-200 overflow-visible",
+          "font-bengali text-2xl font-bold tracking-normal inline-block pt-1 pb-1 leading-normal transition-all duration-200 overflow-visible",
           t.text,
           t.hover
         )}

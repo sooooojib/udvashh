@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@100..900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Anek+Bangla:wght@600;700;800&family=Noto+Sans+Bengali:wght@100..900&display=swap');
 @import "tailwindcss";
 @import "katex/dist/katex.min.css";
 
@@ -81,7 +81,7 @@
   --font-heading: var(--font-heading), ui-sans-serif, system-ui, sans-serif;
   --font-sans: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-mono), ui-monospace, monospace;
-  --font-bengali: var(--font-bengali), ui-sans-serif, system-ui, sans-serif;
+  --font-bengali: var(--font-bengali, "Anek Bangla"), "Anek Bangla", "Noto Sans Bengali", system-ui, sans-serif;
   --font-noto-bengali: "Noto Sans Bengali", sans-serif;
 }
 
@@ -111,9 +111,10 @@ h1, h2, h3, h4, h5, h6 {
   letter-spacing: -0.025em;
 }
 
-/* Original Title / Brand Font (Anek Bangla) — kept exactly as before */
+/* Original Title / Brand Font (Anek Bangla) with rock-solid fallback chain */
 .font-bengali {
-  font-family: var(--font-bengali);
+  font-family: var(--font-bengali, "Anek Bangla"), "Anek Bangla", "Noto Sans Bengali", "Hind Siliguri", "Kalpurush", sans-serif;
+  letter-spacing: normal !important;
 }
 
 /* Noto Sans Bengali with 50% bold and standard width */
