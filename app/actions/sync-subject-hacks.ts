@@ -2,12 +2,13 @@
 
 import { revalidatePath, revalidateTag } from "next/cache";
 import { getSession } from "@/lib/auth/session";
-import { syncPlaylist } from "@/lib/youtube/sync";
+import { syncPlaylist, syncMultiplePlaylists } from "@/lib/youtube/sync";
 
 export interface SubjectHacksSyncResult {
   success: boolean;
   message: string;
   synced?: number;
+  failed?: number;
 }
 
 export async function syncSubjectHacksNow(
@@ -53,22 +54,30 @@ export async function syncSubjectHacksNow(
         };
       }
 
-      let totalSynced = 0;
-      for (const pl of SUBJECT_HACKS_PLAYLISTS) {
-        try {
-          const res = await syncPlaylist(pl.id);
-          totalSynced += res.synced || 0;
-        } catch {
-          // continue with other playlists
-        }
-      }
+      const { totalSynced, succeeded, failed, errors } = await syncMultiplePlaylists(SUBJECT_HACKS_PLAYLISTS, 2);
+
       revalidatePath("/dashboard");
       revalidatePath("/subject-hacks");
       revalidateTag("videos-catalog", "default");
+
+      if (failed > 0 && succeeded === 0) {
+        return {
+          success: false,
+          synced: 0,
+          failed,
+          message: `Failed to sync Subject Hacks playlists: ${errors[0]?.error || "Unknown error"}`,
+        };
+      }
+
+      const statusMsg = failed > 0
+        ? `Synced ${succeeded}/${SUBJECT_HACKS_PLAYLISTS.length} Subject Hacks playlists (${totalSynced} total videos). ${failed} failed.`
+        : `Synced all ${SUBJECT_HACKS_PLAYLISTS.length} Subject Hacks playlist${SUBJECT_HACKS_PLAYLISTS.length !== 1 ? "s" : ""} (${totalSynced} total videos).`;
+
       return {
         success: true,
         synced: totalSynced,
-        message: `Synced all ${SUBJECT_HACKS_PLAYLISTS.length} Subject Hacks playlist${SUBJECT_HACKS_PLAYLISTS.length !== 1 ? "s" : ""} (${totalSynced} total videos).`,
+        failed,
+        message: statusMsg,
       };
     }
 

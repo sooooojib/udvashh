@@ -1,5 +1,6 @@
 import { sql } from "@/lib/db";
 import { parseISO8601Duration } from "@/lib/youtube/duration";
+import { compareVideos } from "@/lib/utils/format";
 
 interface YouTubePlaylistItem {
   snippet?: {
@@ -77,7 +78,11 @@ export async function syncPlaylist(playlistId: string): Promise<SyncResult> {
         errorData?.error?.message || response.statusText || "YouTube API error";
 
       if (response.status === 403) {
-        throw new Error(`YouTube API quota exceeded or forbidden: ${errorMessage}`);
+        const cleanMsg = (errorMessage || "").replace(/<[^>]*>/g, "").trim();
+        if (cleanMsg.toLowerCase().includes("quota")) {
+          throw new Error("YouTube API daily quota (10,000 units/day) exceeded. Google resets this at midnight Pacific Time (PT). You can provide a fresh YT_API_KEY in .env.local to continue.");
+        }
+        throw new Error(`YouTube API access forbidden (403): ${cleanMsg}`);
       }
 
       if (response.status === 404) {
@@ -107,7 +112,7 @@ export async function syncPlaylist(playlistId: string): Promise<SyncResult> {
     );
   });
 
-  // 2. Batch fetch video status & durations from videos.list (batches of 50)
+  // 2. Batch fetch video status & durations from videos.list (batches of 50 in parallel)
   // This verifies whether the videos are actually live, playable, and not deleted on YouTube.
   const videoIds = candidateItems.map(
     (item) =>
@@ -120,41 +125,47 @@ export async function syncPlaylist(playlistId: string): Promise<SyncResult> {
   const activeVideoIds = new Set<string>();
   const batchSize = 50;
 
+  const chunks: string[][] = [];
   for (let i = 0; i < videoIds.length; i += batchSize) {
-    const chunk = videoIds.slice(i, i + batchSize);
-    const videoUrl = new URL("https://www.googleapis.com/youtube/v3/videos");
-    videoUrl.searchParams.set("part", "contentDetails,status");
-    videoUrl.searchParams.set("id", chunk.join(","));
-    videoUrl.searchParams.set("key", apiKey);
-
-    const videoRes = await fetch(videoUrl.toString(), {
-      headers: { Accept: "application/json" },
-      cache: "no-store",
-    });
-
-    if (videoRes.ok) {
-      const videoData = await videoRes.json();
-      if (Array.isArray(videoData.items)) {
-        videoData.items.forEach((vItem: YouTubeVideoItem) => {
-          // Skip if explicitly marked private or rejected/deleted
-          if (vItem.status?.privacyStatus === "private") return;
-          if (
-            vItem.status?.uploadStatus === "rejected" ||
-            vItem.status?.uploadStatus === "deleted"
-          ) {
-            return;
-          }
-
-          activeVideoIds.add(vItem.id);
-          const rawDuration = vItem.contentDetails?.duration;
-          durationMap.set(vItem.id, parseISO8601Duration(rawDuration));
-          if (vItem.status?.privacyStatus) {
-            privacyMap.set(vItem.id, vItem.status.privacyStatus);
-          }
-        });
-      }
-    }
+    chunks.push(videoIds.slice(i, i + batchSize));
   }
+
+  await Promise.all(
+    chunks.map(async (chunk) => {
+      const videoUrl = new URL("https://www.googleapis.com/youtube/v3/videos");
+      videoUrl.searchParams.set("part", "contentDetails,status");
+      videoUrl.searchParams.set("id", chunk.join(","));
+      videoUrl.searchParams.set("key", apiKey);
+
+      const videoRes = await fetch(videoUrl.toString(), {
+        headers: { Accept: "application/json" },
+        cache: "no-store",
+      });
+
+      if (videoRes.ok) {
+        const videoData = await videoRes.json();
+        if (Array.isArray(videoData.items)) {
+          videoData.items.forEach((vItem: YouTubeVideoItem) => {
+            // Skip if explicitly marked private or rejected/deleted
+            if (vItem.status?.privacyStatus === "private") return;
+            if (
+              vItem.status?.uploadStatus === "rejected" ||
+              vItem.status?.uploadStatus === "deleted"
+            ) {
+              return;
+            }
+
+            activeVideoIds.add(vItem.id);
+            const rawDuration = vItem.contentDetails?.duration;
+            durationMap.set(vItem.id, parseISO8601Duration(rawDuration));
+            if (vItem.status?.privacyStatus) {
+              privacyMap.set(vItem.id, vItem.status.privacyStatus);
+            }
+          });
+        }
+      }
+    })
+  );
 
   // Only keep items that are confirmed active & available by YouTube
   const validItems = candidateItems.filter((item) => {
@@ -177,7 +188,6 @@ export async function syncPlaylist(playlistId: string): Promise<SyncResult> {
   }
 
   // 3. Sort items naturally by class number (e.g. 01, 02, 03) and prepare records for upsert
-  const { compareVideos } = await import("@/lib/utils/format");
   validItems.sort((a, b) =>
     compareVideos(
       { title: a.snippet?.title, position: a.snippet?.position },
@@ -212,41 +222,51 @@ export async function syncPlaylist(playlistId: string): Promise<SyncResult> {
       position,
       duration,
       privacy_status: privacyStatus,
-      published_at: publishedAt,
+      published_at: publishedAt ? new Date(publishedAt).toISOString() : null,
       updated_at: new Date().toISOString(),
     };
   });
 
-  // 4. Upsert valid records into Neon using SQL
-  for (const record of videoRecords) {
-    await sql`
-      INSERT INTO videos (
-        youtube_video_id, playlist_id, title, description,
-        thumbnail_url, position, duration, privacy_status, published_at, updated_at
-      ) VALUES (
-        ${record.youtube_video_id},
-        ${record.playlist_id},
-        ${record.title},
-        ${record.description},
-        ${record.thumbnail_url},
-        ${record.position},
-        ${record.duration},
-        ${record.privacy_status},
-        ${record.published_at ? new Date(record.published_at).toISOString() : null},
-        ${record.updated_at}
-      )
-      ON CONFLICT (youtube_video_id) DO UPDATE SET
-        playlist_id    = EXCLUDED.playlist_id,
-        title          = EXCLUDED.title,
-        description    = EXCLUDED.description,
-        thumbnail_url  = EXCLUDED.thumbnail_url,
-        position       = EXCLUDED.position,
-        duration       = EXCLUDED.duration,
-        privacy_status = EXCLUDED.privacy_status,
-        published_at   = EXCLUDED.published_at,
-        updated_at     = EXCLUDED.updated_at
-    `;
-  }
+  // 4. Bulk upsert valid records into Neon in a single round-trip using unnest
+  const videoIdsList = videoRecords.map((r) => r.youtube_video_id);
+  const playlistIdsList = videoRecords.map((r) => r.playlist_id);
+  const titlesList = videoRecords.map((r) => r.title);
+  const descriptionsList = videoRecords.map((r) => r.description);
+  const thumbnailUrlsList = videoRecords.map((r) => r.thumbnail_url);
+  const positionsList = videoRecords.map((r) => r.position);
+  const durationsList = videoRecords.map((r) => r.duration);
+  const privacyStatusesList = videoRecords.map((r) => r.privacy_status);
+  const publishedAtsList = videoRecords.map((r) => r.published_at);
+  const updatedAtsList = videoRecords.map((r) => r.updated_at);
+
+  await sql`
+    INSERT INTO videos (
+      youtube_video_id, playlist_id, title, description,
+      thumbnail_url, position, duration, privacy_status, published_at, updated_at
+    )
+    SELECT * FROM unnest(
+      ${videoIdsList}::text[],
+      ${playlistIdsList}::text[],
+      ${titlesList}::text[],
+      ${descriptionsList}::text[],
+      ${thumbnailUrlsList}::text[],
+      ${positionsList}::int[],
+      ${durationsList}::int[],
+      ${privacyStatusesList}::text[],
+      ${publishedAtsList}::timestamptz[],
+      ${updatedAtsList}::timestamptz[]
+    )
+    ON CONFLICT (youtube_video_id) DO UPDATE SET
+      playlist_id    = EXCLUDED.playlist_id,
+      title          = EXCLUDED.title,
+      description    = EXCLUDED.description,
+      thumbnail_url  = EXCLUDED.thumbnail_url,
+      position       = EXCLUDED.position,
+      duration       = EXCLUDED.duration,
+      privacy_status = EXCLUDED.privacy_status,
+      published_at   = EXCLUDED.published_at,
+      updated_at     = EXCLUDED.updated_at
+  `;
 
   // 5. Clean up removed/deleted videos:
   // Delete any records currently in the database for this playlist that are no longer in YouTube's active list
@@ -260,5 +280,70 @@ export async function syncPlaylist(playlistId: string): Promise<SyncResult> {
   return {
     synced: videoRecords.length,
     playlistId,
+  };
+}
+
+export interface MultiSyncResult {
+  totalSynced: number;
+  succeeded: number;
+  failed: number;
+  results: {
+    id: string;
+    name?: string;
+    synced?: number;
+    error?: string;
+  }[];
+  errors: { id: string; name?: string; error: string }[];
+}
+
+/**
+ * Concurrently syncs multiple playlists with a worker pool (default concurrency: 4).
+ * This prevents sequential waterfalls while keeping YouTube API requests and DB connections well within limits.
+ */
+export async function syncMultiplePlaylists(
+  playlists: { id: string; name?: string }[],
+  concurrency = 4
+): Promise<MultiSyncResult> {
+  const queue = [...playlists];
+  const results: {
+    id: string;
+    name?: string;
+    synced?: number;
+    error?: string;
+  }[] = [];
+  const errors: { id: string; name?: string; error: string }[] = [];
+
+  const workerCount = Math.min(concurrency, Math.max(1, playlists.length));
+  const workers = Array.from({ length: workerCount }, async () => {
+    while (queue.length > 0) {
+      const pl = queue.shift();
+      if (!pl) break;
+
+      try {
+        const res = await syncPlaylist(pl.id);
+        results.push({ id: pl.id, name: pl.name, synced: res.synced });
+      } catch (err: unknown) {
+        const errorMsg =
+          err instanceof Error ? err.message : "Unknown sync error";
+        console.warn(
+          `[Sync] Failed to sync playlist ${pl.id} (${pl.name || "unnamed"}): ${errorMsg}`
+        );
+        errors.push({ id: pl.id, name: pl.name, error: errorMsg });
+        results.push({ id: pl.id, name: pl.name, error: errorMsg });
+      }
+    }
+  });
+
+  await Promise.all(workers);
+
+  const totalSynced = results.reduce((acc, r) => acc + (r.synced || 0), 0);
+  const succeeded = results.filter((r) => typeof r.synced === "number").length;
+
+  return {
+    totalSynced,
+    succeeded,
+    failed: errors.length,
+    results,
+    errors,
   };
 }

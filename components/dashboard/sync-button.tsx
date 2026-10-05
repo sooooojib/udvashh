@@ -76,9 +76,15 @@ export function OwnerSyncButton({
       const res = await syncNow(selectedPlaylist || undefined, playlistIds);
       setResult(res);
       if (res.success) {
-        toast.success("Playlist Synced", {
-          description: res.message,
-        });
+        if (res.failed && res.failed > 0) {
+          toast.warning("Sync Completed with Warnings", {
+            description: res.message,
+          });
+        } else {
+          toast.success("Playlist Synced", {
+            description: res.message,
+          });
+        }
       } else {
         toast.error("Sync Failed", {
           description: res.message,
@@ -209,7 +215,9 @@ export function OwnerSyncButton({
             {isPending ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                <span className="truncate">Syncing…</span>
+                <span className="truncate">
+                  {selectedPlaylist === "all" ? "Syncing All…" : "Syncing…"}
+                </span>
               </>
             ) : (
               <>

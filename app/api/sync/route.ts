@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { syncPlaylist } from "@/lib/youtube/sync";
+import { syncPlaylist, syncMultiplePlaylists } from "@/lib/youtube/sync";
 import { KNOWN_PLAYLISTS } from "@/lib/youtube/playlists";
+
+export const maxDuration = 60;
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -36,30 +38,30 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: true, ...result });
     }
 
-    // Otherwise sync all known and intensive playlists
+    // Otherwise sync all known, intensive, and subject hacks playlists
     const { INTENSIVE_PLAYLISTS } = await import(
       "@/lib/youtube/intensive-playlists"
     );
-    const allPlaylists = [...KNOWN_PLAYLISTS, ...INTENSIVE_PLAYLISTS];
-    const results = [];
-    let totalSynced = 0;
+    const { SUBJECT_HACKS_PLAYLISTS } = await import(
+      "@/lib/youtube/subject-hacks-playlists"
+    );
+    const allPlaylists = [
+      ...KNOWN_PLAYLISTS,
+      ...INTENSIVE_PLAYLISTS,
+      ...SUBJECT_HACKS_PLAYLISTS,
+    ];
 
-    for (const pl of allPlaylists) {
-      try {
-        const res = await syncPlaylist(pl.id);
-        results.push({ id: pl.id, name: pl.name, ...res });
-        totalSynced += res.synced || 0;
-      } catch (err: unknown) {
-        const errorMsg = err instanceof Error ? err.message : "Sync error";
-        results.push({ id: pl.id, name: pl.name, error: errorMsg });
-      }
-    }
+    const { totalSynced, succeeded, failed, results, errors } =
+      await syncMultiplePlaylists(allPlaylists, 4);
 
     return NextResponse.json({
-      success: true,
+      success: failed === 0 || succeeded > 0,
       totalSynced,
+      succeeded,
+      failed,
       playlistsProcessed: results.length,
       results,
+      errors: errors.length > 0 ? errors : undefined,
     });
   } catch (err: unknown) {
     const errorMsg =

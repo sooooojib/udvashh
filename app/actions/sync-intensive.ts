@@ -2,12 +2,13 @@
 
 import { revalidatePath, revalidateTag } from "next/cache";
 import { getSession } from "@/lib/auth/session";
-import { syncPlaylist } from "@/lib/youtube/sync";
+import { syncPlaylist, syncMultiplePlaylists } from "@/lib/youtube/sync";
 
 export interface IntensiveSyncResult {
   success: boolean;
   message: string;
   synced?: number;
+  failed?: number;
 }
 
 export async function syncIntensiveNow(
@@ -54,22 +55,30 @@ export async function syncIntensiveNow(
         };
       }
 
-      let totalSynced = 0;
-      for (const pl of INTENSIVE_PLAYLISTS) {
-        try {
-          const res = await syncPlaylist(pl.id);
-          totalSynced += res.synced || 0;
-        } catch {
-          // continue with other playlists
-        }
-      }
+      const { totalSynced, succeeded, failed, errors } = await syncMultiplePlaylists(INTENSIVE_PLAYLISTS, 3);
+
       revalidatePath("/dashboard");
       revalidatePath("/intensive-classes");
       revalidateTag("videos-catalog", "default");
+
+      if (failed > 0 && succeeded === 0) {
+        return {
+          success: false,
+          synced: 0,
+          failed,
+          message: `Failed to sync intensive playlists: ${errors[0]?.error || "Unknown error"}`,
+        };
+      }
+
+      const statusMsg = failed > 0
+        ? `Synced ${succeeded}/${INTENSIVE_PLAYLISTS.length} intensive playlists (${totalSynced} total videos). ${failed} failed.`
+        : `Synced all ${INTENSIVE_PLAYLISTS.length} intensive playlists (${totalSynced} total videos).`;
+
       return {
         success: true,
         synced: totalSynced,
-        message: `Synced all ${INTENSIVE_PLAYLISTS.length} intensive playlists (${totalSynced} total videos).`,
+        failed,
+        message: statusMsg,
       };
     }
 

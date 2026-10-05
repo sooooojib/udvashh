@@ -2,12 +2,13 @@
 
 import { revalidatePath, revalidateTag } from "next/cache";
 import { getSession } from "@/lib/auth/session";
-import { syncPlaylist } from "@/lib/youtube/sync";
+import { syncPlaylist, syncMultiplePlaylists } from "@/lib/youtube/sync";
 
 export interface SyncActionResult {
   success: boolean;
   message: string;
   synced?: number;
+  failed?: number;
 }
 
 export async function syncNow(
@@ -66,24 +67,32 @@ export async function syncNow(
         targetList = [...KNOWN_PLAYLISTS, ...INTENSIVE_PLAYLISTS, ...SUBJECT_HACKS_PLAYLISTS];
       }
 
-      let totalSynced = 0;
-      for (const pl of targetList) {
-        try {
-          const res = await syncPlaylist(pl.id);
-          totalSynced += res.synced || 0;
-        } catch {
-          // continue with other playlists
-        }
-      }
+      const { totalSynced, succeeded, failed, errors } = await syncMultiplePlaylists(targetList, 4);
+
       revalidatePath("/dashboard");
       revalidatePath("/live-classes");
       revalidatePath("/intensive-classes");
       revalidatePath("/subject-hacks");
       revalidateTag("videos-catalog", "default");
+
+      if (failed > 0 && succeeded === 0) {
+        return {
+          success: false,
+          synced: 0,
+          failed,
+          message: `Failed to sync playlists: ${errors[0]?.error || "Unknown error"}`,
+        };
+      }
+
+      const statusMsg = failed > 0
+        ? `Synced ${succeeded}/${targetList.length} playlists (${totalSynced} total videos). ${failed} playlist${failed === 1 ? "" : "s"} had errors.`
+        : `Synced ${succeeded} playlist${succeeded === 1 ? "" : "s"} (${totalSynced} total videos).`;
+
       return {
         success: true,
         synced: totalSynced,
-        message: `Synced ${targetList.length} playlist${targetList.length === 1 ? "" : "s"} (${totalSynced} total videos).`,
+        failed,
+        message: statusMsg,
       };
     }
 
