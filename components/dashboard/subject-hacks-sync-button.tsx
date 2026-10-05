@@ -61,25 +61,24 @@ export function SubjectHacksSyncButton() {
   };
 
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-center gap-2">
+    <div className="space-y-3.5">
+      <div className="flex flex-wrap items-center gap-2.5">
         <Button
           type="button"
           variant="outline"
           onClick={handleSyncPrivacy}
           disabled={isSyncingPrivacy || isPending}
-          size="sm"
           title="Fast check: syncs public/unlisted statuses with YouTube for all videos"
-          className="gap-1.5 sm:gap-2 font-semibold shadow-xs border border-border/80 bg-card/90 text-foreground/80 hover:bg-muted/70 hover:text-foreground hover:border-border dark:border-[#1F2C34] dark:bg-[#141E28] dark:text-[#E8EDF0] dark:hover:bg-[#1B2631] dark:hover:border-blue-500/50 dark:hover:text-white active:scale-[0.98] transition-all text-xs justify-center px-2.5 sm:px-3"
+          className="gap-1.5 sm:gap-2 font-semibold shadow-xs border border-border/80 bg-card/90 text-foreground/80 hover:bg-muted/70 hover:text-foreground hover:border-border dark:border-[#1F2C34] dark:bg-[#141E28] dark:text-[#E8EDF0] dark:hover:bg-[#1B2631] dark:hover:border-blue-500/50 dark:hover:text-white active:scale-[0.98] transition-all text-xs sm:text-sm px-3.5 py-2 h-10 justify-center"
         >
           {isSyncingPrivacy ? (
             <>
-              <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-500" />
+              <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
               <span>Checking…</span>
             </>
           ) : (
             <>
-              <ShieldCheck className="h-3.5 w-3.5 text-blue-500" />
+              <ShieldCheck className="h-4 w-4 text-blue-500" />
               <span>Sync Privacy</span>
             </>
           )}
@@ -88,17 +87,16 @@ export function SubjectHacksSyncButton() {
         <Button
           onClick={handleSync}
           disabled={isPending || isSyncingPrivacy}
-          size="sm"
-          className="gap-2 font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 shadow-sm shadow-blue-500/20 dark:shadow-[0_0_10px_rgba(37,99,235,0.3)] transition-all active:scale-95 border-0 whitespace-nowrap"
+          className="gap-2 font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 shadow-sm shadow-blue-500/20 dark:shadow-[0_0_10px_rgba(37,99,235,0.3)] transition-all active:scale-95 text-xs sm:text-sm px-4 py-2 h-10 border-0 justify-center"
         >
           {isPending ? (
             <>
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              <Loader2 className="h-4 w-4 animate-spin" />
               <span>Syncing…</span>
             </>
           ) : (
             <>
-              <RefreshCw className="h-3.5 w-3.5" />
+              <RefreshCw className="h-4 w-4" />
               <span>Sync Now</span>
             </>
           )}
@@ -108,16 +106,16 @@ export function SubjectHacksSyncButton() {
       {result && (
         <div
           role={result.success ? "status" : "alert"}
-          className={`flex items-start gap-2 rounded-xl border px-3 py-2 text-xs transition-all animate-in fade-in slide-in-from-bottom-2 duration-300 ${
+          className={`flex items-start gap-2.5 rounded-xl border px-4 py-3 text-sm transition-all animate-in fade-in slide-in-from-bottom-2 duration-300 ${
             result.success
               ? "border-blue-200 bg-blue-50/80 text-blue-800 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-400"
               : "border-red-200 bg-red-50/80 text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300"
           }`}
         >
           {result.success ? (
-            <CheckCircle2 className="h-4 w-4 shrink-0 mt-px text-blue-600 dark:text-blue-400" />
+            <CheckCircle2 className="h-5 w-5 shrink-0 mt-0.5 text-blue-600 dark:text-blue-400" />
           ) : (
-            <AlertCircle className="h-4 w-4 shrink-0 mt-px text-red-600 dark:text-red-400" />
+            <AlertCircle className="h-5 w-5 shrink-0 mt-0.5 text-red-600 dark:text-red-400" />
           )}
           <p className="leading-snug">{result.message}</p>
         </div>

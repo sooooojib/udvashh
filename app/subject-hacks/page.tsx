@@ -10,6 +10,13 @@ import { WatchProgressBar } from "@/components/dashboard/progress-bar";
 import { SubjectHacksPlaylistView } from "@/components/dashboard/subject-hacks-playlist-view";
 import { SubjectHacksSyncButton } from "@/components/dashboard/subject-hacks-sync-button";
 import { SUBJECT_HACKS_PLAYLISTS } from "@/lib/youtube/subject-hacks-playlists";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Lightbulb, VideoOff } from "lucide-react";
 
 export const metadata: Metadata = {
@@ -58,28 +65,28 @@ export default async function SubjectHacksPage() {
         </h1>
       </div>
 
-      {/* ── Owner Sync Panel — compact inline row ── */}
+      {/* ── Owner Sync Panel ── */}
       {isOwner && (
-        <div className="overflow-hidden rounded-2xl border border-blue-500/20 bg-card/90 shadow-sm dark:border-blue-500/15 dark:bg-[#111820]">
-          <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-[0_0_10px_rgba(37,99,235,0.4)]">
-                <Lightbulb className="h-4 w-4" />
+        <Card className="overflow-hidden rounded-2xl border border-blue-500/20 bg-card/90 shadow-sm backdrop-blur-md dark:border-blue-500/15 dark:bg-[#111820]">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-[0_0_10px_rgba(37,99,235,0.4)]">
+                <Lightbulb className="h-4.5 w-4.5" />
               </div>
-              <div className="min-w-0">
-                <p className="text-sm font-bold tracking-tight text-foreground dark:text-[#E8EDF0] truncate">
+              <div>
+                <CardTitle className="font-heading text-sm font-bold tracking-tight text-foreground dark:text-[#E8EDF0]">
                   Subject Hacks Sync
-                </p>
-                <p className="text-xs text-muted-foreground dark:text-[#9AA7AE] truncate">
+                </CardTitle>
+                <CardDescription className="text-xs text-muted-foreground dark:text-[#9AA7AE]">
                   Owner only — pull latest videos from YouTube
-                </p>
+                </CardDescription>
               </div>
             </div>
-            <div className="shrink-0">
-              <SubjectHacksSyncButton />
-            </div>
-          </div>
-        </div>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <SubjectHacksSyncButton />
+          </CardContent>
+        </Card>
       )}
 
       {/* ── Progress Bar ── */}
