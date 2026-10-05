@@ -114,10 +114,16 @@ const QUALITY_LABELS: Record<string, string> = {
 function ClickSurface({
   onSingleClick,
   onDoubleClick,
+  isSettingsOpen,
+  onCloseSettings,
+  justClosedRef,
   className,
 }: {
   onSingleClick: () => void;
   onDoubleClick: (e: React.MouseEvent) => void;
+  isSettingsOpen?: boolean;
+  onCloseSettings?: () => void;
+  justClosedRef?: React.RefObject<boolean | null> | React.MutableRefObject<boolean> | { current: boolean };
   className?: string;
 }) {
   const clickTimerRef = React.useRef<NodeJS.Timeout | null>(null);
@@ -126,6 +132,18 @@ function ClickSurface({
   const handleClick = React.useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
+
+      // If settings menu is open or was just closed by this interaction,
+      // retract it immediately without toggling play/pause or seeking
+      if (isSettingsOpen || justClosedRef?.current) {
+        if (clickTimerRef.current) {
+          clearTimeout(clickTimerRef.current);
+          clickTimerRef.current = null;
+        }
+        onCloseSettings?.();
+        return;
+      }
+
       lastClickEventRef.current = e;
       if (clickTimerRef.current) {
         // Second click within 200ms → double-click
@@ -140,7 +158,7 @@ function ClickSurface({
         }, 200);
       }
     },
-    [onSingleClick, onDoubleClick]
+    [onSingleClick, onDoubleClick, isSettingsOpen, onCloseSettings, justClosedRef]
   );
 
   // Cleanup on unmount
@@ -233,15 +251,41 @@ export function VideoPlayer({
     };
   }, []);
 
+  const settingsMenuRef = React.useRef<HTMLDivElement>(null);
+  const settingsButtonRef = React.useRef<HTMLButtonElement>(null);
+  const justClosedSettingsRef = React.useRef(false);
+
+  const closeSettings = React.useCallback(() => {
+    setShowSettingsMenu(false);
+    setSettingsView("main");
+  }, []);
+
   React.useEffect(() => {
     if (!showSettingsMenu) return;
-    const handleOutsideClick = () => {
-      setShowSettingsMenu(false);
-      setSettingsView("main");
+
+    const handleOutsideInteraction = (e: MouseEvent | TouchEvent | PointerEvent) => {
+      const target = e.target as Node | null;
+      if (
+        target &&
+        (settingsMenuRef.current?.contains(target) ||
+         settingsButtonRef.current?.contains(target))
+      ) {
+        return;
+      }
+      justClosedSettingsRef.current = true;
+      closeSettings();
+      setTimeout(() => {
+        justClosedSettingsRef.current = false;
+      }, 300);
     };
-    window.addEventListener("click", handleOutsideClick);
-    return () => window.removeEventListener("click", handleOutsideClick);
-  }, [showSettingsMenu]);
+
+    window.addEventListener("pointerdown", handleOutsideInteraction, true);
+    window.addEventListener("click", handleOutsideInteraction, true);
+    return () => {
+      window.removeEventListener("pointerdown", handleOutsideInteraction, true);
+      window.removeEventListener("click", handleOutsideInteraction, true);
+    };
+  }, [showSettingsMenu, closeSettings]);
 
   // Sync detected quality level from YouTube player
   const syncQualities = React.useCallback((target?: any) => {
@@ -1848,6 +1892,9 @@ export function VideoPlayer({
                 toggleFullscreen();
               }
             }}
+            isSettingsOpen={showSettingsMenu}
+            onCloseSettings={closeSettings}
+            justClosedRef={justClosedSettingsRef}
             className={cn(
               "absolute inset-0 z-20 select-none",
               !showControls && hasStarted ? "cursor-none" : "cursor-pointer"
@@ -2055,6 +2102,7 @@ export function VideoPlayer({
                 {/* Settings (Speed & Quality) Menu */}
                 <div className="relative">
                   <button
+                    ref={settingsButtonRef}
                     type="button"
                     onClick={() => {
                       syncQualities();
@@ -2079,6 +2127,7 @@ export function VideoPlayer({
                   {/* Settings Popup Menu (YouTube 1:1) */}
                   {showSettingsMenu && (
                     <div
+                      ref={settingsMenuRef}
                       className="absolute bottom-full mb-3 right-0 bg-[#1f1f1f]/95 backdrop-blur-md border border-white/10 rounded-xl py-1 shadow-2xl z-50 min-w-[210px] animate-in fade-in zoom-in-95 duration-100 overflow-hidden"
                       onClick={(e) => e.stopPropagation()}
                     >
