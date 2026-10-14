@@ -6,10 +6,16 @@ import {
 } from "@/lib/db/cached-catalog";
 import { getSession } from "@/lib/auth/session";
 import { type Video } from "@/components/dashboard/video-card";
-import { WatchProgressBar } from "@/components/dashboard/progress-bar";
+import {
+  WatchProgressBar,
+  type CompletedVideoItem,
+} from "@/components/dashboard/progress-bar";
 import { SubjectHacksPlaylistView } from "@/components/dashboard/subject-hacks-playlist-view";
 import { SubjectHacksSyncButton } from "@/components/dashboard/subject-hacks-sync-button";
-import { SUBJECT_HACKS_PLAYLISTS } from "@/lib/youtube/subject-hacks-playlists";
+import {
+  SUBJECT_HACKS_PLAYLISTS,
+  getSubjectHacksPlaylistName,
+} from "@/lib/youtube/subject-hacks-playlists";
 import {
   Card,
   CardContent,
@@ -52,6 +58,24 @@ export default async function SubjectHacksPage() {
 
   const watchedCount = watchedVideoIds.length;
 
+  const watchedSet = new Set(watchedVideoIds);
+  const completedVideos: CompletedVideoItem[] = (videoList as unknown as Video[])
+    .filter((v) => watchedSet.has(v.id))
+    .map((v) => ({
+      id: v.id,
+      youtube_video_id: v.youtube_video_id,
+      title: v.title,
+      description: v.description,
+      thumbnail_url: v.thumbnail_url,
+      duration: v.duration,
+      playlist_id: v.playlist_id,
+      playlistName: getSubjectHacksPlaylistName(v.playlist_id),
+      moduleName: "Subject Hacks",
+      moduleType: "subject-hacks" as const,
+      has_pdf: v.has_pdf,
+      pdf_count: v.pdf_count,
+    }));
+
   return (
     <main className="flex-1 px-3.5 sm:px-5 lg:px-6 py-6 sm:py-8 max-w-[1400px] mx-auto w-full space-y-5 sm:space-y-8 min-h-[calc(100dvh-4rem)] animate-page-enter overflow-x-hidden">
 
@@ -89,9 +113,15 @@ export default async function SubjectHacksPage() {
         </Card>
       )}
 
-      {/* ── Progress Bar ── */}
+      {/* ── Progress Bar with In-Place Completed Classes Accordion ── */}
       {videoList.length > 0 && (
-        <WatchProgressBar total={videoList.length} watched={watchedCount} theme="blue" />
+        <WatchProgressBar
+          total={videoList.length}
+          watched={watchedCount}
+          theme="blue"
+          completedVideos={completedVideos}
+          moduleName="Subject Hacks"
+        />
       )}
 
       {/* ── Video Grid / Empty State ── */}

@@ -6,10 +6,16 @@ import {
 } from "@/lib/db/cached-catalog";
 import { getSession } from "@/lib/auth/session";
 import { type Video } from "@/components/dashboard/video-card";
-import { WatchProgressBar } from "@/components/dashboard/progress-bar";
+import {
+  WatchProgressBar,
+  type CompletedVideoItem,
+} from "@/components/dashboard/progress-bar";
 import { IntensivePlaylistView } from "@/components/dashboard/intensive-playlist-view";
 import { IntensiveSyncButton } from "@/components/dashboard/intensive-sync-button";
-import { INTENSIVE_PLAYLISTS } from "@/lib/youtube/intensive-playlists";
+import {
+  INTENSIVE_PLAYLISTS,
+  getIntensivePlaylistName,
+} from "@/lib/youtube/intensive-playlists";
 import {
   Card,
   CardContent,
@@ -53,6 +59,23 @@ export default async function IntensiveClassesPage() {
 
   const watchedCount = watchedVideoIds.length;
 
+  const watchedSet = new Set(watchedVideoIds);
+  const completedVideos: CompletedVideoItem[] = (videoList as unknown as Video[])
+    .filter((v) => watchedSet.has(v.id))
+    .map((v) => ({
+      id: v.id,
+      youtube_video_id: v.youtube_video_id,
+      title: v.title,
+      description: v.description,
+      thumbnail_url: v.thumbnail_url,
+      duration: v.duration,
+      playlist_id: v.playlist_id,
+      playlistName: getIntensivePlaylistName(v.playlist_id),
+      moduleName: "Intensive Classes",
+      moduleType: "intensive" as const,
+      has_pdf: v.has_pdf,
+      pdf_count: v.pdf_count,
+    }));
 
   return (
     <main className="flex-1 px-3.5 sm:px-5 lg:px-6 py-6 sm:py-8 max-w-[1400px] mx-auto w-full space-y-8 min-h-[calc(100dvh-4rem)] animate-page-enter overflow-x-hidden">
@@ -90,9 +113,15 @@ export default async function IntensiveClassesPage() {
         </Card>
       )}
 
-      {/* Progress Bar */}
+      {/* Progress Bar with In-Place Completed Classes Accordion */}
       {videoList.length > 0 && (
-        <WatchProgressBar total={videoList.length} watched={watchedCount} theme="amber" />
+        <WatchProgressBar
+          total={videoList.length}
+          watched={watchedCount}
+          theme="amber"
+          completedVideos={completedVideos}
+          moduleName="Intensive Classes"
+        />
       )}
 
       {/* Video Content Grouped by Playlist */}

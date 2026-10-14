@@ -6,10 +6,13 @@ import {
 } from "@/lib/db/cached-catalog";
 import { getSession } from "@/lib/auth/session";
 import { type Video } from "@/components/dashboard/video-card";
-import { WatchProgressBar } from "@/components/dashboard/progress-bar";
+import {
+  WatchProgressBar,
+  type CompletedVideoItem,
+} from "@/components/dashboard/progress-bar";
 import { PlaylistView } from "@/components/dashboard/playlist-view";
 import { OwnerSyncButton } from "@/components/dashboard/sync-button";
-import { KNOWN_PLAYLISTS } from "@/lib/youtube/playlists";
+import { KNOWN_PLAYLISTS, getPlaylistName } from "@/lib/youtube/playlists";
 import {
   Card,
   CardContent,
@@ -55,6 +58,23 @@ export default async function LiveClassesPage() {
   const videoList: Video[] = videos as unknown as Video[];
   const watchedCount = watchedVideoIds.length;
 
+  const watchedSet = new Set(watchedVideoIds);
+  const completedVideos: CompletedVideoItem[] = videoList
+    .filter((v) => watchedSet.has(v.id))
+    .map((v) => ({
+      id: v.id,
+      youtube_video_id: v.youtube_video_id,
+      title: v.title,
+      description: v.description,
+      thumbnail_url: v.thumbnail_url,
+      duration: v.duration,
+      playlist_id: v.playlist_id,
+      playlistName: getPlaylistName(v.playlist_id),
+      moduleName: "Live Classes",
+      moduleType: "live" as const,
+      has_pdf: v.has_pdf,
+      pdf_count: v.pdf_count,
+    }));
 
   return (
     <main className="flex-1 px-3.5 sm:px-5 lg:px-6 py-6 sm:py-8 max-w-[1400px] mx-auto w-full space-y-8 min-h-[calc(100dvh-4rem)] animate-page-enter overflow-x-hidden">
@@ -92,9 +112,15 @@ export default async function LiveClassesPage() {
         </Card>
       )}
 
-      {/* Progress Bar */}
+      {/* Progress Bar with In-Place Completed Classes Accordion */}
       {videoList.length > 0 && (
-        <WatchProgressBar total={videoList.length} watched={watchedCount} theme="emerald" />
+        <WatchProgressBar
+          total={videoList.length}
+          watched={watchedCount}
+          theme="emerald"
+          completedVideos={completedVideos}
+          moduleName="Live Classes"
+        />
       )}
 
       {/* Video Content Grouped by Playlist */}

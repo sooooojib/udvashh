@@ -7,7 +7,10 @@ import {
   getCachedWatchedVideoIds,
 } from "@/lib/db/cached-catalog";
 import { getSession } from "@/lib/auth/session";
-import { WatchProgressBar } from "@/components/dashboard/progress-bar";
+import {
+  WatchProgressBar,
+  type CompletedVideoItem,
+} from "@/components/dashboard/progress-bar";
 import { OwnerSyncButton } from "@/components/dashboard/sync-button";
 import { KNOWN_PLAYLISTS, getPlaylistName } from "@/lib/youtube/playlists";
 import { INTENSIVE_PLAYLISTS, getIntensivePlaylistName } from "@/lib/youtube/intensive-playlists";
@@ -56,7 +59,13 @@ export default async function DashboardPage() {
   const allKnownPlaylistIds = [...livePlaylistIds, ...intensivePlaylistIds, ...subjectHacksPlaylistIds];
 
   // Batch all dashboard queries in parallel (cached video catalog + cached user progress = 0 redundant DB hits)
-  const [videos, watchedIdsArray, attemptsResult, currentlyWatchingRows] = await Promise.all([
+  const [
+    videos,
+    watchedIdsArray,
+    attemptsResult,
+    currentlyWatchingRows,
+    completedVideosRows,
+  ] = await Promise.all([
     getCachedDashboardVideos(allKnownPlaylistIds),
     getCachedWatchedVideoIds(session.id),
     sql`
@@ -81,6 +90,25 @@ export default async function DashboardPage() {
         AND wp.progress_seconds > 10
       ORDER BY COALESCE(wp.last_watched_at, wp.updated_at) DESC
       LIMIT 6
+    `.catch(() => []),
+    sql`
+      SELECT 
+        v.id,
+        v.youtube_video_id,
+        v.title,
+        v.description,
+        v.thumbnail_url,
+        v.duration,
+        v.playlist_id,
+        wp.watched_at,
+        EXISTS(SELECT 1 FROM video_pdfs vp WHERE vp.video_id = v.id) AS has_pdf,
+        (SELECT COUNT(*)::int FROM video_pdfs vp WHERE vp.video_id = v.id) AS pdf_count
+      FROM watch_progress wp
+      JOIN videos v ON v.id = wp.video_id
+      WHERE wp.user_id = ${session.id}
+        AND wp.watched = true
+        AND v.playlist_id = ANY(${allKnownPlaylistIds})
+      ORDER BY COALESCE(wp.watched_at, wp.updated_at) DESC
     `.catch(() => []),
   ]);
 
@@ -162,6 +190,44 @@ export default async function DashboardPage() {
     };
   });
 
+  const dashboardCompletedVideos: CompletedVideoItem[] = completedVideosRows.map((row) => {
+    const isIntensive = intensivePlaylistIds.includes(row.playlist_id || "");
+    const isSubjectHacks = subjectHacksPlaylistIds.includes(row.playlist_id || "");
+
+    let moduleName = "Live Classes";
+    let moduleHref = "/live-classes";
+    let moduleType: "live" | "intensive" | "subject-hacks" = "live";
+    let playlistName = getPlaylistName(row.playlist_id || "");
+
+    if (isIntensive) {
+      moduleName = "Intensive Classes";
+      moduleHref = "/intensive-classes";
+      moduleType = "intensive";
+      playlistName = getIntensivePlaylistName(row.playlist_id || "");
+    } else if (isSubjectHacks) {
+      moduleName = "Subject Hacks";
+      moduleHref = "/subject-hacks";
+      moduleType = "subject-hacks";
+      playlistName = getSubjectHacksPlaylistName(row.playlist_id || "");
+    }
+
+    return {
+      id: row.id,
+      youtube_video_id: row.youtube_video_id,
+      title: row.title,
+      description: row.description,
+      thumbnail_url: row.thumbnail_url,
+      duration: row.duration,
+      playlist_id: row.playlist_id,
+      watched_at: row.watched_at,
+      moduleName,
+      moduleHref,
+      moduleType,
+      playlistName,
+      has_pdf: row.has_pdf,
+      pdf_count: row.pdf_count,
+    };
+  });
 
   return (
     <main className="flex-1 px-3.5 sm:px-5 lg:px-6 py-6 sm:py-8 max-w-[1400px] mx-auto w-full space-y-8 min-h-[calc(100dvh-4rem)] animate-page-enter overflow-x-hidden">
@@ -192,11 +258,14 @@ export default async function DashboardPage() {
         </Card>
       )}
 
-      {/* Overall Progress Bar */}
+      {/* Overall Progress Bar with In-Place Completed Classes Accordion */}
       {totalVideos + totalIntensive + totalSubjectHacks > 0 && (
         <WatchProgressBar
           total={totalVideos + totalIntensive + totalSubjectHacks}
           watched={watchedCount + watchedIntensive + watchedSubjectHacks}
+          completedVideos={dashboardCompletedVideos}
+          moduleName="All Modules"
+          theme="teal"
         />
       )}
 
