@@ -26,6 +26,11 @@ export const INTENSIVE_PLAYLISTS: IntensivePlaylistInfo[] = [
     name: "Intensive Class International Affairs",
     order: 3,
   },
+  {
+    id: "PLabcdaobdlLc",
+    name: "Intensive Class Bangladesh Affairs",
+    order: 4,
+  },
 ];
 
 export function getIntensivePlaylistName(
